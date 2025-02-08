@@ -1244,9 +1244,7 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
 
         private static String buildSelect() {
             return "tr.id as transactionId, tr.transaction_type_enum as transactionType, "
-                    + "tr.transaction_date as transactionDate, "
-                    + "tr.created_on_utc as createdOnUtc, "
-                    + "tr.amount as transactionAmount, "
+                    + "tr.transaction_date as transactionDate, tr.amount as transactionAmount, "
                     + "tr.release_id_of_hold_amount as releaseTransactionId, tr.reason_for_block as reasonForBlock, "
                     + "tr.submitted_on_date as submittedOnDate, au.username as submittedByUsername, nt.note as transactionNote, "
                     + "tr.running_balance_derived as runningBalance, tr.is_reversed as reversed, "
