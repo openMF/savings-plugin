@@ -41,7 +41,7 @@ import org.apache.fineract.portfolio.savings.data.DepositAccountOnHoldTransactio
 import org.apache.fineract.portfolio.savings.service.DepositAccountOnHoldTransactionReadPlatformService;
 import org.springframework.stereotype.Component;
 
-@Path("/v1/savingsaccounts/{savingsId}/onholdtransactions")
+@Path("/v1/savingsaccounts/{savingsAccountId}/onholdtransactions")
 @Component
 @Tag(name = "Deposit Account On Hold Fund Transactions", description = "")
 @RequiredArgsConstructor
@@ -56,7 +56,7 @@ public class DepositAccountOnHoldFundTransactionsApiResource {
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    public String retrieveAll(@PathParam("savingsId") final Long savingsId, @QueryParam("guarantorFundingId") final Long guarantorFundingId,
+    public String retrieveAll(@PathParam("savingsAccountId") final Long savingsAccountId, @QueryParam("guarantorFundingId") final Long guarantorFundingId,
             @Context final UriInfo uriInfo, @QueryParam("offset") final Integer offset, @QueryParam("limit") final Integer limit,
             @QueryParam("orderBy") final String orderBy, @QueryParam("sortOrder") final String sortOrder) {
 
@@ -68,7 +68,7 @@ public class DepositAccountOnHoldFundTransactionsApiResource {
                 .sortOrder(sortOrder).build();
 
         final Page<DepositAccountOnHoldTransactionData> transfers = this.depositAccountOnHoldTransactionReadPlatformService
-                .retriveAll(savingsId, guarantorFundingId, searchParameters);
+                .retriveAll(savingsAccountId, guarantorFundingId, searchParameters);
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.toApiJsonSerializer.serialize(settings, transfers,
