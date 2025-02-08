@@ -63,7 +63,7 @@ import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeData;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountChargeReadPlatformService;
 import org.springframework.stereotype.Component;
 
-@Path("/v2/savingsaccounts/{savingsAccountId}/charges")
+@Path("/v1/savingsaccounts/{savingsAccountId}/charges")
 @Component
 @Tag(name = "Savings Charges", description = "Its typical for MFIs to add maintenance and operating charges. They can be either Fees or Penalties.\n"
         + "\n"

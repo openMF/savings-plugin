@@ -41,7 +41,7 @@ import org.apache.fineract.portfolio.savings.data.DepositAccountOnHoldTransactio
 import org.apache.fineract.portfolio.savings.service.DepositAccountOnHoldTransactionReadPlatformService;
 import org.springframework.stereotype.Component;
 
-@Path("/v2/savingsaccounts/{savingsAccountId}/onholdtransactions")
+@Path("/v1/savingsaccounts/{savingsAccountId}/onholdtransactions")
 @Component
 @Tag(name = "Deposit Account On Hold Fund Transactions", description = "")
 @RequiredArgsConstructor

@@ -69,7 +69,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
-@Path("/v2/savingsaccounts/{savingsAccountId}/transactions")
+@Path("/v1/savingsaccounts/{savingsAccountId}/transactions")
 @Component
 @Tag(name = "Savings Account Transactions", description = "")
 @RequiredArgsConstructor
