@@ -22,13 +22,13 @@ All Java files must include the standard MPL-2.0 license header:
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-package org.apache.fineract.selfservice.example;
+package org.apache.fineract.savings.example;
 ```
 
 ### Package Structure
 Follow the established package structure:
 ```text
-org.apache.fineract.selfservice.*
+org.apache.fineract.savings.*
   - security/           # Authentication, authorization, security context
   - useradministration/ # User management and roles
   - client/            # Client operations and data
@@ -108,10 +108,10 @@ Inject and use the security context properly:
 ```java
 @RequiredArgsConstructor
 public class SelfSavingsService {
-    private final PlatformSelfServiceSecurityContext securityContext;
+    private final PlatformSecurityContext securityContext;
     
     public void validateAccess(Long accountId) {
-        securityContext.validateSelfServiceUserAccess(accountId);
+        securityContext.validateUserAccess(accountId);
     }
 }
 ```
@@ -251,7 +251,7 @@ class SelfSavingsServiceImplTest {
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-class SelfSavingsApiResourceIntegrationTest extends SelfServiceIntegrationTestBase {
+class SavingsApiResourceIntegrationTest extends IntegrationTestBase {
     
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
@@ -272,8 +272,8 @@ class SelfSavingsApiResourceIntegrationTest extends SelfServiceIntegrationTestBa
 ### Application Properties
 ```properties
 # Self Service Plugin Configuration
-fineract.selfservice.enabled=true
-fineract.selfservice.base-path=/v1/self
+fineract.savings.enabled=true
+fineract.savings.base-path=/v1/self
 fineract.security.basicauth.enabled=true
 fineract.security.oauth.enabled=false
 ```
@@ -282,10 +282,10 @@ fineract.security.oauth.enabled=false
 ```java
 @Configuration
 @EnableWebSecurity
-public class SelfServiceSecurityConfig {
+public class SecurityConfig {
     
     @Bean
-    public SecurityFilterChain selfServiceFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         // Security configuration
     }
 }

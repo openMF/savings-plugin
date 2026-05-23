@@ -1,6 +1,6 @@
 # Mifos® Self Service Plugin for Apache Fineract®
 
-[![Java CI](https://github.com/openMF/selfservice-plugin/actions/workflows/maven-build.yml/badge.svg)](https://github.com/openMF/selfservice-plugin/actions/workflows/maven-build.yml)
+[![Java CI](https://github.com/openMF/savings-plugin/actions/workflows/maven-build.yml/badge.svg)](https://github.com/openMF/savings-plugin/actions/workflows/maven-build.yml)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 ![Java 21](https://img.shields.io/badge/Java-21-blue)
 ![Spring Boot 3](https://img.shields.io/badge/Spring_Boot-3-6DB33F)
@@ -103,12 +103,12 @@ Apache Fineract is an open-source core banking platform. Out of the box, its API
 ### Build from Source
 
 ```bash
-git clone https://github.com/openMF/selfservice-plugin.git
-cd selfservice-plugin
+git clone https://github.com/openMF/savings-plugin.git
+cd savings-plugin
 ./mvnw clean package -Dmaven.test.skip=true
 ```
 
-This produces a JAR at `target/selfservice-plugin-1.15.0-SNAPSHOT.jar`.
+This produces a JAR at `target/savings-plugin-1.15.0-SNAPSHOT.jar`.
 
 ### Deploy with Fineract (Docker)
 
@@ -117,7 +117,7 @@ This produces a JAR at `target/selfservice-plugin-1.15.0-SNAPSHOT.jar`.
 mkdir -p /opt/fineract/plugins
 
 # Copy the built plugin
-cp target/selfservice-plugin-*.jar /opt/fineract/plugins/
+cp target/savings-plugin-*.jar /opt/fineract/plugins/
 
 # Start Fineract with the plugin on the classpath
 java -Dloader.path=/opt/fineract/plugins/ -jar fineract-provider.jar
@@ -127,7 +127,7 @@ java -Dloader.path=/opt/fineract/plugins/ -jar fineract-provider.jar
 
 ```bash
 # Copy the JAR into Fineract's library directory
-cp target/selfservice-plugin-*.jar $TOMCAT_HOME/webapps/fineract-provider/WEB-INF/lib/
+cp target/savings-plugin-*.jar $TOMCAT_HOME/webapps/fineract-provider/WEB-INF/lib/
 
 # Restart Tomcat
 $TOMCAT_HOME/bin/shutdown.sh && $TOMCAT_HOME/bin/startup.sh
@@ -139,7 +139,7 @@ The plugin auto-registers its endpoints, runs its own Liquibase migrations again
 
 Pre-built snapshots are published to JFrog Artifactory:
 
-👉 [Download latest JAR](https://mifos.jfrog.io/ui/native/libs-snapshot-local/community/mifos/selfservice-plugin/1.15.0-SNAPSHOT/)
+👉 [Download latest JAR](https://mifos.jfrog.io/ui/native/libs-snapshot-local/community/mifos/savings-plugin/1.15.0-SNAPSHOT/)
 
 ## API Reference
 

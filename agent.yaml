@@ -9,8 +9,8 @@ domain: "banking-fintech"
 framework: "spring-ai-agent-skills"
 
 # Agent identification
-agent_id: "mifos-selfservice-plugin"
-namespace: "org.apache.fineract.selfservice"
+agent_id: "mifos-savings-plugin"
+namespace: "org.apache.fineract.savings"
 
 # Runtime configuration
 runtime:
@@ -77,7 +77,7 @@ features:
 
 # Development metadata
 repository:
-  url: "https://github.com/openMF/selfservice-plugin"
+  url: "https://github.com/openMF/savings-plugin"
   license: "MPL-2.0"
   organization: "Mifos Initiative"
 

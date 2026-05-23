@@ -61,7 +61,7 @@ Copy JAR to $TOMCAT_HOME/webapps/fineract-provider/WEB-INF/lib/
 
 ### File Structure
 ```text
-src/main/java/org/apache/fineract/selfservice/
+src/main/java/org/apache/fineract/savings/
   - security/          # Authentication and authorization
   - useradministration/ # User management
   - client/           # Client operations
@@ -152,7 +152,7 @@ public class ExampleDataValidator {
 
 ## Debugging Tips
 
-- Enable debug logging: `logging.level.org.apache.fineract.selfservice=DEBUG`
+- Enable debug logging: `logging.level.org.apache.fineract.savings=DEBUG`
 - Use Spring Boot Actuator endpoints for monitoring
 - Check application logs for security-related issues
 - Verify database migrations in development

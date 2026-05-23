@@ -18,8 +18,8 @@ Thank you for your interest in contributing! This guide will get you set up and 
 ### Build
 
 ```bash
-git clone https://github.com/openMF/selfservice-plugin.git
-cd selfservice-plugin
+git clone https://github.com/openMF/savings-plugin.git
+cd savings-plugin
 ./mvnw clean package -Dmaven.test.skip=true
 ```
 
@@ -33,14 +33,14 @@ If you're building a project that depends on this plugin:
 ```xml
 <dependency>
     <groupId>community.mifos</groupId>
-    <artifactId>selfservice-plugin</artifactId>
+    <artifactId>savings-plugin</artifactId>
     <version>1.15.0-SNAPSHOT</version>
 </dependency>
 ```
 
 **Gradle:**
 ```groovy
-implementation 'community.mifos:selfservice-plugin:1.15.0-SNAPSHOT'
+implementation 'community.mifos:savings-plugin:1.15.0-SNAPSHOT'
 ```
 
 ---

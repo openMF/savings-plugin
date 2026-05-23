@@ -9,7 +9,7 @@
     <!-- lookup parent from repository -->
   </parent>
   <groupId>community.mifos</groupId>
-  <artifactId>selfservice-plugin</artifactId>
+  <artifactId>savings-plugin</artifactId>
   <version>1.15.0-SNAPSHOT</version>
   <name>savings-plugin</name>
   <description>Mifos Savings Plugin for Apache Fineract</description>

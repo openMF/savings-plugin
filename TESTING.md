@@ -1,4 +1,4 @@
-# Testing Guide — Selfservice Plugin
+# Testing Guide — Savings Plugin
 
 ## Test Pyramid
 
@@ -19,7 +19,7 @@ Tier 1 │ *Test.java             │ Mockito unit tests                        
 ./mvnw clean verify
 
 # Run a single integration test class
-./mvnw verify -Dit.test=SelfServiceAuthenticationIntegrationTest
+./mvnw verify -Dit.test=AuthenticationIntegrationTest
 
 # Skip spotless formatting check (useful during local development)
 ./mvnw verify -Dspotless.check.skip=true
@@ -42,15 +42,15 @@ Coverage reports are written to:
 ## Adding a New Integration Test
 
 1. Create your test file with the `*IntegrationTest.java` suffix.
-2. Extend `SelfServiceIntegrationTestBase`.
-3. Inject `@LocalServerPort int port` and use `SelfServiceTestUtils.requestSpec(port)` for RestAssured calls.
+2. Extend `SavingsIntegrationTestBase`.
+3. Inject `@LocalServerPort int port` and use `SavingsTestUtils.requestSpec(port)` for RestAssured calls.
 
 ```java
-class MyFeatureIntegrationTest extends SelfServiceIntegrationTestBase {
+class MyFeatureIntegrationTest extends SavingsIntegrationTestBase {
 
     @Test
     void myEndpoint_withNoAuth_returns401() {
-        given(SelfServiceTestUtils.requestSpec(port))
+        given(SavingsTestUtils.requestSpec(port))
             .when().get("/api/v1/self/my-endpoint")
             .then().statusCode(401);
     }
