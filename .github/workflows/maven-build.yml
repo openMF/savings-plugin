@@ -80,6 +80,7 @@ jobs:
           name: jacoco-it-exec
           path: target/jacoco-it.exec
           retention-days: 1
+          if-no-files-found: ignore
 
   # ── Job 3: Coverage Gate — merges both .exec files before enforcing ───────
   coverage-gate:
@@ -107,6 +108,7 @@ jobs:
 
       - name: Download Integration Test Coverage Data
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           name: jacoco-it-exec
           path: target/
