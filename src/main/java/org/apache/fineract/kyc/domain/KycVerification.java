@@ -1,0 +1,110 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package org.apache.fineract.kyc.domain;
+
+import jakarta.persistence.*;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "m_client_kyc_verification")
+public class KycVerification {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "client_id", nullable = false)
+    private Long clientId;
+
+    @Column(name = "session_id", nullable = false, length = 255)
+    private String sessionId;
+
+    @Column(name = "workflow_id", nullable = false, length = 255)
+    private String workflowId;
+
+    @Column(name = "workflow_version")
+    private Integer workflowVersion;
+
+    @Column(name = "webhook_type", length = 100)
+    private String webhookType;
+
+    @Column(name = "kyc_status", nullable = false, length = 50)
+    private String kycStatus;
+
+    @Column(name = "kyc_timestamp")
+    private Long kycTimestamp;
+
+    @Column(name = "kyc_created_at")
+    private Long kycCreatedAt;
+
+    @Column(name = "metadata_text", columnDefinition = "TEXT")
+    private String metadata;
+
+    @Column(name = "created_by", nullable = false)
+    private Long createdBy;
+
+    @Column(name = "created_on_utc", nullable = false)
+    private OffsetDateTime createdOnUtc;
+
+    @Column(name = "last_modified_by", nullable = false)
+    private Long lastModifiedBy;
+
+    @Column(name = "last_modified_on_utc", nullable = false)
+    private OffsetDateTime lastModifiedOnUtc;
+
+    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private KycDecision decision;
+
+    protected KycVerification() {}
+
+    public static KycVerification create(final Long clientId,
+                                         final String sessionId,
+                                         final String workflowId,
+                                         final Integer workflowVersion,
+                                         final String webhookType,
+                                         final String kycStatus,
+                                         final Long kycTimestamp,
+                                         final Long kycCreatedAt,
+                                         final String metadata,
+                                         final Long createdBy) {
+        final KycVerification v = new KycVerification();
+        v.clientId = clientId;
+        v.sessionId = sessionId;
+        v.workflowId = workflowId;
+        v.workflowVersion = workflowVersion;
+        v.webhookType = webhookType;
+        v.kycStatus = kycStatus;
+        v.kycTimestamp = kycTimestamp;
+        v.kycCreatedAt = kycCreatedAt;
+        v.metadata = metadata;
+        v.createdBy = createdBy;
+        v.lastModifiedBy = createdBy;
+        final OffsetDateTime now = OffsetDateTime.now();
+        v.createdOnUtc = now;
+        v.lastModifiedOnUtc = now;
+        return v;
+    }
+
+    // ── Getters ──────────────────────────────────────────────
+
+    public Long getId() { return id; }
+    public Long getClientId() { return clientId; }
+    public String getSessionId() { return sessionId; }
+    public String getWorkflowId() { return workflowId; }
+    public Integer getWorkflowVersion() { return workflowVersion; }
+    public String getWebhookType() { return webhookType; }
+    public String getKycStatus() { return kycStatus; }
+    public Long getKycTimestamp() { return kycTimestamp; }
+    public Long getKycCreatedAt() { return kycCreatedAt; }
+    public String getMetadata() { return metadata; }
+    public KycDecision getDecision() { return decision; }
+
+    public void setDecision(final KycDecision decision) {
+        this.decision = decision;
+        decision.setKycVerification(this);
+    }
+}
