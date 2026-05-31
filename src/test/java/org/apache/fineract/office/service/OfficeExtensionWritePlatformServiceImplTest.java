@@ -6,7 +6,6 @@
  */
 package org.apache.fineract.office.service;
 
-import org.apache.fineract.office.service.OfficeExtensionWritePlatformServiceImpl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
