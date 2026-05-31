@@ -3,7 +3,7 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
     <changeSet author="fineract" id="savings-001-1">
-         <!-- Robust preconditions: skip if table already exists -->
+        <!-- Robust preconditions: skip if table already exists -->
         <preConditions onFail="MARK_RAN">
             <or>
                 <!-- Table doesn't exist: proceed with creation -->
