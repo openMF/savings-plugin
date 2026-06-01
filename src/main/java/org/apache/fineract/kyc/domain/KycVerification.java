@@ -55,8 +55,8 @@ public class KycVerification {
 
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
-
-    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    
+    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true, optional = false)
     private KycDecision decision;
 
     protected KycVerification() {}

@@ -19,13 +19,14 @@ public class KycDecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kyc_verification_id", nullable = false)
-    private Long kycVerificationId;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "kyc_verification_id", nullable = false)
+    private KycVerification kycVerification;
 
     @Column(name = "decision_status", nullable = false, length = 50)
     private String decisionStatus;
 
-    @Column(name = "decision_workflow_id", length = 255)
+    @Column(name = "decision_workflow_id", length = 255, nullable = false)
     private String decisionWorkflowId;
 
     @Column(name = "decision_created_at")
@@ -43,24 +44,16 @@ public class KycDecision {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kyc_verification_id", insertable = false, updatable = false)
-    private KycVerification kycVerification;
-
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<KycDecisionFeature> features = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<KycFaceMatch> faceMatches = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<KycIdVerification> idVerifications = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<KycAmlScreening> amlScreenings = new ArrayList<>();
 
     protected KycDecision() {}
@@ -81,45 +74,34 @@ public class KycDecision {
         return d;
     }
 
-    // ── Association helpers ──────────────────────────────────
+    // Owning side setter
+    public void setKycVerification(KycVerification kycVerification) {
+        this.kycVerification = kycVerification;
+    }
 
-    public void addFeature(final KycDecisionFeature feature) {
-        features.add(feature);
+    public void addFeature(KycDecisionFeature feature) {
+        this.features.add(feature);
         feature.setKycDecision(this);
     }
 
-    public void addFaceMatch(final KycFaceMatch faceMatch) {
-        faceMatches.add(faceMatch);
+    public void addFaceMatch(KycFaceMatch faceMatch) {
+        this.faceMatches.add(faceMatch);
         faceMatch.setKycDecision(this);
     }
 
-    public void addIdVerification(final KycIdVerification idVerification) {
-        idVerifications.add(idVerification);
+    public void addIdVerification(KycIdVerification idVerification) {
+        this.idVerifications.add(idVerification);
         idVerification.setKycDecision(this);
     }
 
-    public void addAmlScreening(final KycAmlScreening amlScreening) {
-        amlScreenings.add(amlScreening);
+    public void addAmlScreening(KycAmlScreening amlScreening) {
+        this.amlScreenings.add(amlScreening);
         amlScreening.setKycDecision(this);
     }
 
-    // ── Setters (package-private) ────────────────────────────
-
-    public void setKycVerification(final KycVerification kycVerification) {
-        this.kycVerification = kycVerification;
-        if (kycVerification != null) {
-            this.kycVerificationId = kycVerification.getId();
-        }
-    }
-
-    void setKycVerificationId(final Long kycVerificationId) {
-        this.kycVerificationId = kycVerificationId;
-    }
-
-    // ── Getters ──────────────────────────────────────────────
-
+    // Getters
     public Long getId() { return id; }
-    public Long getKycVerificationId() { return kycVerificationId; }
+    public KycVerification getKycVerification() { return kycVerification; }
     public String getDecisionStatus() { return decisionStatus; }
     public String getDecisionWorkflowId() { return decisionWorkflowId; }
     public OffsetDateTime getDecisionCreatedAt() { return decisionCreatedAt; }
