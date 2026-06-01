@@ -29,5 +29,5 @@ public interface KycVerificationService {
 
     List<KycVerification> findByClientId(Long clientId);
 
-    List<KycVerification> findByClientIdAndStatus(Long clientId, String status);
+    List<KycVerification> findByClientIdAndStatus(Long clientId, Optional<String> status);
 }

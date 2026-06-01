@@ -189,7 +189,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<KycVerification> findByClientIdAndStatus(final Long clientId, final String status) {
+    public List<KycVerification> findByClientIdAndStatus(final Long clientId, final Optional<String> status) {
         return kycVerificationRepository.findByClientIdAndKycStatus(clientId, status);
     }
 

@@ -18,7 +18,7 @@ public interface KycVerificationRepository extends JpaRepository<KycVerification
 
     List<KycVerification> findByClientIdOrderByCreatedOnUtcDesc(Long clientId);
 
-    List<KycVerification> findByClientIdAndKycStatus(Long clientId, String kycStatus);
+    List<KycVerification> findByClientIdAndKycStatus(Long clientId, Optional<String> kycStatus);
 
     @Query("SELECT v FROM KycVerification v " +
            "LEFT JOIN FETCH v.decision d " +
