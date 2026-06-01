@@ -105,7 +105,7 @@ public class KycDecision {
 
     // ── Setters (package-private) ────────────────────────────
 
-    void setKycVerification(final KycVerification kycVerification) {
+    public void setKycVerification(final KycVerification kycVerification) {
         this.kycVerification = kycVerification;
         if (kycVerification != null) {
             this.kycVerificationId = kycVerification.getId();

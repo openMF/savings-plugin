@@ -29,25 +29,32 @@ import org.apache.fineract.kyc.domain.KycFaceMatch;
 import org.apache.fineract.kyc.domain.KycIdVerification;
 import org.apache.fineract.kyc.domain.KycVerification;
 import org.apache.fineract.kyc.repository.KycVerificationRepository;
+import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 
 @Service
 public class KycVerificationServiceImpl implements KycVerificationService {
 
     private final KycVerificationRepository kycVerificationRepository;
     private final ObjectMapper objectMapper;
+    private final ClientRepositoryWrapper clientRepositoryWrapper;
 
     // System user ID for automated webhook processing; adjust per your auth setup
     private static final Long SYSTEM_USER_ID = 1L;
 
     public KycVerificationServiceImpl(final KycVerificationRepository kycVerificationRepository,
-                                      final ObjectMapper objectMapper) {
+                                    final ObjectMapper objectMapper,
+                                    final ClientRepositoryWrapper clientRepositoryWrapper) {
         this.kycVerificationRepository = kycVerificationRepository;
         this.objectMapper = objectMapper;
+        this.clientRepositoryWrapper = clientRepositoryWrapper;
     }
 
     @Override
     @Transactional
     public KycVerification processWebhook(final Long clientId, final KycWebhookPayload payload) {
+        
+        // Validate that the client exists – will throw ClientNotFoundException if not
+        this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
 
         // Idempotency: if session already processed, return existing
         if (payload.getSessionId() != null) {
@@ -163,6 +170,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 }
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // FIX: Set the inverse side so JPA populates the FK column
+            // ═══════════════════════════════════════════════════════════════
+            decision.setKycVerification(verification);
             verification.setDecision(decision);
         }
 
