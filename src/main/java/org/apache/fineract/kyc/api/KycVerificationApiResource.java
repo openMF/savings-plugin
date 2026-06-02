@@ -19,6 +19,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -92,7 +93,7 @@ public class KycVerificationApiResource {
     @GET
     @Path("/clients/{clientId}/summaries")
     @Produces({MediaType.APPLICATION_JSON})
-    public ResponseEntity<List<KycVerificationSummaryData>> listSumamryByClient(
+    public Response listSumamryByClient(
             @PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
             @QueryParam("status") final Optional<String> status) {
 
@@ -102,20 +103,20 @@ public class KycVerificationApiResource {
         } else {
             verifications = kycVerificationService.findSummaryByClientId(clientId);
         }
-        return ResponseEntity.ok(verifications);
+        return Response.ok().entity(verifications).build();
     }
     
     @GET
     @Path("/clients/{clientId}/verifications/{id}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Get full KYC verification details by ID")
-    public ResponseEntity<KycVerification> getVerificationById(
+    public Response getVerificationById(
             @PathParam("id") @Parameter(description = "Verification ID") final Long id) {
 
         // Full detail endpoint — returns the complete nested tree
         final KycVerification verification = kycVerificationService.findByIdWithDetails(id)
                 .orElseThrow(() -> new NotFoundException("KYC verification not found with id: " + id));
 
-        return ResponseEntity.ok(verification);
+        return Response.ok().entity(verification).build();
     }
 }
