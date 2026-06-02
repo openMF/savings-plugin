@@ -13,6 +13,20 @@ import java.time.OffsetDateTime;
 @Table(name = "m_client_kyc_verification")
 public class KycVerification {
 
+    /**
+     * @return the createdOnUtc
+     */
+    public OffsetDateTime getCreatedOnUtc() {
+        return createdOnUtc;
+    }
+
+    /**
+     * @param createdOnUtc the createdOnUtc to set
+     */
+    public void setCreatedOnUtc(OffsetDateTime createdOnUtc) {
+        this.createdOnUtc = createdOnUtc;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -86,7 +100,7 @@ public class KycVerification {
         v.createdBy = createdBy;
         v.lastModifiedBy = createdBy;
         final OffsetDateTime now = OffsetDateTime.now();
-        v.createdOnUtc = now;
+        v.setCreatedOnUtc(now);
         v.lastModifiedOnUtc = now;
         return v;
     }

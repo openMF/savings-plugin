@@ -60,22 +60,18 @@ public class KycDecision {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycDecisionFeature> features = new ArrayList<>();
 
-    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycFaceMatch> faceMatches = new ArrayList<>();
 
-    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycIdVerification> idVerifications = new ArrayList<>();
 
-    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycAmlScreening> amlScreenings = new ArrayList<>();

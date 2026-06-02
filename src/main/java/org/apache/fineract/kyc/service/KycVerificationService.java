@@ -9,6 +9,7 @@ package org.apache.fineract.kyc.service;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.fineract.kyc.data.KycVerificationSummaryData;
 import org.apache.fineract.kyc.data.KycWebhookPayload;
 import org.apache.fineract.kyc.domain.KycVerification;
 
@@ -30,4 +31,8 @@ public interface KycVerificationService {
     List<KycVerification> findByClientId(Long clientId);
 
     List<KycVerification> findByClientIdAndStatus(Long clientId, Optional<String> status);
+    
+    List<KycVerificationSummaryData> findSummaryByClientId(Long clientId);
+    
+    List<KycVerificationSummaryData> findSummaryByClientIdAndStatus(Long clientId, Optional<String> status);
 }

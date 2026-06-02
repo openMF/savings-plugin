@@ -72,7 +72,6 @@ public class KycAmlScreening {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "amlScreening", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycAmlHit> hits = new ArrayList<>();

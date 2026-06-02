@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -84,5 +85,19 @@ public class KycVerificationApiResource {
             verifications = kycVerificationService.findByClientId(clientId);
         }
         return ResponseEntity.ok(verifications);
+    }
+    
+    @GET
+    @Path("/clients/{clientId}/verifications/{id}")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Get full KYC verification details by ID")
+    public ResponseEntity<KycVerification> getVerificationById(
+            @PathParam("id") @Parameter(description = "Verification ID") final Long id) {
+
+        // Full detail endpoint — returns the complete nested tree
+        final KycVerification verification = kycVerificationService.findByIdWithDetails(id)
+                .orElseThrow(() -> new NotFoundException("KYC verification not found with id: " + id));
+
+        return ResponseEntity.ok(verification);
     }
 }

@@ -16,6 +16,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import org.apache.fineract.kyc.data.KycVerificationSummaryData;
 import org.apache.fineract.kyc.data.KycWebhookPayload;
 import org.apache.fineract.kyc.data.KycWebhookPayload.AmlScreening;
 import org.apache.fineract.kyc.data.KycWebhookPayload.Decision;
@@ -244,5 +245,39 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         } catch (Exception e) {
             return obj.toString();
         }
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<KycVerificationSummaryData> findSummaryByClientId(final Long clientId) {
+        return kycVerificationRepository.findByClientIdOrderByCreatedOnUtcDesc(clientId)
+                .stream()
+                .map(this::toSummaryData)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<KycVerificationSummaryData> findSummaryByClientIdAndStatus(final Long clientId, final Optional<String> status) {
+        return kycVerificationRepository.findByClientIdAndKycStatus(clientId, status)
+                .stream()
+                .map(this::toSummaryData)
+                .toList();
+    }
+
+    private KycVerificationSummaryData toSummaryData(final KycVerification v) {
+        return new KycVerificationSummaryData(
+                v.getId(),
+                v.getClientId(),
+                v.getSessionId(),
+                v.getWorkflowId(),
+                v.getWorkflowVersion(),
+                v.getWebhookType(),
+                v.getKycStatus(),
+                v.getKycTimestamp(),
+                v.getDecision() != null ? v.getDecision().getDecisionStatus() : null,
+                v.getDecision() != null ? v.getDecision().getDecisionCreatedAt() : null,
+                v.getCreatedOnUtc()
+        );
     }
 }
