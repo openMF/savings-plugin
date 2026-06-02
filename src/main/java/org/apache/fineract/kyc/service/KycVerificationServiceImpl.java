@@ -38,7 +38,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
     private final KycVerificationRepository kycVerificationRepository;
     private final ObjectMapper objectMapper;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
-
+    //TODO ADD a SYSTEM GENERATED USER FOR THIS PLUGIN
     // System user ID for automated webhook processing; adjust per your auth setup
     private static final Long SYSTEM_USER_ID = 1L;
 
