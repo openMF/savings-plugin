@@ -29,19 +29,21 @@ import org.apache.fineract.kyc.domain.KycFeatureStatus;
 public interface KycFeatureStatusRepository extends JpaRepository<KycFeatureStatus, Long> {
 
     /**
-     * Finds the feature status for the latest KYC verification of a given client.
-     * Uses Spring Data JPA method naming:
-     *   findFirst     → LIMIT 1
-     *   ByKycVerification_ClientId → JOIN on kycVerification WHERE client_id = ?
-     *   OrderByKycVerification_IdDesc → ORDER BY kyc_verification_id DESC
+     * Traverses the kycVerification relationship and queries by its id field.
+     * Underscore notation: KycVerification_Id → kycVerification.id
+     */
+    Optional<KycFeatureStatus> findByKycVerification_Id(Long kycVerificationId);
+
+    /**
+     * Latest feature status by client ID.
+     * Traverses: kycVerification.clientId, orders by kycVerification.id DESC
      */
     Optional<KycFeatureStatus> findFirstByKycVerification_ClientIdOrderByKycVerification_IdDesc(Long clientId);
 
     /**
-     * Finds the feature status for the latest APPROVED KYC verification.
+     * Latest APPROVED feature status by client ID.
+     * Traverses: kycVerification.clientId AND kycVerification.kycStatus
      */
     Optional<KycFeatureStatus> findFirstByKycVerification_ClientIdAndKycVerification_KycStatusOrderByKycVerification_IdDesc(
             Long clientId, String kycStatus);
-
-    Optional<KycFeatureStatus> findByKycVerificationId(Long kycVerificationId);
 }
