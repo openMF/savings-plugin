@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.kyc.data.KycVerificationSummaryData;
 import org.apache.fineract.kyc.data.KycWebhookPayload;
 import org.apache.fineract.kyc.domain.KycVerification;
 import org.apache.fineract.kyc.service.KycVerificationService;
@@ -83,6 +84,23 @@ public class KycVerificationApiResource {
             verifications = kycVerificationService.findByClientIdAndStatus(clientId, status);
         } else {
             verifications = kycVerificationService.findByClientId(clientId);
+        }
+        return ResponseEntity.ok(verifications);
+    }
+    
+    @Operation(summary = "List KYC verifications for a client")    
+    @GET
+    @Path("/clients/{clientId}/summaries")
+    @Produces({MediaType.APPLICATION_JSON})
+    public ResponseEntity<List<KycVerificationSummaryData>> listSumamryByClient(
+            @PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
+            @QueryParam("status") final Optional<String> status) {
+
+        final List<KycVerificationSummaryData> verifications;
+        if (status != null) {
+            verifications = kycVerificationService.findSummaryByClientIdAndStatus(clientId, status);
+        } else {
+            verifications = kycVerificationService.findSummaryByClientId(clientId);
         }
         return ResponseEntity.ok(verifications);
     }
