@@ -74,6 +74,20 @@ public class KycVerification {
     @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL,
               fetch = FetchType.EAGER, orphanRemoval = true, optional = false)
     private KycDecision decision;
+    
+    // Forward reference — serialize this
+    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private KycFeatureStatus featureStatus;
+
+    public KycFeatureStatus getFeatureStatus() { return featureStatus; }
+
+    public void setFeatureStatus(final KycFeatureStatus featureStatus) {
+        this.featureStatus = featureStatus;
+        if (featureStatus != null) {
+            featureStatus.setKycVerification(this);
+        }
+    }
 
     protected KycVerification() {}
 

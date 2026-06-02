@@ -27,6 +27,7 @@ import org.apache.fineract.kyc.domain.KycAmlScreening;
 import org.apache.fineract.kyc.domain.KycDecision;
 import org.apache.fineract.kyc.domain.KycDecisionFeature;
 import org.apache.fineract.kyc.domain.KycFaceMatch;
+import org.apache.fineract.kyc.domain.KycFeatureStatus;
 import org.apache.fineract.kyc.domain.KycIdVerification;
 import org.apache.fineract.kyc.domain.KycVerification;
 import org.apache.fineract.kyc.repository.KycVerificationRepository;
@@ -168,10 +169,32 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                     decision.addAmlScreening(screening);
                 }
             }
+            
+            // ── Determine feature statuses from the payload ──
+            final boolean hasFaceMatches = decisionDto.getFaceMatches() != null 
+                    && !decisionDto.getFaceMatches().isEmpty();
+            final boolean hasIdVerifications = decisionDto.getIdVerifications() != null 
+                    && !decisionDto.getIdVerifications().isEmpty();
+            final boolean hasAmlScreenings = decisionDto.getAmlScreenings() != null 
+                    && !decisionDto.getAmlScreenings().isEmpty();
+            final boolean hasDecision = decisionDto.getStatus() != null;
+
+            final KycFeatureStatus featureStatus = KycFeatureStatus.create(
+                    hasFaceMatches,
+                    hasIdVerifications,
+                    hasAmlScreenings,
+                    hasDecision,
+                    SYSTEM_USER_ID
+            );
+
+            // Link feature status to verification
+            verification.setFeatureStatus(featureStatus);
 
             // ✅ Single point: setDecision calls decision.setKycVerification(this) internally
             verification.setDecision(decision);
         }
+        
+        
 
         // ✅ ONE saveAndFlush — EclipseLink cascades the entire tree
         // Insert order: verification → decision → features/faceMatches/idVerifications/amlScreenings → hits
