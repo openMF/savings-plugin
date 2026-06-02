@@ -19,9 +19,10 @@ public class KycDecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ❌ REMOVE: This separate column field causes the FK to be null
-    // @Column(name = "kyc_verification_id", nullable = false)
-    // private Long kycVerificationId;
+    // ✅ EAGER: no weaving warning, and decision always needs its verification
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "kyc_verification_id", nullable = false)
+    private KycVerification kycVerification;
 
     @Column(name = "decision_status", nullable = false, length = 50)
     private String decisionStatus;
@@ -43,11 +44,6 @@ public class KycDecision {
 
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
-
-    // ✅ FIX: Let @ManyToOne manage the foreign key directly
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "kyc_verification_id", nullable = false)  // ← Remove insertable/updatable = false
-    private KycVerification kycVerification;
 
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
@@ -83,8 +79,6 @@ public class KycDecision {
         return d;
     }
 
-    // ── Association helpers ──────────────────────────────────
-
     public void addFeature(final KycDecisionFeature feature) {
         features.add(feature);
         feature.setKycDecision(this);
@@ -105,30 +99,18 @@ public class KycDecision {
         amlScreening.setKycDecision(this);
     }
 
-    // ── Setters ──────────────────────────────────────────────
-
-    // ✅ SIMPLIFIED: Just set the relationship, let JPA handle the FK
     public void setKycVerification(final KycVerification kycVerification) {
         this.kycVerification = kycVerification;
-        // JPA will automatically populate kyc_verification_id from the relationship
     }
-
-    // ❌ REMOVE: This manual ID setter is no longer needed
-    // void setKycVerificationId(final Long kycVerificationId) { ... }
-
-    // ── Getters ──────────────────────────────────────────────
 
     public Long getId() { return id; }
-    
-    // ✅ Getter returns ID from the relationship object
-    public Long getKycVerificationId() { 
-        return kycVerification != null ? kycVerification.getId() : null; 
+    public Long getKycVerificationId() {
+        return kycVerification != null ? kycVerification.getId() : null;
     }
-    
+    public KycVerification getKycVerification() { return kycVerification; }
     public String getDecisionStatus() { return decisionStatus; }
     public String getDecisionWorkflowId() { return decisionWorkflowId; }
     public OffsetDateTime getDecisionCreatedAt() { return decisionCreatedAt; }
-    public KycVerification getKycVerification() { return kycVerification; }
     public List<KycDecisionFeature> getFeatures() { return features; }
     public List<KycFaceMatch> getFaceMatches() { return faceMatches; }
     public List<KycIdVerification> getIdVerifications() { return idVerifications; }

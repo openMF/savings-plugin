@@ -6,7 +6,16 @@
  */
 package org.apache.fineract.kyc.domain;
 
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -17,8 +26,10 @@ public class KycAmlHit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "aml_screening_id", nullable = false)
-    private Long amlScreeningId;
+    // ✅ @ManyToOne OWNS the FK — no separate Long amlScreeningId field
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "aml_screening_id", nullable = false)
+    private KycAmlScreening amlScreening;
 
     @Column(name = "hit_data", columnDefinition = "TEXT")
     private String hitData;
@@ -35,10 +46,6 @@ public class KycAmlHit {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "aml_screening_id", insertable = false, updatable = false)
-    private KycAmlScreening amlScreening;
-
     protected KycAmlHit() {}
 
     public static KycAmlHit create(final String hitData, final Long createdBy) {
@@ -52,13 +59,13 @@ public class KycAmlHit {
         return h;
     }
 
-    void setAmlScreening(final KycAmlScreening amlScreening) {
+    public void setAmlScreening(final KycAmlScreening amlScreening) {
         this.amlScreening = amlScreening;
-        if (amlScreening != null) {
-            this.amlScreeningId = amlScreening.getId();
-        }
     }
 
     public Long getId() { return id; }
+    public Long getAmlScreeningId() {
+        return amlScreening != null ? amlScreening.getId() : null;
+    }
     public String getHitData() { return hitData; }
 }

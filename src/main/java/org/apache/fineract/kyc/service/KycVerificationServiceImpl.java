@@ -52,11 +52,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
     @Override
     @Transactional
     public KycVerification processWebhook(final Long clientId, final KycWebhookPayload payload) {
-        
-        // Validate that the client exists – will throw ClientNotFoundException if not
+    
         this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
 
-        // Idempotency: if session already processed, return existing
+        // Idempotency
         if (payload.getSessionId() != null) {
             final Optional<KycVerification> existing =
                     kycVerificationRepository.findBySessionId(payload.getSessionId());
@@ -65,7 +64,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             }
         }
 
-        // 1. Build the root verification entity
+        // 1. Build the root verification entity (NOT persisted yet)
         final KycVerification verification = KycVerification.create(
                 clientId,
                 payload.getSessionId(),
@@ -78,10 +77,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 serializeMetadata(payload.getMetadata()),
                 SYSTEM_USER_ID
         );
-        
-        // ✅ FIX: Persist verification FIRST to generate its ID
-        final KycVerification savedVerification = kycVerificationRepository.saveAndFlush(verification);
-
 
         // 2. Build the decision aggregate
         if (payload.getDecision() != null) {
@@ -160,7 +155,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                             SYSTEM_USER_ID
                     );
 
-                    // AML hits
                     if (amlDto.getHits() != null) {
                         for (final Object hitObj : amlDto.getHits()) {
                             screening.addHit(KycAmlHit.create(
@@ -174,15 +168,13 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════════
-            // FIX: Set the inverse side so JPA populates the FK column
-            // ═══════════════════════════════════════════════════════════════
-            //decision.setKycVerification(verification);
-            //verification.setDecision(decision);
-            decision.setKycVerification(savedVerification);
-            savedVerification.setDecision(decision);
+            // ✅ Single point: setDecision calls decision.setKycVerification(this) internally
+            verification.setDecision(decision);
         }
 
+        // ✅ ONE saveAndFlush — EclipseLink cascades the entire tree
+        // Insert order: verification → decision → features/faceMatches/idVerifications/amlScreenings → hits
+        // EclipseLink fills FK columns automatically from the @ManyToOne relationships
         return kycVerificationRepository.saveAndFlush(verification);
     }
 

@@ -6,7 +6,18 @@
  */
 package org.apache.fineract.kyc.domain;
 
-import jakarta.persistence.*;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -20,8 +31,10 @@ public class KycAmlScreening {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kyc_decision_id", nullable = false)
-    private Long kycDecisionId;
+    // ✅ @ManyToOne OWNS the FK — no separate Long kycDecisionId field
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "kyc_decision_id", nullable = false)
+    private KycDecision kycDecision;
 
     @Column(name = "node_id", length = 255)
     private String nodeId;
@@ -55,10 +68,6 @@ public class KycAmlScreening {
 
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kyc_decision_id", insertable = false, updatable = false)
-    private KycDecision kycDecision;
 
     @OneToMany(mappedBy = "amlScreening", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
@@ -95,14 +104,14 @@ public class KycAmlScreening {
         hit.setAmlScreening(this);
     }
 
-    void setKycDecision(final KycDecision kycDecision) {
+    public void setKycDecision(final KycDecision kycDecision) {
         this.kycDecision = kycDecision;
-        if (kycDecision != null) {
-            this.kycDecisionId = kycDecision.getId();
-        }
     }
 
     public Long getId() { return id; }
+    public Long getKycDecisionId() {
+        return kycDecision != null ? kycDecision.getId() : null;
+    }
     public String getScreeningStatus() { return screeningStatus; }
     public Integer getTotalHits() { return totalHits; }
     public List<KycAmlHit> getHits() { return hits; }

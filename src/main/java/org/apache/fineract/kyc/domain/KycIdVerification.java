@@ -16,8 +16,9 @@ public class KycIdVerification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kyc_decision_id", nullable = false)
-    private Long kycDecisionId;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "kyc_decision_id", nullable = false)
+    private KycDecision kycDecision;
 
     @Column(name = "node_id", length = 255)
     private String nodeId;
@@ -82,10 +83,6 @@ public class KycIdVerification {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kyc_decision_id", insertable = false, updatable = false)
-    private KycDecision kycDecision;
-
     protected KycIdVerification() {}
 
     public static KycIdVerification create(final String nodeId,
@@ -132,18 +129,21 @@ public class KycIdVerification {
         return v;
     }
 
-    void setKycDecision(final KycDecision kycDecision) {
+    public void setKycDecision(final KycDecision kycDecision) {
         this.kycDecision = kycDecision;
-        if (kycDecision != null) {
-            this.kycDecisionId = kycDecision.getId();
-        }
     }
 
     public Long getId() { return id; }
+    public Long getKycDecisionId() {
+        return kycDecision != null ? kycDecision.getId() : null;
+    }
     public String getVerificationStatus() { return verificationStatus; }
     public String getFullName() { return fullName; }
     public String getDocumentNumber() { return documentNumber; }
     public String getDocumentType() { return documentType; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public LocalDate getExpirationDate() { return expirationDate; }
+    public String getPersonalNumber() { return personalNumber; }
+    public String getGender() { return gender; }
+    public String getNationality() { return nationality; }
 }

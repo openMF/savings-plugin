@@ -17,8 +17,10 @@ public class KycDecisionFeature {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kyc_decision_id", nullable = false)
-    private Long kycDecisionId;
+    // ✅ @ManyToOne OWNS the FK — no separate Long kycDecisionId field
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "kyc_decision_id", nullable = false)
+    private KycDecision kycDecision;
 
     @Column(name = "feature_name", nullable = false, length = 100)
     private String featureName;
@@ -35,10 +37,6 @@ public class KycDecisionFeature {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kyc_decision_id", insertable = false, updatable = false)
-    private KycDecision kycDecision;
-
     protected KycDecisionFeature() {}
 
     public static KycDecisionFeature create(final String featureName, final Long createdBy) {
@@ -52,13 +50,13 @@ public class KycDecisionFeature {
         return f;
     }
 
-    void setKycDecision(final KycDecision kycDecision) {
+    public void setKycDecision(final KycDecision kycDecision) {
         this.kycDecision = kycDecision;
-        if (kycDecision != null) {
-            this.kycDecisionId = kycDecision.getId();
-        }
     }
 
     public Long getId() { return id; }
+    public Long getKycDecisionId() {
+        return kycDecision != null ? kycDecision.getId() : null;
+    }
     public String getFeatureName() { return featureName; }
 }

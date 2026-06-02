@@ -16,8 +16,9 @@ public class KycFaceMatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "kyc_decision_id", nullable = false)
-    private Long kycDecisionId;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "kyc_decision_id", nullable = false)
+    private KycDecision kycDecision;
 
     @Column(name = "node_id", length = 255)
     private String nodeId;
@@ -46,10 +47,6 @@ public class KycFaceMatch {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "kyc_decision_id", insertable = false, updatable = false)
-    private KycDecision kycDecision;
-
     protected KycFaceMatch() {}
 
     public static KycFaceMatch create(final String nodeId,
@@ -72,14 +69,14 @@ public class KycFaceMatch {
         return fm;
     }
 
-    void setKycDecision(final KycDecision kycDecision) {
+    public void setKycDecision(final KycDecision kycDecision) {
         this.kycDecision = kycDecision;
-        if (kycDecision != null) {
-            this.kycDecisionId = kycDecision.getId();
-        }
     }
 
     public Long getId() { return id; }
+    public Long getKycDecisionId() {
+        return kycDecision != null ? kycDecision.getId() : null;
+    }
     public BigDecimal getMatchScore() { return matchScore; }
     public String getMatchStatus() { return matchStatus; }
     public String getSourceImageUrl() { return sourceImageUrl; }

@@ -55,8 +55,10 @@ public class KycVerification {
 
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
-    
-    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true, optional = false)
+
+    // ✅ EAGER: always load decision with verification, no weaving warning
+    @OneToOne(mappedBy = "kycVerification", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true, optional = false)
     private KycDecision decision;
 
     protected KycVerification() {}
@@ -89,8 +91,6 @@ public class KycVerification {
         return v;
     }
 
-    // ── Getters ──────────────────────────────────────────────
-
     public Long getId() { return id; }
     public Long getClientId() { return clientId; }
     public String getSessionId() { return sessionId; }
@@ -105,6 +105,8 @@ public class KycVerification {
 
     public void setDecision(final KycDecision decision) {
         this.decision = decision;
-        decision.setKycVerification(this);
+        if (decision != null) {
+            decision.setKycVerification(this);
+        }
     }
 }
