@@ -170,7 +170,7 @@
           <artifactId>commons-logging</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
+    </dependency>    
     <!-- Apache Fineract Libraries -->
     <dependency>
       <groupId>org.apache.fineract</groupId>
