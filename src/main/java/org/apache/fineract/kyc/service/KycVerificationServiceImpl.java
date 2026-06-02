@@ -202,7 +202,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         return kycVerificationRepository.findByClientIdAndKycStatus(clientId, status);
     }
 
-    // ── Helpers ──────────────────────────────────────────────
+    // Helpers
 
     private OffsetDateTime parseOffsetDateTime(final String isoDateTime) {
         if (isoDateTime == null) return null;
