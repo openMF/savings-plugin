@@ -19,14 +19,14 @@ public class KycDecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "kyc_verification_id", nullable = false)
-    private KycVerification kycVerification;
+    // ❌ REMOVE: This separate column field causes the FK to be null
+    // @Column(name = "kyc_verification_id", nullable = false)
+    // private Long kycVerificationId;
 
     @Column(name = "decision_status", nullable = false, length = 50)
     private String decisionStatus;
 
-    @Column(name = "decision_workflow_id", length = 255, nullable = false)
+    @Column(name = "decision_workflow_id", length = 255)
     private String decisionWorkflowId;
 
     @Column(name = "decision_created_at")
@@ -44,16 +44,25 @@ public class KycDecision {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    // ✅ FIX: Let @ManyToOne manage the foreign key directly
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "kyc_verification_id", nullable = false)  // ← Remove insertable/updatable = false
+    private KycVerification kycVerification;
+
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
+               fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycDecisionFeature> features = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
+               fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycFaceMatch> faceMatches = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
+               fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycIdVerification> idVerifications = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
+               fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycAmlScreening> amlScreenings = new ArrayList<>();
 
     protected KycDecision() {}
@@ -74,37 +83,52 @@ public class KycDecision {
         return d;
     }
 
-    // Owning side setter
-    public void setKycVerification(KycVerification kycVerification) {
-        this.kycVerification = kycVerification;
-    }
+    // ── Association helpers ──────────────────────────────────
 
-    public void addFeature(KycDecisionFeature feature) {
-        this.features.add(feature);
+    public void addFeature(final KycDecisionFeature feature) {
+        features.add(feature);
         feature.setKycDecision(this);
     }
 
-    public void addFaceMatch(KycFaceMatch faceMatch) {
-        this.faceMatches.add(faceMatch);
+    public void addFaceMatch(final KycFaceMatch faceMatch) {
+        faceMatches.add(faceMatch);
         faceMatch.setKycDecision(this);
     }
 
-    public void addIdVerification(KycIdVerification idVerification) {
-        this.idVerifications.add(idVerification);
+    public void addIdVerification(final KycIdVerification idVerification) {
+        idVerifications.add(idVerification);
         idVerification.setKycDecision(this);
     }
 
-    public void addAmlScreening(KycAmlScreening amlScreening) {
-        this.amlScreenings.add(amlScreening);
+    public void addAmlScreening(final KycAmlScreening amlScreening) {
+        amlScreenings.add(amlScreening);
         amlScreening.setKycDecision(this);
     }
 
-    // Getters
+    // ── Setters ──────────────────────────────────────────────
+
+    // ✅ SIMPLIFIED: Just set the relationship, let JPA handle the FK
+    public void setKycVerification(final KycVerification kycVerification) {
+        this.kycVerification = kycVerification;
+        // JPA will automatically populate kyc_verification_id from the relationship
+    }
+
+    // ❌ REMOVE: This manual ID setter is no longer needed
+    // void setKycVerificationId(final Long kycVerificationId) { ... }
+
+    // ── Getters ──────────────────────────────────────────────
+
     public Long getId() { return id; }
-    public KycVerification getKycVerification() { return kycVerification; }
+    
+    // ✅ Getter returns ID from the relationship object
+    public Long getKycVerificationId() { 
+        return kycVerification != null ? kycVerification.getId() : null; 
+    }
+    
     public String getDecisionStatus() { return decisionStatus; }
     public String getDecisionWorkflowId() { return decisionWorkflowId; }
     public OffsetDateTime getDecisionCreatedAt() { return decisionCreatedAt; }
+    public KycVerification getKycVerification() { return kycVerification; }
     public List<KycDecisionFeature> getFeatures() { return features; }
     public List<KycFaceMatch> getFaceMatches() { return faceMatches; }
     public List<KycIdVerification> getIdVerifications() { return idVerifications; }

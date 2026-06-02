@@ -78,6 +78,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
                 serializeMetadata(payload.getMetadata()),
                 SYSTEM_USER_ID
         );
+        
+        // ✅ FIX: Persist verification FIRST to generate its ID
+        final KycVerification savedVerification = kycVerificationRepository.saveAndFlush(verification);
+
 
         // 2. Build the decision aggregate
         if (payload.getDecision() != null) {
@@ -173,8 +177,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             // ═══════════════════════════════════════════════════════════════
             // FIX: Set the inverse side so JPA populates the FK column
             // ═══════════════════════════════════════════════════════════════
-            decision.setKycVerification(verification);
-            verification.setDecision(decision);
+            //decision.setKycVerification(verification);
+            //verification.setDecision(decision);
+            decision.setKycVerification(savedVerification);
+            savedVerification.setDecision(decision);
         }
 
         return kycVerificationRepository.saveAndFlush(verification);
