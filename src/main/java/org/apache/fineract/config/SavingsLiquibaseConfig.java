@@ -32,7 +32,7 @@ public class SavingsLiquibaseConfig {
   @DependsOn("tenantDatabaseUpgradeService") // Must run AFTER Fineract core DB is set up
   public String runSavingsPluginMigrations() {
     LOG.info("*******************************************************");
-    LOG.info("*   Starting Savings Plugin Database Migrations  *");
+    LOG.info("*   Starting Savings Plugin Database Migrations       *");
     LOG.info("*******************************************************");
 
     List<FineractPlatformTenant> tenants = tenantDetailsService.findAllTenants();
@@ -70,7 +70,7 @@ public class SavingsLiquibaseConfig {
       }
     }
     LOG.info("*******************************************************");
-    LOG.info("*     Savings Plugin Migrations Completed        *");
+    LOG.info("*     Savings Plugin Migrations Completed             *");
     LOG.info("*******************************************************");
     return "Savings Migrations Completed";
   }
