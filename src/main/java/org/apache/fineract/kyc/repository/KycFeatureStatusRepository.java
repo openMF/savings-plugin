@@ -20,8 +20,6 @@ package org.apache.fineract.kyc.repository;
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -32,25 +30,18 @@ public interface KycFeatureStatusRepository extends JpaRepository<KycFeatureStat
 
     /**
      * Finds the feature status for the latest KYC verification of a given client.
-     * Uses the verification with the highest ID (most recent).
+     * Uses Spring Data JPA method naming:
+     *   findFirst     → LIMIT 1
+     *   ByKycVerification_ClientId → JOIN on kycVerification WHERE client_id = ?
+     *   OrderByKycVerification_IdDesc → ORDER BY kyc_verification_id DESC
      */
-    @Query("SELECT fs FROM KycFeatureStatus fs " +
-           "JOIN fs.kycVerification v " +
-           "WHERE v.clientId = :clientId " +
-           "ORDER BY v.id DESC " +
-           "LIMIT 1")
-    Optional<KycFeatureStatus> findLatestByClientId(@Param("clientId") Long clientId);
+    Optional<KycFeatureStatus> findFirstByKycVerification_ClientIdOrderByKycVerification_IdDesc(Long clientId);
 
     /**
      * Finds the feature status for the latest APPROVED KYC verification.
      */
-    @Query("SELECT fs FROM KycFeatureStatus fs " +
-           "JOIN fs.kycVerification v " +
-           "WHERE v.clientId = :clientId " +
-           "AND v.kycStatus = 'Approved' " +
-           "ORDER BY v.id DESC " +
-           "LIMIT 1")
-    Optional<KycFeatureStatus> findLatestApprovedByClientId(@Param("clientId") Long clientId);
+    Optional<KycFeatureStatus> findFirstByKycVerification_ClientIdAndKycVerification_KycStatusOrderByKycVerification_IdDesc(
+            Long clientId, String kycStatus);
 
     Optional<KycFeatureStatus> findByKycVerificationId(Long kycVerificationId);
 }
