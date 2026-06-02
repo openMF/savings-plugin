@@ -6,7 +6,21 @@
  */
 package org.apache.fineract.kyc.domain;
 
-import jakarta.persistence.*;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +34,7 @@ public class KycDecision {
     private Long id;
 
     // ✅ EAGER: no weaving warning, and decision always needs its verification
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "kyc_verification_id", nullable = false)
     private KycVerification kycVerification;
@@ -45,18 +60,22 @@ public class KycDecision {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycDecisionFeature> features = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycFaceMatch> faceMatches = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycIdVerification> idVerifications = new ArrayList<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycAmlScreening> amlScreenings = new ArrayList<>();

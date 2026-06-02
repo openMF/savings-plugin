@@ -7,6 +7,7 @@
 package org.apache.fineract.kyc.domain;
 
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,6 +28,7 @@ public class KycAmlHit {
     private Long id;
 
     // ✅ @ManyToOne OWNS the FK — no separate Long amlScreeningId field
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "aml_screening_id", nullable = false)
     private KycAmlScreening amlScreening;

@@ -48,9 +48,7 @@ public class KycVerificationApiResource {
     public ResponseEntity<Map<String, Object>> receiveWebhook(
             @HeaderParam("X-Client-Id") final Long clientId,
             final KycWebhookPayload payload) {
-        
-        LOGGER.info("clientId "+clientId);
-        LOGGER.info("payload "+payload.toString());
+
         final KycVerification verification = kycVerificationService.processWebhook(clientId, payload);
 
         return ResponseEntity.ok(Map.of(

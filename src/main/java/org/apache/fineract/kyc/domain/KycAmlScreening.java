@@ -7,6 +7,8 @@
 package org.apache.fineract.kyc.domain;
 
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +34,7 @@ public class KycAmlScreening {
     private Long id;
 
     // ✅ @ManyToOne OWNS the FK — no separate Long kycDecisionId field
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "kyc_decision_id", nullable = false)
     private KycDecision kycDecision;
@@ -69,6 +72,7 @@ public class KycAmlScreening {
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "amlScreening", cascade = CascadeType.ALL,
                fetch = FetchType.LAZY, orphanRemoval = true)
     private List<KycAmlHit> hits = new ArrayList<>();
