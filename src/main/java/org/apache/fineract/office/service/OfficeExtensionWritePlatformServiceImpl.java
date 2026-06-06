@@ -281,8 +281,8 @@ public class OfficeExtensionWritePlatformServiceImpl
 
         final Long addressTypeId = this.fromJsonHelper.extractLongNamed("addressTypeId", element);
         // default is_active to true if not provided
-        final Boolean isActive = this.fromJsonHelper.extractBooleanNamed("isActive", element) ?
-                this.fromJsonHelper.extractBooleanNamed("isActive", element) : Boolean.TRUE;
+        Boolean extractedIsActive = this.fromJsonHelper.extractBooleanNamed("isActive", element);
+        final Boolean isActive = (extractedIsActive != null) ? extractedIsActive : Boolean.TRUE;
 
         final String username = this.context.authenticatedUser().getUsername();
         final LocalDate now = LocalDate.now();
