@@ -170,7 +170,7 @@ public class OfficeExtensionApiResource {
       @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
       @Parameter(hidden = true) final String jsonBody) {
     this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
-    final CommandProcessingResult result = writeService.createOfficeService(officeId, jsonBody);
+    final CommandProcessingResult result = writeService.createOfficeAddress(officeId, jsonBody);
     return serviceSerializer.serializeResult(result);
   }
 
@@ -192,11 +192,11 @@ public class OfficeExtensionApiResource {
   @ApiResponse(responseCode = "200", description = "OK")
   public String updateOfficeAddress(
       @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
-      @PathParam("serviceId") @Parameter(description = "addressId") final Long addressId,
+      @PathParam("addressId") @Parameter(description = "addressId") final Long addressId,
       @Parameter(hidden = true) final String jsonBody) {
     this.context.authenticatedUser().validateHasUpdatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
     final CommandProcessingResult result =
-        writeService.updateOfficeService(officeId, addressId, jsonBody);
+        writeService.updateOfficeAddress(officeId, addressId, jsonBody);
     return serviceSerializer.serializeResult(result);
   }
 
@@ -216,9 +216,9 @@ public class OfficeExtensionApiResource {
   @ApiResponse(responseCode = "200", description = "OK")
   public String deleteOfficeAddress(
       @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
-      @PathParam("serviceId") @Parameter(description = "addressId") final Long addressId) {
+      @PathParam("addressId") @Parameter(description = "addressId") final Long addressId) {
     this.context.authenticatedUser().validateHasDeletePermission(RESOURCE_NAME_FOR_PERMISSIONS);
-    final CommandProcessingResult result = writeService.deleteOfficeService(officeId, addressId);
+    final CommandProcessingResult result = writeService.deleteOfficeAddress(officeId, addressId);
     return serviceSerializer.serializeResult(result);
   }
 
