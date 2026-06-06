@@ -42,13 +42,16 @@ public class KycVerificationServiceImpl implements KycVerificationService {
     //TODO ADD a SYSTEM GENERATED USER FOR THIS PLUGIN
     // System user ID for automated webhook processing; adjust per your auth setup
     private static final Long SYSTEM_USER_ID = 1L;
+    private final KycStatusDerivationService kycStatusDerivationService;
 
     public KycVerificationServiceImpl(final KycVerificationRepository kycVerificationRepository,
                                     final ObjectMapper objectMapper,
-                                    final ClientRepositoryWrapper clientRepositoryWrapper) {
+                                    final ClientRepositoryWrapper clientRepositoryWrapper,
+                                    KycStatusDerivationService kycStatusDerivationService) {
         this.kycVerificationRepository = kycVerificationRepository;
         this.objectMapper = objectMapper;
         this.clientRepositoryWrapper = clientRepositoryWrapper;
+        this.kycStatusDerivationService = kycStatusDerivationService;
     }
 
     @Override
@@ -178,12 +181,22 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             final boolean hasAmlScreenings = decisionDto.getAmlScreenings() != null 
                     && !decisionDto.getAmlScreenings().isEmpty();
             final boolean hasDecision = decisionDto.getStatus() != null;
+            
+            // Derive the overall status
+            final String kycStatus = kycStatusDerivationService.deriveStatus(
+                    hasFaceMatches,
+                    hasIdVerifications,
+                    hasAmlScreenings,
+                    hasDecision,
+                    decisionDto.getStatus()
+            );
 
             final KycFeatureStatus featureStatus = KycFeatureStatus.create(
                     hasFaceMatches,
                     hasIdVerifications,
                     hasAmlScreenings,
                     hasDecision,
+                    kycStatus,
                     SYSTEM_USER_ID
             );
 

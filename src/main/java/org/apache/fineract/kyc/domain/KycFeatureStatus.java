@@ -47,6 +47,9 @@ public class KycFeatureStatus {
 
     @Column(name = "last_modified_on_utc", nullable = false)
     private OffsetDateTime lastModifiedOnUtc;
+    
+    @Column(name = "kyc_status", nullable = false, length = 50)
+    private String kycStatus;
 
     // ── JPA Constructor ──────────────────────────────────────
 
@@ -58,6 +61,7 @@ public class KycFeatureStatus {
                                           final Boolean idVerifications,
                                           final Boolean amlScreenings,
                                           final Boolean decision,
+                                          final String kycStatus,
                                           final Long createdBy) {
         final KycFeatureStatus fs = new KycFeatureStatus();
         // Default to FALSE if null is passed
@@ -65,6 +69,7 @@ public class KycFeatureStatus {
         fs.idVerifications = idVerifications != null ? idVerifications : Boolean.FALSE;
         fs.amlScreenings = amlScreenings != null ? amlScreenings : Boolean.FALSE;
         fs.decision = decision != null ? decision : Boolean.FALSE;
+        fs.kycStatus = kycStatus != null ? kycStatus : "In Review";
         fs.createdBy = createdBy;
         fs.lastModifiedBy = createdBy;
         final OffsetDateTime now = OffsetDateTime.now();
@@ -95,6 +100,7 @@ public class KycFeatureStatus {
     public Boolean getIdVerifications() { return idVerifications; }
     public Boolean getAmlScreenings() { return amlScreenings; }
     public Boolean getDecision() { return decision; }
+    public String getKycStatus() { return kycStatus; }
     public Long getCreatedBy() { return createdBy; }
     public OffsetDateTime getCreatedOnUtc() { return createdOnUtc; }
     public Long getLastModifiedBy() { return lastModifiedBy; }
