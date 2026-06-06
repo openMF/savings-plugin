@@ -19,7 +19,7 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the new service id
    */
   CommandProcessingResult createOfficeService(Long officeId, String jsonBody);
-
+  
   /**
    * Updates an existing office service, scoped to the given office.
    *
@@ -38,6 +38,34 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the deleted service id
    */
   CommandProcessingResult deleteOfficeService(Long officeId, Long serviceId);
+  
+  /**
+   * Creates a new address for an office.
+   *
+   * @param officeId the parent office identifier
+   * @param jsonBody the JSON request body
+   * @return the result containing the new address id
+   */
+  CommandProcessingResult createOfficeAddress(Long officeId, String jsonBody);
+  
+  /**
+   * Updates an existing office address, scoped to the given office.
+   *
+   * @param officeId the parent office identifier (used to scope the update)
+   * @param serviceId the address identifier
+   * @param jsonBody the JSON request body
+   * @return the result containing the updated address id
+   */
+  CommandProcessingResult updateOfficeAddress(Long officeId, Long addressId, String jsonBody);
+
+  /**
+   * Deletes an office address, scoped to the given office.
+   *
+   * @param officeId the parent office identifier (used to scope the delete)
+   * @param serviceId the address identifier
+   * @return the result containing the deleted address id
+   */
+  CommandProcessingResult deleteOfficeAddress(Long officeId, Long addressId);
 
   /**
    * Creates or updates the geolocation for an office (1:1 relationship).

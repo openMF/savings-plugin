@@ -150,6 +150,77 @@ public class OfficeExtensionApiResource {
     final CommandProcessingResult result = writeService.deleteOfficeService(officeId, serviceId);
     return serviceSerializer.serializeResult(result);
   }
+  
+  /**
+   * Creates a new Address for the given office.
+   *
+   * @param officeId the office identifier
+   * @param jsonBody the JSON request body
+   * @return JSON with the created Address id
+   */
+  @POST
+  @Path("{officeId}/addresses")
+  @Consumes({MediaType.APPLICATION_JSON})
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "Create Office Address",
+      description = "Adds a new Address to the specified office.")
+  @ApiResponse(responseCode = "200", description = "OK")
+  public String createOfficeAddress(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
+      @Parameter(hidden = true) final String jsonBody) {
+    this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final CommandProcessingResult result = writeService.createOfficeService(officeId, jsonBody);
+    return serviceSerializer.serializeResult(result);
+  }
+
+  /**
+   * Updates an existing office Address.
+   *
+   * @param officeId the office identifier
+   * @param serviceId the Address identifier
+   * @param jsonBody the JSON request body
+   * @return JSON with the changes applied
+   */
+  @PUT
+  @Path("{officeId}/addresses/{addressId}")
+  @Consumes({MediaType.APPLICATION_JSON})
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "Update Office Address",
+      description = "Updates a specific Address for the office.")
+  @ApiResponse(responseCode = "200", description = "OK")
+  public String updateOfficeAddress(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
+      @PathParam("serviceId") @Parameter(description = "addressId") final Long addressId,
+      @Parameter(hidden = true) final String jsonBody) {
+    this.context.authenticatedUser().validateHasUpdatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final CommandProcessingResult result =
+        writeService.updateOfficeService(officeId, addressId, jsonBody);
+    return serviceSerializer.serializeResult(result);
+  }
+
+  /**
+   * Deletes an office service.
+   *
+   * @param officeId the office identifier
+   * @param serviceId the address identifier
+   * @return JSON with the deleted service id
+   */
+  @DELETE
+  @Path("{officeId}/addresses/{addressId}")
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "Delete Office Address",
+      description = "Removes a specific Address from the office.")
+  @ApiResponse(responseCode = "200", description = "OK")
+  public String deleteOfficeAddress(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
+      @PathParam("serviceId") @Parameter(description = "addressId") final Long addressId) {
+    this.context.authenticatedUser().validateHasDeletePermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final CommandProcessingResult result = writeService.deleteOfficeService(officeId, addressId);
+    return serviceSerializer.serializeResult(result);
+  }
 
   /**
    * Retrieves the geolocation for the given office.

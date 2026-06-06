@@ -7,6 +7,7 @@
 package org.apache.fineract.office.service;
 
 import java.util.Collection;
+import org.apache.fineract.office.data.OfficeAddressData;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
 
@@ -36,4 +37,7 @@ public interface OfficeExtensionReadPlatformService {
    * @return the geolocation data, or {@code null} if none exists
    */
   OfficeGeolocationData retrieveOfficeGeolocation(Long officeId);
+  
+  Collection<OfficeAddressData> retrieveOfficeAddrConfiguration(String entity);
+  
 }

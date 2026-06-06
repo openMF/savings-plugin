@@ -8,6 +8,7 @@ package org.apache.fineract.office.service;
 
 import com.google.gson.JsonElement;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -256,4 +257,283 @@ public class OfficeExtensionWritePlatformServiceImpl
       throw new PlatformApiDataValidationException(errors);
     }
   }
+  
+  @Override
+    public CommandProcessingResult createOfficeAddress(final Long officeId, final String jsonBody) {
+        this.context.authenticatedUser();
+        validateOfficeExists(officeId);
+
+        final JsonElement element = this.fromJsonHelper.parse(jsonBody);
+
+        // extract address fields (all optional except street / addressLine1 maybe; handle nulls)
+        final String street = this.fromJsonHelper.extractStringNamed("street", element);
+        final String addressLine1 = this.fromJsonHelper.extractStringNamed("addressLine1", element);
+        final String addressLine2 = this.fromJsonHelper.extractStringNamed("addressLine2", element);
+        final String addressLine3 = this.fromJsonHelper.extractStringNamed("addressLine3", element);
+        final String townVillage = this.fromJsonHelper.extractStringNamed("townVillage", element);
+        final String city = this.fromJsonHelper.extractStringNamed("city", element);
+        final String countyDistrict = this.fromJsonHelper.extractStringNamed("countyDistrict", element);
+        final String postalCode = this.fromJsonHelper.extractStringNamed("postalCode", element);
+        final BigDecimal latitude = this.fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element);
+        final BigDecimal longitude = this.fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element);
+        final Long stateProvinceId = this.fromJsonHelper.extractLongNamed("stateProvinceId", element);
+        final Long countryId = this.fromJsonHelper.extractLongNamed("countryId", element);
+
+        final Long addressTypeId = this.fromJsonHelper.extractLongNamed("addressTypeId", element);
+        // default is_active to true if not provided
+        final Boolean isActive = this.fromJsonHelper.extractBooleanNamed("isActive", element) ?
+                this.fromJsonHelper.extractBooleanNamed("isActive", element) : Boolean.TRUE;
+
+        final String username = this.context.authenticatedUser().getUsername();
+        final LocalDate now = LocalDate.now();
+
+        // insert into m_address
+        final MapSqlParameterSource addressParams = new MapSqlParameterSource();
+        addressParams.addValue("street", street);
+        addressParams.addValue("addressLine1", addressLine1);
+        addressParams.addValue("addressLine2", addressLine2);
+        addressParams.addValue("addressLine3", addressLine3);
+        addressParams.addValue("townVillage", townVillage);
+        addressParams.addValue("city", city);
+        addressParams.addValue("countyDistrict", countyDistrict);
+        addressParams.addValue("stateProvinceId", stateProvinceId);
+        addressParams.addValue("countryId", countryId);
+        addressParams.addValue("postalCode", postalCode);
+        addressParams.addValue("latitude", latitude);
+        addressParams.addValue("longitude", longitude);
+        addressParams.addValue("createdBy", username);
+        addressParams.addValue("createdOn", now);
+        addressParams.addValue("updatedBy", username);
+        addressParams.addValue("updatedOn", now);
+
+        final KeyHolder addressKeyHolder = new GeneratedKeyHolder();
+        this.namedJdbcTemplate.update(
+                "INSERT INTO m_address (street, address_line_1, address_line_2, address_line_3,"
+                + " town_village, city, county_district, state_province_id, country_id,"
+                + " postal_code, latitude, longitude, created_by, created_on, updated_by, updated_on)"
+                + " VALUES (:street, :addressLine1, :addressLine2, :addressLine3, :townVillage,"
+                + " :city, :countyDistrict, :stateProvinceId, :countryId, :postalCode,"
+                + " :latitude, :longitude, :createdBy, :createdOn, :updatedBy, :updatedOn)",
+                addressParams, addressKeyHolder, new String[]{"id"});
+        final Long addressId = addressKeyHolder.getKey().longValue();
+
+        // insert into m_office_address
+        final MapSqlParameterSource officeAddressParams = new MapSqlParameterSource();
+        officeAddressParams.addValue("officeId", officeId);
+        officeAddressParams.addValue("addressId", addressId);
+        officeAddressParams.addValue("addressTypeId", addressTypeId);
+        officeAddressParams.addValue("isActive", isActive);
+
+        final KeyHolder officeAddressKeyHolder = new GeneratedKeyHolder();
+        this.namedJdbcTemplate.update(
+                "INSERT INTO m_office_address (office_id, address_id, address_type_id, is_active)"
+                + " VALUES (:officeId, :addressId, :addressTypeId, :isActive)",
+                officeAddressParams, officeAddressKeyHolder, new String[]{"id"});
+        final Long officeAddressId = officeAddressKeyHolder.getKey().longValue();
+
+        return new CommandProcessingResultBuilder()
+                .withEntityId(officeAddressId)
+                .withOfficeId(officeId)
+                .build();
+    }
+
+    @Override
+    public CommandProcessingResult updateOfficeAddress(final Long officeId, final Long serviceId, final String jsonBody) {
+        this.context.authenticatedUser();
+
+        // Retrieve the existing mapping to get the address_id
+        final Map<String, Object> existingMapping;
+        try {
+            existingMapping = this.jdbcTemplate.queryForMap(
+                    "SELECT address_id, address_type_id, is_active FROM m_office_address"
+                    + " WHERE id = ? AND office_id = ?", serviceId, officeId);
+        } catch (EmptyResultDataAccessException e) {
+            throw new PlatformDataIntegrityException(
+                    "error.msg.office.address.not.found",
+                    "Office address mapping with id " + serviceId + " not found for office " + officeId,
+                    "serviceId", serviceId);
+        }
+        final Long addressId = (Long) existingMapping.get("address_id");
+
+        final JsonElement element = this.fromJsonHelper.parse(jsonBody);
+        final Map<String, Object> changes = new HashMap<>();
+
+        // --- update address fields in m_address if any are provided ---
+        final StringBuilder addressSql = new StringBuilder("UPDATE m_address SET ");
+        final MapSqlParameterSource addressParams = new MapSqlParameterSource();
+        addressParams.addValue("addressId", addressId);
+        boolean first = true;
+
+        if (this.fromJsonHelper.parameterExists("street", element)) {
+            final String val = this.fromJsonHelper.extractStringNamed("street", element);
+            addressSql.append("street = :street");
+            addressParams.addValue("street", val);
+            changes.put("street", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("addressLine1", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("addressLine1", element);
+            addressSql.append("address_line_1 = :addressLine1");
+            addressParams.addValue("addressLine1", val);
+            changes.put("addressLine1", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("addressLine2", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("addressLine2", element);
+            addressSql.append("address_line_2 = :addressLine2");
+            addressParams.addValue("addressLine2", val);
+            changes.put("addressLine2", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("addressLine3", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("addressLine3", element);
+            addressSql.append("address_line_3 = :addressLine3");
+            addressParams.addValue("addressLine3", val);
+            changes.put("addressLine3", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("townVillage", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("townVillage", element);
+            addressSql.append("town_village = :townVillage");
+            addressParams.addValue("townVillage", val);
+            changes.put("townVillage", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("city", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("city", element);
+            addressSql.append("city = :city");
+            addressParams.addValue("city", val);
+            changes.put("city", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("countyDistrict", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("countyDistrict", element);
+            addressSql.append("county_district = :countyDistrict");
+            addressParams.addValue("countyDistrict", val);
+            changes.put("countyDistrict", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("postalCode", element)) {
+            if (!first) addressSql.append(", ");
+            final String val = this.fromJsonHelper.extractStringNamed("postalCode", element);
+            addressSql.append("postal_code = :postalCode");
+            addressParams.addValue("postalCode", val);
+            changes.put("postalCode", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("latitude", element)) {
+            if (!first) addressSql.append(", ");
+            final BigDecimal val = this.fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element);
+            addressSql.append("latitude = :latitude");
+            addressParams.addValue("latitude", val);
+            changes.put("latitude", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("longitude", element)) {
+            if (!first) addressSql.append(", ");
+            final BigDecimal val = this.fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element);
+            addressSql.append("longitude = :longitude");
+            addressParams.addValue("longitude", val);
+            changes.put("longitude", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("stateProvinceId", element)) {
+            if (!first) addressSql.append(", ");
+            final Long val = this.fromJsonHelper.extractLongNamed("stateProvinceId", element);
+            addressSql.append("state_province_id = :stateProvinceId");
+            addressParams.addValue("stateProvinceId", val);
+            changes.put("stateProvinceId", val);
+            first = false;
+        }
+        if (this.fromJsonHelper.parameterExists("countryId", element)) {
+            if (!first) addressSql.append(", ");
+            final Long val = this.fromJsonHelper.extractLongNamed("countryId", element);
+            addressSql.append("country_id = :countryId");
+            addressParams.addValue("countryId", val);
+            changes.put("countryId", val);
+            first = false;
+        }
+        // Always update updated_by and updated_on for address
+        if (!first) addressSql.append(", ");
+        addressSql.append("updated_by = :updatedBy, updated_on = :updatedOn");
+        addressParams.addValue("updatedBy", this.context.authenticatedUser().getUsername());
+        addressParams.addValue("updatedOn", LocalDate.now());
+
+        addressSql.append(" WHERE id = :addressId");
+
+        if (changes.containsKey("street") || changes.containsKey("addressLine1")
+                || changes.containsKey("addressLine2") || changes.containsKey("addressLine3")
+                || changes.containsKey("townVillage") || changes.containsKey("city")
+                || changes.containsKey("countyDistrict") || changes.containsKey("postalCode")
+                || changes.containsKey("latitude") || changes.containsKey("longitude")
+                || changes.containsKey("stateProvinceId") || changes.containsKey("countryId")) {
+            this.namedJdbcTemplate.update(addressSql.toString(), addressParams);
+        }
+
+        // --- update office_address link (type and active flag) ---
+        final StringBuilder linkSql = new StringBuilder("UPDATE m_office_address SET ");
+        final MapSqlParameterSource linkParams = new MapSqlParameterSource();
+        linkParams.addValue("serviceId", serviceId);
+        linkParams.addValue("officeId", officeId);
+        boolean linkFirst = true;
+
+        if (this.fromJsonHelper.parameterExists("addressTypeId", element)) {
+            final Long val = this.fromJsonHelper.extractLongNamed("addressTypeId", element);
+            linkSql.append("address_type_id = :addressTypeId");
+            linkParams.addValue("addressTypeId", val);
+            changes.put("addressTypeId", val);
+            linkFirst = false;
+        }
+        if (this.fromJsonHelper.parameterExists("isActive", element)) {
+            if (!linkFirst) linkSql.append(", ");
+            final Boolean val = this.fromJsonHelper.extractBooleanNamed("isActive", element);
+            linkSql.append("is_active = :isActive");
+            linkParams.addValue("isActive", val);
+            changes.put("isActive", val);
+            linkFirst = false;
+        }
+        linkSql.append(" WHERE id = :serviceId AND office_id = :officeId");
+
+        if (!linkFirst) { // something to update in link
+            this.namedJdbcTemplate.update(linkSql.toString(), linkParams);
+        }
+
+        if (changes.isEmpty()) {
+            throw new RuntimeException("validation.msg.office.address.no.fields");
+        }
+
+        return new CommandProcessingResultBuilder()
+                .withEntityId(serviceId)
+                .withOfficeId(officeId)
+                .with(changes)
+                .build();
+    }
+
+    @Override
+    public CommandProcessingResult deleteOfficeAddress(final Long officeId, final Long serviceId) {
+        this.context.authenticatedUser();
+        final int affected = this.jdbcTemplate.update(
+                "DELETE FROM m_office_address WHERE id = ? AND office_id = ?",
+                serviceId, officeId);
+        if (affected == 0) {
+            throw new PlatformDataIntegrityException(
+                    "error.msg.office.address.not.found",
+                    "Office address with id " + serviceId + " not found for office " + officeId,
+                    "serviceId", serviceId);
+        }
+        // Optionally, delete the parent m_address row if it's no longer referenced.
+        // For simplicity we leave it; a separate cleanup could be done.
+        return new CommandProcessingResultBuilder()
+                .withEntityId(serviceId)
+                .withOfficeId(officeId)
+                .build();
+    }
+  
+  
 }
