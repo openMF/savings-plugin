@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-037-1">      
+        <!-- Precondition: Skip if SavingsTransactionFreezeReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that SavingsTransactionFreezeReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'SavingsTransactionFreezeReasons';
+                </sqlCheck>            
+                <!-- Ensure the SavingsTransactionFreezeReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for SavingsTransactionFreezeReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'FRAUD', 'Fraud Suspected', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'KYC_INCOMPLETE', 'KYC / AML Incomplete', 2, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'SANCTIONS', 'Sanctions Screening Match', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'LEGAL_ORDER', 'Legal Order / Court Order', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'REGULATORY_HOLD', 'Regulatory Hold', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'DORMANT', 'Dormant Account', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'UNCLAIMED', 'Unclaimed / Abandoned Funds', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'CUSTOMER_REQUEST', 'Customer Request', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'DECEASED', 'Account Holder Deceased', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'MENTAL_INCAPACITY', 'Mental Incapacity', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'DISPUTE', 'Ownership Dispute', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'LOST_CARD', 'Lost / Stolen Card', 12, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'UNAUTHORIZED_ACCESS', 'Unauthorized Access Attempt', 13, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'CHARGEBACK', 'Pending Chargeback / Dispute', 14, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'OVERDRAFT_BREACH', 'Overdraft Limit Breach', 15, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'NEGATIVE_BALANCE', 'Persistent Negative Balance', 16, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'INVESTIGATION', 'Under Investigation', 17, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'TAX_LIEN', 'Tax Lien / Levy', 18, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'GARNISHMENT', 'Wage Garnishment / Attachment', 19, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'COMPLIANCE', 'Compliance Review', 20, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'SYSTEM_ERROR', 'System Error / Administrative Block', 21, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'FAST_PAYMENT_SYSTEM_STEP', 'Fast Payment System Step', 22, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsTransactionFreezeReasons'), 'OTHER', 'Other', 23, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

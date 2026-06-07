@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-034-1">      
+        <!-- Precondition: Skip if WriteOffReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that WriteOffReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'WriteOffReasons';
+                </sqlCheck>            
+                <!-- Ensure the WriteOffReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'WriteOffReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for WriteOffReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'LOAN_DEFAULT', 'Loan Default / Non-Payment', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'BANKRUPTCY', 'Bankruptcy / Insolvency', 2, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'DEATH', 'Death of Borrower', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'FRAUD', 'Fraud / Misrepresentation', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'NATURAL_DISASTER', 'Natural Disaster / Force Majeure', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'BUSINESS_FAILURE', 'Business Failure / Loss of Income', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'ECONOMIC_HARDSHIP', 'Economic Hardship / Poverty', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'ABANDONMENT', 'Abandonment / Willful Default', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'LEGAL_CONSTRAINT', 'Legal Constraint / Court Order', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'SETTLEMENT', 'Settlement / Compromise Agreement', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'UNLOCATED', 'Unable to Locate Borrower', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'DORMANT', 'Dormant / Inactive Account', 12, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'REGULATORY', 'Regulatory Requirement / Policy', 13, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'PARTIAL', 'Partial Write-Off / Recovery Plan', 14, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'MIGRATION', 'Client Migration / Displacement', 15, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'CONFLICT', 'Conflict / Political Instability', 16, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'PANDEMIC', 'Pandemic / Public Health Crisis', 17, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'CURRENCY_CRISIS', 'Currency Crisis / Devaluation', 18, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'COLLATERAL_DEFICIENT', 'Collateral Deficient / Unrecoverable', 19, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'STATUTE_BARRED', 'Statute Barred / Time Expired', 20, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'WriteOffReasons'), 'OTHER', 'Other', 21, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

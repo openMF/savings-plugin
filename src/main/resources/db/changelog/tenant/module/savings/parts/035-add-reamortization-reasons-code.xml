@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-035-1">      
+        <!-- Precondition: Skip if ReAmortizationReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that ReAmortizationReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'ReAmortizationReasons';
+                </sqlCheck>            
+                <!-- Ensure the ReAmortizationReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'ReAmortizationReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for ReAmortizationReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'INTEREST_RATE_CHANGE', 'Interest Rate Change', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'PRINCIPAL_ADJUSTMENT', 'Principal Adjustment / Correction', 2, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'FEE_CAPITALIZATION', 'Fee Capitalization', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'PENALTY_CAPITALIZATION', 'Penalty Capitalization', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'PARTIAL_PREPAYMENT', 'Partial Prepayment / Principal Reduction', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'BALLOON_ADJUSTMENT', 'Balloon Payment Adjustment', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'TERM_EXTENSION', 'Term Extension / Maturity Change', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'TERM_REDUCTION', 'Term Reduction / Acceleration', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'RESTRUCTURING', 'Loan Restructuring / Modification', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'REFINANCING', 'Refinancing', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'PAYMENT_HOLIDAY', 'Payment Holiday / Moratorium', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'GRACE_PERIOD', 'Grace Period Extension', 12, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'INSURANCE_PREMIUM', 'Insurance Premium Capitalization', 13, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'TAX_ADJUSTMENT', 'Tax Adjustment', 14, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'ESCROW_ADJUSTMENT', 'Escrow Adjustment', 15, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'ERROR_CORRECTION', 'Error Correction / Data Fix', 16, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'DISASTER_RELIEF', 'Natural Disaster Relief', 17, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'PANDEMIC_RELIEF', 'Pandemic / Public Health Relief', 18, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'HARDSHIP_PROGRAM', 'Client Hardship Program', 19, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'REGULATORY_REQUIREMENT', 'Regulatory / Compliance Requirement', 20, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'CURRENCY_CONVERSION', 'Currency Conversion / Re-denomination', 21, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAmortizationReasons'), 'OTHER', 'Other', 22, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

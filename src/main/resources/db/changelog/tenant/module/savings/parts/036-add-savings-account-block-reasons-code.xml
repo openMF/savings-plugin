@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-036-1">      
+        <!-- Precondition: Skip if SavingsAccountBlockReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that SavingsAccountBlockReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'SavingsAccountBlockReasons';
+                </sqlCheck>            
+                <!-- Ensure the SavingsAccountBlockReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'SavingsAccountBlockReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for SavingsAccountBlockReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'FRAUD', 'Fraud Suspected', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'KYC_INCOMPLETE', 'KYC / AML Incomplete', 2, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'SANCTIONS', 'Sanctions Screening Match', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'LEGAL_ORDER', 'Legal Order / Court Order', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'REGULATORY_HOLD', 'Regulatory Hold', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'DORMANT', 'Dormant Account', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'UNCLAIMED', 'Unclaimed / Abandoned Funds', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'CUSTOMER_REQUEST', 'Customer Request', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'DECEASED', 'Account Holder Deceased', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'MENTAL_INCAPACITY', 'Mental Incapacity', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'DISPUTE', 'Ownership Dispute', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'LOST_CARD', 'Lost / Stolen Card', 12, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'UNAUTHORIZED_ACCESS', 'Unauthorized Access Attempt', 13, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'CHARGEBACK', 'Pending Chargeback / Dispute', 14, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'OVERDRAFT_BREACH', 'Overdraft Limit Breach', 15, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'NEGATIVE_BALANCE', 'Persistent Negative Balance', 16, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'INVESTIGATION', 'Under Investigation', 17, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'TAX_LIEN', 'Tax Lien / Levy', 18, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'GARNISHMENT', 'Wage Garnishment / Attachment', 19, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'COMPLIANCE', 'Compliance Review', 20, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'SYSTEM_ERROR', 'System Error / Administrative Block', 21, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'SavingsAccountBlockReasons'), 'OTHER', 'Other', 22, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
