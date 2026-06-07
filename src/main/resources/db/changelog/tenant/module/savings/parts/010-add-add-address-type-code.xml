@@ -6,7 +6,7 @@
          TABLE: m_client_kyc_feature_status
          Top-level KYC session received from the external webhook.
          ============================================================ -->
-    <changeSet author="fineract" id="ss-005-1">        
+    <changeSet author="fineract" id="ss-010-1">        
         <!-- Ensure the COUNTRY code exists first -->
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
