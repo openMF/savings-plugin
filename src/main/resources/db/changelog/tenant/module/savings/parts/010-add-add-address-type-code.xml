@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
+    <!-- ============================================================
+         TABLE: m_client_kyc_feature_status
+         Top-level KYC session received from the external webhook.
+         ============================================================ -->
+    <changeSet author="fineract" id="ss-005-1">        
+        <!-- Ensure the COUNTRY code exists first -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM m_code WHERE code_name = 'ADDRESS_TYPE';
+            </sqlCheck>
+        </preConditions>
+        <!-- Get the code_id for STATE -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'PERMANENT', 'Permanent Address', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'RESIDENTIAL', 'Residential Address', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'CURRENT', 'Current Address', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'WORK', 'Work Address', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'MAILING', 'Mailing Address', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'TEMPORARY', 'Temporary Address', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'BUSINESS', 'Business Address', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'HOME', 'Home Address', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'CORRESPONDENCE', 'Correspondence Address', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'REGISTERED', 'Registered Address', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE'), 'PREVIOUS', 'Previous Address', 11, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
