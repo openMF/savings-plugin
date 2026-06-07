@@ -5,19 +5,19 @@
     <changeSet author="fineract" id="ss-004-1"> 
         <!-- Precondition: Skip if COUNTRY already has values -->
         <preConditions onFail="MARK_RAN">
-            <!-- Check that ADDRESS_TYPE code exists but has no values yet -->
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) 
-                FROM m_code_value cv 
-                JOIN m_code c ON cv.code_id = c.id 
-                WHERE c.code_name = 'COUNTRY';
-            </sqlCheck>
-        </preConditions>         
-        <!-- Ensure the COUNTRY code exists first -->
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM m_code WHERE code_name = 'COUNTRY';
-            </sqlCheck>
+            <and>
+                <!-- Check that ADDRESS_TYPE code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'COUNTRY';
+                </sqlCheck>
+                <!-- Ensure the COUNTRY code exists first -->
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'COUNTRY';
+                </sqlCheck>
+            </and>
         </preConditions>
         <!-- Get the code_id for COUNTRY -->
         <sql>
