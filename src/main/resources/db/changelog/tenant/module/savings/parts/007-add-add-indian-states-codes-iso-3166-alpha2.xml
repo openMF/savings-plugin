@@ -7,7 +7,17 @@
          Top-level KYC session received from the external webhook.
          ============================================================ -->
     <changeSet author="fineract" id="ss-007-1">        
-        <!-- Ensure the COUNTRY code exists first -->
+        <!-- Precondition: Skip if STATE already has values -->
+        <preConditions onFail="MARK_RAN">
+            <!-- Check that STATE code exists but has no values yet -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) 
+                FROM m_code_value cv 
+                JOIN m_code c ON cv.code_id = c.id 
+                WHERE c.code_name = 'STATE';
+            </sqlCheck>
+        </preConditions>  
+        <!-- Ensure the STATE code exists first -->
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM m_code WHERE code_name = 'STATE';

@@ -6,10 +6,10 @@
          TABLE: m_client_kyc_feature_status
          Top-level KYC session received from the external webhook.
          ============================================================ -->
-    <changeSet author="fineract" id="ss-006-1">        
-        <!-- Precondition: Skip if ADDRESS_TYPE already has values -->
+    <changeSet author="fineract" id="ss-005-1">        
+        <!-- Precondition: Skip if STATE already has values -->
         <preConditions onFail="MARK_RAN">
-            <!-- Check that ADDRESS_TYPE code exists but has no values yet -->
+            <!-- Check that STATE code exists but has no values yet -->
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) 
                 FROM m_code_value cv 
