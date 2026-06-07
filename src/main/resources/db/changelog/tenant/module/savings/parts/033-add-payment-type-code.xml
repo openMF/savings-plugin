@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-033-1">      
+        <!-- Precondition: Skip if PaymentType already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that PaymentType code exists but has no values yet -->
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'PaymentType';
+                </sqlCheck>            
+                <!-- Ensure the PaymentType code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'PaymentType';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for PaymentType -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CASH', 'Physical cash payment', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CHEQUE', 'Payment made via a bank cheque', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'MOBILE_MONEY', 'Payment processed via a mobile money wallet/provider', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'BANK_TRANSFER', 'Direct bank-to-bank wire or account transfer', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CARD_PAYMENT', 'Card Payment', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ONLINE', 'Online Payment Gateway', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'VOUCHER', 'Voucher', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DIRECT_DEBIT', 'Automated deduction from a bank account (e.g., standing order)', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CREDIT_CARD', 'Payment made using a Credit Card', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DEBIT_CARD', 'Payment made using a Debit Card', 2, true), 
+            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ACH/EFT', ' 'Automated Clearing House or Electronic Funds Transfer', 2, true), 
+            
+
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'OTHER', 'Other', 27, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
