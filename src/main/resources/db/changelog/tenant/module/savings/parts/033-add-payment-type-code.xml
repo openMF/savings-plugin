@@ -33,18 +33,16 @@
                 VALUES
                     ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CASH', 'Physical cash payment', 1, true),
                     ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CHEQUE', 'Payment made via a bank cheque', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'MOBILE_MONEY', 'Payment processed via a mobile money wallet/provider', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'BANK_TRANSFER', 'Direct bank-to-bank wire or account transfer', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CARD_PAYMENT', 'Card Payment', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ONLINE', 'Online Payment Gateway', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'VOUCHER', 'Voucher', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DIRECT_DEBIT', 'Automated deduction from a bank account (e.g., standing order)', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CREDIT_CARD', 'Payment made using a Credit Card', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DEBIT_CARD', 'Payment made using a Debit Card', 2, true), 
-            ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ACH/EFT', ' 'Automated Clearing House or Electronic Funds Transfer', 2, true), 
-            
-
-                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'OTHER', 'Other', 27, true);
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'MOBILE_MONEY', 'Payment processed via a mobile money wallet/provider', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'BANK_TRANSFER', 'Direct bank-to-bank wire or account transfer', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CARD_PAYMENT', 'Card Payment', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ONLINE', 'Online Payment Gateway', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'VOUCHER', 'Voucher', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DIRECT_DEBIT', 'Automated deduction from a bank account', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'CREDIT_CARD', 'Payment made using a Credit Card', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'DEBIT_CARD', 'Payment made using a Debit Card', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'ACH/EFT', 'Automated Clearing House or Electronic Funds Transfer', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'PaymentType'), 'OTHER', 'Other', 22, true);
         </sql>
     </changeSet>
 

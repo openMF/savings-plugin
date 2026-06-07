@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-033-1">      
+        <!-- Precondition: Skip if ReAgeReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that ReAgeReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'ReAgeReasons';
+                </sqlCheck>            
+                <!-- Ensure the ReAgeReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'ReAgeReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for ReAgeReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'RESTRUCTURING', 'Loan Restructuring / Reschedule', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'REFINANCING', 'Refinancing', 2, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'SETTLEMENT', 'Settlement / Compromise Agreement', 3, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'ERROR_CORRECTION', 'Error Correction', 4, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'DATA_MIGRATION', 'System Migration / Data Correction', 5, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'HARDSHIP_PROGRAM', 'Client Hardship Program', 6, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'PAYMENT_HOLIDAY', 'Payment Holiday / Moratorium', 7, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'DISASTER_RELIEF', 'Natural Disaster Relief', 8, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'PANDEMIC_RELIEF', 'Pandemic / Public Health Relief', 9, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'REGULATORY_APPROVAL', 'Regulatory / Supervisor Approval', 10, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'BANKRUPTCY', 'Bankruptcy / Insolvency Proceedings', 11, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'LEGAL_STAY', 'Legal Stay / Court Order', 12, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'FRAUD_RESOLUTION', 'Fraud Resolution / Investigation', 13, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'GUARANTOR_PAYMENT', 'Guarantor / Third-Party Payment', 14, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'COLLATERAL_LIQUIDATION', 'Collateral Liquidation / Recovery', 15, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'WRITE_OFF_PARTIAL', 'Partial Write-Off / Recovery Plan', 16, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'INTEREST_WAIVER', 'Interest Waiver / Capitalization', 17, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'GRACE_PERIOD', 'Grace Period Extension', 18, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'SEASONAL_ADJUSTMENT', 'Seasonal Adjustment (Agricultural)', 19, true), 
+                    ((SELECT id FROM m_code WHERE code_name = 'ReAgeReasons'), 'OTHER', 'Other', 20, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

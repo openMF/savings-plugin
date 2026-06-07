@@ -43,5 +43,7 @@
   <include file="parts/031-add-loan-reschedule-reason-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/032-add-main-business-line-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/033-add-payment-type-code.xml" relativeToChangelogFile="true"/>    
+  <include file="parts/034-add-reage-reason-code.xml" relativeToChangelogFile="true"/>    
+  
   
 </databaseChangeLog>
