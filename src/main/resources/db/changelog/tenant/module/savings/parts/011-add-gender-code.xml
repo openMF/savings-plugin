@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-010-1">      
+        <!-- Precondition: Skip if Gender already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that Gender code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'Gender';
+                </sqlCheck>            
+                <!-- Ensure the Gender code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'Gender';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for Gender -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'FEMALE', 'Female', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'MALE', 'Male', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'TRANSGENDER', 'Transgender', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'NON_BINARY', 'Non-binary', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'OTHER', 'Other', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'PREFER_NOT_TO_SAY', 'Prefer not to say', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Gender'), 'NOT_SPECIFIED', 'Not Specified', 7, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
