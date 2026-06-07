@@ -37,4 +37,8 @@
   <include file="parts/025-add-customer-documents-code.xml" relativeToChangelogFile="true"/>
   <include file="parts/026-add-customer-intentifier-code.xml" relativeToChangelogFile="true"/>
   <include file="parts/027-add-debit-transaction-freeze-reason-code.xml" relativeToChangelogFile="true"/>
+  <include file="parts/028-add-group-role-code.xml" relativeToChangelogFile="true"/>
+  <include file="parts/029-add-loan-collateral-code.xml" relativeToChangelogFile="true"/>  
+  <include file="parts/030-add-loan-purpose-code.xml" relativeToChangelogFile="true"/>  
+  
 </databaseChangeLog>

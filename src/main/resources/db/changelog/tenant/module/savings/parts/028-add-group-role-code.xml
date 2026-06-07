@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-028-1">      
+        <!-- Precondition: Skip if GROUPROLE already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that GROUPROLE code exists but has no values yet -->
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'GROUPROLE';
+                </sqlCheck>            
+                <!-- Ensure the GROUPROLE code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'GROUPROLE';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for GROUPROLE -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'CO_LEADER', 'Group Co-Leader', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'ASST_LEADER', 'Assistant Group Leader', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'CHAIRPERSON', 'Chairperson', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'VICE_CHAIR', 'Vice Chairperson', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'TREASURER', 'Treasurer', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'CO_TREASURER', 'Co-Treasurer', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'SECRETARY', 'Secretary', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'CO_SECRETARY', 'Co-Secretary', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'COMMITTEE_MEMBER', 'Committee Member', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'MEMBER', 'Member', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'SUPERVISOR', 'Supervisor', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'CENTER_LEADER', 'Center Leader', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'COLLECTOR', 'Collector', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'GUARANTOR', 'Guarantor', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'LOAN_OFFICER', 'Loan Officer', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'FIELD_SUPERVISOR', 'Field Supervisor', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'BOOK_KEEPER', 'Book Keeper', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'REPRESENTATIVE', 'Representative', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'GROUPROLE'), 'OTHER', 'Other', 19, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
