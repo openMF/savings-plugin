@@ -24,4 +24,6 @@
   <include file="parts/012-add-relationship-code.xml" relativeToChangelogFile="true"/>
   <include file="parts/013-add-marital-status-code.xml" relativeToChangelogFile="true"/>  
   <include file="parts/014-add-profession-code.xml" relativeToChangelogFile="true"/>    
+  <include file="parts/015-add-center-closure-reason-code.xml" relativeToChangelogFile="true"/>
+  <include file="parts/016-add-chargeoff-reason-code.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>

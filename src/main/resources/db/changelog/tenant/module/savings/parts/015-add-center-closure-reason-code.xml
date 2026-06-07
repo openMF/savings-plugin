@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-011-1">      
+        <!-- Precondition: Skip if CenterClosureReason already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that CenterClosureReason code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'CenterClosureReason';
+                </sqlCheck>            
+                <!-- Ensure the CenterClosureReason code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'CenterClosureReason';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for CenterClosureReason -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'CLOSED', 'Closed', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'MERGED', 'Merged with Another Center', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'TRANSFERRED', 'Transferred to Another Branch', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'INACTIVE', 'Inactive / No Activity', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'DELINQUENT', 'Delinquent / High Risk', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'DISSOLVED', 'Dissolved by Members', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'COMPLETED', 'Completed All Cycles', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'LOW_ATTENDANCE', 'Low Attendance', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'STAFF_REQUEST', 'Staff Request', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'OTHER', 'Other', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'CenterClosureReason'), 'NOT_SPECIFIED', 'Not Specified', 11, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
