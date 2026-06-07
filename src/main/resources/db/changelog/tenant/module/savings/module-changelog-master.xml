@@ -21,4 +21,6 @@
   <include file="parts/009-add-brazilian-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>  
   <include file="parts/010-add-address-type-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/011-add-gender-code.xml" relativeToChangelogFile="true"/>      
+  <include file="parts/012-add-relationship-code.xml" relativeToChangelogFile="true"/>
+  <include file="parts/013-add-marital-status-code.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>

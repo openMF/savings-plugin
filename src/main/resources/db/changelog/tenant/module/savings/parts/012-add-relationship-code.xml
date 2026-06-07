@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-011-1">      
+        <!-- Precondition: Skip if RELATIONSHIP already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that RELATIONSHIP code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'RELATIONSHIP';
+                </sqlCheck>            
+                <!-- Ensure the RELATIONSHIP code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'RELATIONSHIP';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for RELATIONSHIP -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'FATHER', 'Father', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'MOTHER', 'Mother', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'SPOUSE', 'Spouse', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'SON', 'Son', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'DAUGHTER', 'Daughter', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'BROTHER', 'Brother', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'SISTER', 'Sister', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'GRANDFATHER', 'Grandfather', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'GRANDMOTHER', 'Grandmother', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'UNCLE', 'Uncle', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'AUNT', 'Aunt', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'NEPHEW', 'Nephew', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'NIECE', 'Niece', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'COUSIN', 'Cousin', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'GUARDIAN', 'Guardian', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'FRIEND', 'Friend', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'PARTNER', 'Partner', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'RELATIONSHIP'), 'OTHER', 'Other', 18, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
