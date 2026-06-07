@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
+    <!-- ============================================================
+         TABLE: m_client_kyc_feature_status
+         Top-level KYC session received from the external webhook.
+         ============================================================ -->
+    <changeSet author="fineract" id="ss-005-1">        
+        <!-- Ensure the COUNTRY code exists first -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM m_code WHERE code_name = 'STATE';
+            </sqlCheck>
+        </preConditions>
+        <!-- Get the code_id for STATE -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-AC', 'Acre', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-AL', 'Alagoas', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-AP', 'Amapá', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-AM', 'Amazonas', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-BA', 'Bahia', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-CE', 'Ceará', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-DF', 'Distrito Federal', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-ES', 'Espírito Santo', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-GO', 'Goiás', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-MA', 'Maranhão', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-MT', 'Mato Grosso', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-MS', 'Mato Grosso do Sul', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-MG', 'Minas Gerais', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-PA', 'Pará', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-PB', 'Paraíba', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-PR', 'Paraná', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-PE', 'Pernambuco', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-PI', 'Piauí', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-RJ', 'Rio de Janeiro', 19, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-RN', 'Rio Grande do Norte', 20, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-RS', 'Rio Grande do Sul', 21, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-RO', 'Rondônia', 22, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-RR', 'Roraima', 23, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-SC', 'Santa Catarina', 24, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-SP', 'São Paulo', 25, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-SE', 'Sergipe', 26, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BR-TO', 'Tocantins', 27, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -13,4 +13,10 @@
   <include file="parts/001-add-office-address.xml" relativeToChangelogFile="true"/>
   <include file="parts/002-add-external-kyc-verification.xml" relativeToChangelogFile="true"/>  
   <include file="parts/003-add-feature-status.xml" relativeToChangelogFile="true"/>  
+  <include file="parts/004-add-country-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>    
+  <include file="parts/005-add-add-mexican-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>
+  <include file="parts/006-add-add-costa-rican-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>  
+  <include file="parts/007-add-add-indian-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>    
+  <include file="parts/008-add-add-usa-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>
+  <include file="parts/009-add-add-brazilian-states-codes-iso-3166-alpha2.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
+    <!-- ============================================================
+         TABLE: m_client_kyc_feature_status
+         Top-level KYC session received from the external webhook.
+         ============================================================ -->
+    <changeSet author="fineract" id="ss-005-1">        
+        <!-- Ensure the COUNTRY code exists first -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM m_code WHERE code_name = 'STATE';
+            </sqlCheck>
+        </preConditions>
+        <!-- Get the code_id for STATE -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-AP', 'Andhra Pradesh', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-AR', 'Arunachal Pradesh', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-AS', 'Assam', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-BR', 'Bihar', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-CG', 'Chhattisgarh', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-GA', 'Goa', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-GJ', 'Gujarat', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-HR', 'Haryana', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-HP', 'Himachal Pradesh', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-JH', 'Jharkhand', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-KA', 'Karnataka', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-KL', 'Kerala', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-MP', 'Madhya Pradesh', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-MH', 'Maharashtra', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-MN', 'Manipur', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-ML', 'Meghalaya', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-MZ', 'Mizoram', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-NL', 'Nagaland', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-OD', 'Odisha', 19, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-PB', 'Punjab', 20, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-RJ', 'Rajasthan', 21, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-SK', 'Sikkim', 22, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-TN', 'Tamil Nadu', 23, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-TS', 'Telangana', 24, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-TR', 'Tripura', 25, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-UP', 'Uttar Pradesh', 26, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-UK', 'Uttarakhand', 27, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-WB', 'West Bengal', 28, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-AN', 'Andaman and Nicobar Islands', 29, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-CH', 'Chandigarh', 30, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-DH', 'Dadra and Nagar Haveli and Daman and Diu', 31, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-DL', 'Delhi', 32, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-JK', 'Jammu and Kashmir', 33, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-LA', 'Ladakh', 34, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-LD', 'Lakshadweep', 35, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'IN-PY', 'Puducherry', 36, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

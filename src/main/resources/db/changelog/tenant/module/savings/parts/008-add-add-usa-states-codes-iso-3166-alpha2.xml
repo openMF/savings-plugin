@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
+    <!-- ============================================================
+         TABLE: m_client_kyc_feature_status
+         Top-level KYC session received from the external webhook.
+         ============================================================ -->
+    <changeSet author="fineract" id="ss-005-1">        
+        <!-- Ensure the COUNTRY code exists first -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM m_code WHERE code_name = 'STATE';
+            </sqlCheck>
+        </preConditions>
+        <!-- Get the code_id for STATE -->
+        <sql>
+            INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-AL', 'Alabama', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-AK', 'Alaska', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-AZ', 'Arizona', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-AR', 'Arkansas', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-CA', 'California', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-CO', 'Colorado', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-CT', 'Connecticut', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-DE', 'Delaware', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-FL', 'Florida', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-GA', 'Georgia', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-HI', 'Hawaii', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-ID', 'Idaho', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-IL', 'Illinois', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-IN', 'Indiana', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-IA', 'Iowa', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-KS', 'Kansas', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-KY', 'Kentucky', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-LA', 'Louisiana', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-ME', 'Maine', 19, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MD', 'Maryland', 20, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MA', 'Massachusetts', 21, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MI', 'Michigan', 22, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MN', 'Minnesota', 23, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MS', 'Mississippi', 24, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MO', 'Missouri', 25, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-MT', 'Montana', 26, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NE', 'Nebraska', 27, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NV', 'Nevada', 28, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NH', 'New Hampshire', 29, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NJ', 'New Jersey', 30, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NM', 'New Mexico', 31, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NY', 'New York', 32, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-NC', 'North Carolina', 33, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-ND', 'North Dakota', 34, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-OH', 'Ohio', 35, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-OK', 'Oklahoma', 36, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-OR', 'Oregon', 37, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-PA', 'Pennsylvania', 38, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-RI', 'Rhode Island', 39, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-SC', 'South Carolina', 40, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-SD', 'South Dakota', 41, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-TN', 'Tennessee', 42, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-TX', 'Texas', 43, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-UT', 'Utah', 44, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-VT', 'Vermont', 45, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-VA', 'Virginia', 46, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-WA', 'Washington', 47, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-WV', 'West Virginia', 48, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-WI', 'Wisconsin', 49, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'US-WY', 'Wyoming', 50, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
