@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-025-1">      
+        <!-- Precondition: Skip if Customer Documents already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that Customer Documents code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'Customer Documents';
+                </sqlCheck>            
+                <!-- Ensure the Customer Documents code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'Customer Documents';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for Customer Documents -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'PAN_CARD', 'PAN Card', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'AADHAAR_CARD', 'Aadhaar Card', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'VOTER_ID', 'Voter ID Card', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'PASSPORT', 'Passport', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'DRIVING_LICENSE', 'Driving License', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'BANK_STATEMENT', 'Bank Statement', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'SALARY_SLIP', 'Salary Slip / Payslip', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'UTILITY_BILL', 'Utility Bill', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'RENT_AGREEMENT', 'Rent Agreement', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'PHOTO', 'Photograph', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'SIGNATURE', 'Signature Specimen', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'KYC_FORM', 'KYC Form', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'INCOME_PROOF', 'Income Proof', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'BUSINESS_REGISTRATION', 'Business Registration Certificate', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'OTHER', 'Other Document', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'Customer Documents'), 'NOT_SPECIFIED', 'Not Specified', 16, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
