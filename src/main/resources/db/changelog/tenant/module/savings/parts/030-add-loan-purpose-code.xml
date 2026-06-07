@@ -46,7 +46,7 @@
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'INTENTORY', 'Inventory / Stock', 13, true),
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'VEHICLE_PURCHASE', 'Vehicle Purchase', 14, true),
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'ASSET_PURCHASE', 'Asset Purchase', 15, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'WEDDING', ''Wedding / Ceremony', 16, true),  
+                    ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'WEDDING', 'Wedding / Ceremony', 16, true),  
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'CROP_CULTIVATION', 'Crop Cultivation', 17, true),          
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'LIVESTOCK', 'Livestock / Animal Husbandry', 1, true),          
                     ((SELECT id FROM m_code WHERE code_name = 'LoanPurpose'), 'IRRIGATION', 'Irrigation / Water Systems', 18, true),          
