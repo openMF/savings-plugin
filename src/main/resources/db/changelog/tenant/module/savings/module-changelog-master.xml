@@ -47,6 +47,5 @@
   <include file="parts/035-add-reamortization-reasons-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/036-add-savings-account-block-reasons-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/037-add-savings-transaction-freeze-reasons-code.xml" relativeToChangelogFile="true"/>    
-  <include file="parts/038-add-write-off-reasons-code.xml" relativeToChangelogFile="true"/>    
-  
+  <include file="parts/038-add-write-off-reasons-code.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
