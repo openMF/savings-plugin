@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-019-1">      
+        <!-- Precondition: Skip if ClientRejectReason already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that ClientRejectReason code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'ClientRejectReason';
+                </sqlCheck>            
+                <!-- Ensure the ClientRejectReason code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'ClientRejectReason';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for ClientRejectReason -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'POOR_CREDIT_HISTORY', 'Poor Credit History', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'INSUFFICIENT_INCOME', 'Insufficient Income', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'INCOMPLETE_DOCUMENTATION', 'Incomplete Documentation', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'AGE_NOT_ELIGIBLE', 'Age Not Eligible', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'HIGH_RISK_PROFILE', 'High Risk Profile', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'BLACKLISTED', 'Blacklisted Client', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'DUPLICATE_APPLICATION', 'Duplicate Application', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'FAILED_KYC', 'Failed KYC / Identity Verification', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'OVER_INDEBTED', 'Over-Indebted', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'NEGATIVE_REFERENCE', 'Negative Reference / Guarantor', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'BUSINESS_NOT_VIABLE', 'Business Not Viable', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'FRAUD_SUSPICION', 'Fraud Suspicion', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'WITHDRAWN_BY_CLIENT', 'Withdrawn by Client', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'OTHER', 'Other', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'ClientRejectReason'), 'NOT_SPECIFIED', 'Not Specified', 15, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

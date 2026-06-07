@@ -28,4 +28,8 @@
   <include file="parts/016-add-chargeoff-reason-code.xml" relativeToChangelogFile="true"/>  
   <include file="parts/017-add-client-classification-code.xml" relativeToChangelogFile="true"/>    
   <include file="parts/018-add-client-closure-reason-code.xml" relativeToChangelogFile="true"/>      
+  <include file="parts/019-add-client-reject-reason-code.xml" relativeToChangelogFile="true"/>      
+  <include file="parts/020-add-client-substatus-code.xml" relativeToChangelogFile="true"/>        
+  <include file="parts/021-add-client-type-code.xml" relativeToChangelogFile="true"/>          
+  <include file="parts/022-add-client-withdraw-reason-code.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
