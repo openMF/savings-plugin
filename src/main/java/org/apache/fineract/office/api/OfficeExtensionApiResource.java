@@ -227,7 +227,7 @@ public class OfficeExtensionApiResource {
   }
 
   /**
-   * Deletes an office service.
+   * Deletes an office address.
    *
    * @param officeId the office identifier
    * @param serviceId the address identifier
