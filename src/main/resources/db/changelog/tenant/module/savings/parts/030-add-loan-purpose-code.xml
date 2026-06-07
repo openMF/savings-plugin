@@ -15,7 +15,7 @@
         <preConditions onFail="MARK_RAN">
             <and>
                 <!-- Check that LoanPurpose code exists but has no values yet -->
-                <sqlCheck expectedResult="1">
+                <sqlCheck expectedResult="0">
                     SELECT COUNT(*) 
                     FROM m_code_value cv 
                     JOIN m_code c ON cv.code_id = c.id 
