@@ -7,7 +7,7 @@
         <preConditions onFail="MARK_RAN">
             <and>
                 <!-- Check that STATE code exists but has no values yet -->
-                <sqlCheck expectedResult="0">
+                <sqlCheck expectedResult="39">
                     SELECT COUNT(*) 
                     FROM m_code_value cv 
                     JOIN m_code c ON cv.code_id = c.id 
