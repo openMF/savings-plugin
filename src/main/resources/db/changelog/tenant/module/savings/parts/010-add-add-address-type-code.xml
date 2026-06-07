@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">    
-    <!-- ============================================================
-         TABLE: m_client_kyc_feature_status
-         Top-level KYC session received from the external webhook.
-         ============================================================ -->
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
     <changeSet author="fineract" id="ss-010-1">      
         <!-- Precondition: Skip if ADDRESS_TYPE already has values -->
         <preConditions onFail="MARK_RAN">
@@ -17,13 +13,13 @@
                 WHERE c.code_name = 'ADDRESS_TYPE';
             </sqlCheck>
         </preConditions>  
-        <!-- Ensure the COUNTRY code exists first -->
+        <!-- Ensure the ADDRESS_TYPE code exists first -->
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM m_code WHERE code_name = 'ADDRESS_TYPE';
             </sqlCheck>
         </preConditions>
-        <!-- Get the code_id for STATE -->
+        <!-- Get the code_id for ADDRESS_TYPE -->
         <sql>
             INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
                 VALUES
