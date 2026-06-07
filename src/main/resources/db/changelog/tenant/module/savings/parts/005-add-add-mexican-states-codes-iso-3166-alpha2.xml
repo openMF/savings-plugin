@@ -6,7 +6,7 @@
          TABLE: m_client_kyc_feature_status
          Top-level KYC session received from the external webhook.
          ============================================================ -->
-    <changeSet author="fineract" id="ss-005-1">        
+    <changeSet author="fineract" id="ss-006-1">        
         <!-- Ensure the COUNTRY code exists first -->
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="1">
@@ -17,13 +17,38 @@
         <sql>
             INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
                 VALUES
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-SJ', 'San José', 1, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-A',  'Alajuela', 2, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-C',  'Cartago', 3, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-H',  'Heredia', 4, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-G',  'Guanacaste', 5, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-P',  'Puntarenas', 6, true),
-                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CR-L',  'Limón', 7, true);
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'AGU', 'Aguascalientes', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BCN', 'Baja California', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'BCS', 'Baja California Sur', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CAM', 'Campeche', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CHP', 'Chiapas', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CHH', 'Chihuahua', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'COA', 'Coahuila', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'COL', 'Colima', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'DUR', 'Durango', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'GUA', 'Guanajuato', 10, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'GRO', 'Guerrero', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'HID', 'Hidalgo', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'JAL', 'Jalisco', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'MEX', 'Estado de México', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'MIC', 'Michoacán', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'MOR', 'Morelos', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'NAY', 'Nayarit', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'NLE', 'Nuevo León', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'OAX', 'Oaxaca', 19, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'PUE', 'Puebla', 20, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'QUE', 'Querétaro', 21, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'ROO', 'Quintana Roo', 22, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'SLP', 'San Luis Potosí', 23, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'SIN', 'Sinaloa', 24, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'SON', 'Sonora', 25, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'TAB', 'Tabasco', 26, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'TAM', 'Tamaulipas', 27, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'TLA', 'Tlaxcala', 28, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'VER', 'Veracruz', 29, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'YUC', 'Yucatán', 30, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'ZAC', 'Zacatecas', 31, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'STATE'), 'CDMX', 'Ciudad de México', 32, true);
         </sql>
     </changeSet>
 
