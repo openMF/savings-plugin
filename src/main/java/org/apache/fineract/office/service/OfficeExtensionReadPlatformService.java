@@ -21,7 +21,7 @@ public interface OfficeExtensionReadPlatformService {
    * @return a collection of services; empty if none are configured
    */
   Collection<OfficeServiceData> retrieveOfficeServices(Long officeId);
-
+  
   /**
    * Retrieves a single office service by its identifier.
    *
@@ -39,5 +39,13 @@ public interface OfficeExtensionReadPlatformService {
   OfficeGeolocationData retrieveOfficeGeolocation(Long officeId);
   
   Collection<OfficeAddressData> retrieveOfficeAddrConfiguration(String entity);
+  
+  /**
+   * Retrieves all addresses associated with the given office.
+   *
+   * @param officeId the office identifier
+   * @return a collection of addresses; empty if none are configured
+   */
+  Collection<OfficeAddressData> retrieveOfficeAddresses(Long officeId);
   
 }

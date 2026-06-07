@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.office.data.OfficeAddressData;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
 import org.apache.fineract.office.service.OfficeExtensionReadPlatformService;
@@ -149,6 +150,31 @@ public class OfficeExtensionApiResource {
     this.context.authenticatedUser().validateHasDeletePermission(RESOURCE_NAME_FOR_PERMISSIONS);
     final CommandProcessingResult result = writeService.deleteOfficeService(officeId, serviceId);
     return serviceSerializer.serializeResult(result);
+  }
+  
+  /**
+   * Lists all addresses associated with the given office.
+   *
+   * @param officeId the office identifier
+   * @return JSON array of office addresses data
+   */
+  @GET
+  @Path("{officeId}/addresses")
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "List Office Addresses",
+      description = "Returns all Addresses configured for the specified office.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "OK",
+      content =
+          @Content(
+              array = @ArraySchema(schema = @Schema(implementation = OfficeServiceData.class))))
+  public String retrieveOfficeAddresses(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId) {
+    this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final Collection<OfficeAddressData> data = readService.retrieveOfficeAddresses(officeId);
+    return serviceSerializer.serializeResult(data);
   }
   
   /**
