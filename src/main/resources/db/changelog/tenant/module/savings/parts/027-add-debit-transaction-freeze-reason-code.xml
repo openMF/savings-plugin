@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
+    <changeSet author="fineract" id="ss-027-1">      
+        <!-- Precondition: Skip if DebitTransactionFreezeReasons already has values -->
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <!-- Check that DebitTransactionFreezeReasons code exists but has no values yet -->
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) 
+                    FROM m_code_value cv 
+                    JOIN m_code c ON cv.code_id = c.id 
+                    WHERE c.code_name = 'DebitTransactionFreezeReasons';
+                </sqlCheck>            
+                <!-- Ensure the DebitTransactionFreezeReasons code exists first -->            
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons';
+                </sqlCheck>
+            </and>    
+        </preConditions>
+        <!-- Get the code_id for DebitTransactionFreezeReasons -->
+        <sql>
+           INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active)
+                VALUES
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'SUSPICIOUS_ACTIVITY', 'Suspicious Activity', 1, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'COURT_ORDER', 'Court Order', 2, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'COMPLIANCE', 'Regulatory Compliance Check', 3, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'AML', 'Anti-Money Laundering (AML) Investigation', 4, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'KYC_PENDING', 'KYC Pending', 5, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'DECEASED', 'Account Holder Deceased', 6, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'REGULATORY_HOLD', 'Regulatory Hold', 7, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'INSUFFICIENT_FUNDS', 'Insufficient Funds', 8, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'ACCOUNT_DORMANT', 'Account Dormant', 9, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'FRAUD_INVESTIGATION', 'Fraud Investigation', 10, true),                    
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'ACCOUNT_CLOSURE', 'Account Closure in Progress', 11, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'TAX_LEVY', 'Tax Levy', 12, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'DISPUTED_TRANSACTION', 'Disputed Transaction', 13, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'CHEQUE_BOUNCE', 'Cheque Bounce', 14, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'LEGAL_ORDER', 'Legal Order', 15, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'CREDIT_RISK', 'Credit Risk', 16, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'CUSTOMER_REQUEST', 'Customer Request', 17, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'SYSTEM', 'System Error or Technical Hold', 18, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'STAFF_ERROR', 'Staff Error Correction', 19, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'SANCTIONS', 'Sanctions Screening Match', 20, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'LIMIT_BREACH', 'Transaction Limit Breach', 21, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'CHARGEBACK', 'Pending Chargeback / Dispute', 22, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'LOAN_DEFAULT', 'Loan Default / Delinquency', 23, true),
+                    ((SELECT id FROM m_code WHERE code_name = 'DebitTransactionFreezeReasons'), 'OTHER', 'Other', 24, true);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
