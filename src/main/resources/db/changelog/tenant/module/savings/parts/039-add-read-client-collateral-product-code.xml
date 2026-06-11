@@ -9,15 +9,15 @@
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">        
-    <!-- Precondition: Skip if the permission already exists in m_permission -->
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">            
+    <changeSet author="fineract" id="ss-039-1">      
+        
+        <!-- Precondition: Skip if the permission already exists in m_permission -->
     <preConditions onFail="MARK_RAN">
         <sqlCheck expectedResult="0">
             SELECT COUNT(*) FROM m_permission WHERE code = 'READ_CLIENT_COLLATERAL_PRODUCT'
         </sqlCheck>
     </preConditions>
-    <changeSet author="fineract" id="ss-039-1">      
-        <!-- Precondition: Skip if WriteOffReasons already has values -->
         <insert tableName="m_permission">
             <column name="grouping" value="portfolio"/>
             <column name="code" value="READ_CLIENT_COLLATERAL_PRODUCT"/>
