@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.13</version>
+    <version>3.5.16</version>
     <relativePath/>
     <!-- lookup parent from repository -->
   </parent>
@@ -19,9 +19,9 @@
     <fineract.version>1.15.0-SNAPSHOT</fineract.version>    
     <eclipselink.version>4.0.9</eclipselink.version>
     <truth.version>1.4.5</truth.version>
-    <lombok.version>1.18.44</lombok.version>
-    <spotless.version>3.4.0</spotless.version>
-    <swagger.version>2.2.48</swagger.version>
+    <lombok.version>1.18.46</lombok.version>
+    <spotless.version>3.7.0</spotless.version>
+    <swagger.version>2.2.52</swagger.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <mockito.version>5.17.0</mockito.version>
     <mapstruct.version>1.6.3</mapstruct.version>
@@ -539,7 +539,7 @@
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.14</version>
+        <version>0.8.15</version>
         <executions>
           <!-- Surefire agent: writes to target/jacoco.exec -->
           <execution>
