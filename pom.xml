@@ -20,7 +20,7 @@
     <eclipselink.version>4.0.9</eclipselink.version>
     <truth.version>1.4.5</truth.version>
     <lombok.version>1.18.46</lombok.version>
-    <spotless.version>3.7.0</spotless.version>
+    <spotless.version>3.8.0</spotless.version>
     <swagger.version>2.2.52</swagger.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <mockito.version>5.17.0</mockito.version>
