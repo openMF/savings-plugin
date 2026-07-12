@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="create-m_sinpe_audit_log-table" author="system">
+        <createTable tableName="m_sinpe_audit_log">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="savings_account_id" type="bigint"/>
+            <column name="savings_transaction_id" type="bigint"/>
+            <column name="operation_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="codigo_referencia" type="varchar(100)"/>
+            <column name="id_relacion_cliente" type="varchar(100)"/>
+            <column name="request_xml" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="response_xml" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_status" type="varchar(50)"/>
+            <column name="created_on_utc" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign Keys to Fineract Tables -->
+        <addForeignKeyConstraint baseTableName="m_sinpe_audit_log"
+                                 baseColumnNames="savings_account_id"
+                                 constraintName="fk_sinpe_audit_savings_account"
+                                 referencedTableName="m_savings_account"
+                                 referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint baseTableName="m_sinpe_audit_log"
+                                 baseColumnNames="savings_transaction_id"
+                                 constraintName="fk_sinpe_audit_savings_transaction"
+                                 referencedTableName="m_savings_account_transaction"
+                                 referencedColumnNames="id"/>
+                                 
+        <!-- Indexes for performance -->
+        <createIndex indexName="idx_sinpe_audit_codigo_referencia" tableName="m_sinpe_audit_log">
+            <column name="codigo_referencia"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_sinpe_audit_savings_account" tableName="m_sinpe_audit_log">
+            <column name="savings_account_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

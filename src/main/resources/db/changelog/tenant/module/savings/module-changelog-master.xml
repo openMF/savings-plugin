@@ -53,4 +53,5 @@
   <include file="parts/041-create-bccr-exchange-rates-table.xml" relativeToChangelogFile="true"/>
   <include file="parts/042-add-bccr-service-configuration.xml" relativeToChangelogFile="true"/>
   <include file="parts/043-add-bccr-permissions.xml" relativeToChangelogFile="true"/>
+  <include file="parts/044-create-initial-sinpe-audit-schema.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>
