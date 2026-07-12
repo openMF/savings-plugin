@@ -50,4 +50,7 @@
   <include file="parts/038-add-write-off-reasons-code.xml" relativeToChangelogFile="true"/>
   <include file="parts/039-add-read-client-collateral-product-code.xml" relativeToChangelogFile="true"/>  
   <include file="parts/040-add-read-transfer-fees.xml" relativeToChangelogFile="true"/>
+  <include file="parts/041-create-bccr-exchange-rates-table.xml" relativeToChangelogFile="true"/>
+  <include file="parts/042-add-bccr-service-configuration.xml" relativeToChangelogFile="true"/>
+  <include file="parts/043-add-bccr-permissions.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

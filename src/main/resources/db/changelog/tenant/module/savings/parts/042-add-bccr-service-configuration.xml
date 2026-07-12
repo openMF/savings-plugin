@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+ 
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Add BccrService to external services and its properties -->
+    <changeSet author="fineract" id="ss-043-1">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM c_external_service WHERE name = 'BccrService'
+                </sqlCheck>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM c_external_service_properties
+                    WHERE external_service_id = (SELECT id FROM c_external_service WHERE name = 'BccrService')
+                </sqlCheck>
+            </and>
+        </preConditions>
+
+        <comment>Adding BccrService to external services and its properties</comment>
+
+        <insert tableName="c_external_service">
+            <column name="name" value="BccrService"/>
+        </insert>
+
+        <!-- Web Service Configuration -->
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="host"/>
+            <column name="value" value="https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="token"/>
+            <column name="value" value="YOUR_BCCR_TOKEN_HERE"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="subscriberName"/>
+            <column name="value" value="Fineract Self Service"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="subscriberEmail"/>
+            <column name="value" value="admin@fineract.org"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <!-- Indicator Codes -->
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="buyIndicatorCode"/>
+            <column name="value" value="317"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="sellIndicatorCode"/>
+            <column name="value" value="318"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <!-- Scheduler Configuration -->
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="schedulerEnabled"/>
+            <column name="value" value="true"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="schedulerCron"/>
+            <column name="value" value="0 0 8 * * *"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="backfillDays"/>
+            <column name="value" value="7"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="timezone"/>
+            <column name="value" value="America/Costa_Rica"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <!-- Service Status -->
+        <insert tableName="c_external_service_properties">
+            <column name="name" value="isEnabled"/>
+            <column name="value" value="true"/>
+            <column name="external_service_id" valueComputed="(SELECT id FROM c_external_service WHERE name = 'BccrService')"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="c_external_service_properties">
+                <where>external_service_id = (SELECT id FROM c_external_service WHERE name = 'BccrService')</where>
+            </delete>
+            <delete tableName="c_external_service">
+                <where>name = 'BccrService'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

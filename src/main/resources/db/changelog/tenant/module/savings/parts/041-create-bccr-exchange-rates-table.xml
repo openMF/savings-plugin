@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Create BCCR Exchange Rates table -->
+    <changeSet author="fineract" id="ss-041-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_bccr_exchange_rates"/>
+            </not>
+        </preConditions>
+
+        <comment>Create table for storing historical BCCR exchange rates</comment>
+
+        <createTable tableName="m_bccr_exchange_rates">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="rate_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="buy_indicator_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sell_indicator_code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="buy_rate" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sell_rate" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_rate" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fetched_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="TIMESTAMP"/>
+            <column name="is_latest" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="uk_bccr_rate_date" tableName="m_bccr_exchange_rates" unique="true">
+            <column name="rate_date"/>
+        </createIndex>
+
+        <createIndex indexName="idx_bccr_rate_latest" tableName="m_bccr_exchange_rates">
+            <column name="is_latest"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Insert BCCR permissions -->
+    <changeSet author="fineract" id="ss-041-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_permission WHERE code = 'READ_EXCHANGE_RATE'
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Insert EXCHANGE_RATE permissions</comment>
+
+        <insert tableName="m_permission">
+            <column name="grouping" value="self_service"/>
+            <column name="code" value="READ_EXCHANGE_RATE"/>
+            <column name="entity_name" value="EXCHANGE_RATE"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+
+        <insert tableName="m_permission">
+            <column name="grouping" value="self_service"/>
+            <column name="code" value="CREATE_EXCHANGE_RATE"/>
+            <column name="entity_name" value="EXCHANGE_RATE"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- Assign permissions to roles -->
+    <changeSet author="fineract" id="ss-041-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_role_permission rp
+                INNER JOIN m_role r ON rp.role_id = r.id
+                INNER JOIN m_permission p ON rp.permission_id = p.id
+                WHERE r.name = 'Super user' AND p.code = 'READ_EXCHANGE_RATE'
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Assign EXCHANGE_RATE permissions to Super User and Self Service User roles</comment>
+
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id
+            FROM m_role r, m_permission p
+            WHERE r.name IN ('Super user', 'Self Service User')
+            AND p.code IN ('READ_EXCHANGE_RATE', 'CREATE_EXCHANGE_RATE')
+            AND NOT EXISTS (
+                SELECT 1 FROM m_role_permission rp
+                WHERE rp.role_id = r.id AND rp.permission_id = p.id
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
