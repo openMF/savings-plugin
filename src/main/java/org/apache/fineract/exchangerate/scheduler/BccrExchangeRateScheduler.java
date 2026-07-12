@@ -31,8 +31,8 @@ import org.springframework.stereotype.Component;
  * (BCCR) and stores it in the database for use by the transfer fee system.
  *
  * <p>The scheduler is tenant-aware: each tenant can have its own BCCR configuration stored in the
- * {@code c_external_service_properties} table. The scheduler will only run if the service is enabled
- * for the current tenant.
+ * {@code c_external_service_properties} table. The scheduler will only run if the service is
+ * enabled for the current tenant.
  *
  * <p>The job runs daily at 8:00 AM Costa Rica time (CST/UTC-6) by default, which is typically when
  * the BCCR publishes the previous business day's exchange rates. The cron expression and timezone
@@ -50,11 +50,12 @@ public class BccrExchangeRateScheduler {
    * Scheduled job that runs daily at 8:00 AM Costa Rica time.
    *
    * <p>This job:
+   *
    * <ol>
-   *   <li>Checks if the BCCR service is enabled for the current tenant</li>
-   *   <li>Fetches today's exchange rate from BCCR</li>
-   *   <li>Stores it in the database</li>
-   *   <li>Optionally backfills missing historical rates</li>
+   *   <li>Checks if the BCCR service is enabled for the current tenant
+   *   <li>Fetches today's exchange rate from BCCR
+   *   <li>Stores it in the database
+   *   <li>Optionally backfills missing historical rates
    * </ol>
    */
   @Scheduled(cron = "0 0 8 * * *", zone = "America/Costa_Rica")
@@ -81,8 +82,7 @@ public class BccrExchangeRateScheduler {
     try {
       timezone = ZoneId.of(config.getTimezone());
     } catch (Exception e) {
-      log.warn(
-          "Invalid timezone '{}', falling back to America/Costa_Rica", config.getTimezone());
+      log.warn("Invalid timezone '{}', falling back to America/Costa_Rica", config.getTimezone());
       timezone = ZoneId.of("America/Costa_Rica");
     }
 
@@ -121,9 +121,7 @@ public class BccrExchangeRateScheduler {
     log.info("BCCR exchange rate fetch job completed");
   }
 
-  /**
-   * Backfills missing exchange rates for the configured number of past days.
-   */
+  /** Backfills missing exchange rates for the configured number of past days. */
   private void backfillMissingRates(LocalDate today, int backfillDays) {
     LocalDate fromDate = today.minusDays(backfillDays);
     log.info("Backfilling exchange rates from {} to {}", fromDate, today);

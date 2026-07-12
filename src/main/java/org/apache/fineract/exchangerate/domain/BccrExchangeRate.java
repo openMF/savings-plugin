@@ -94,17 +94,15 @@ public class BccrExchangeRate extends AbstractPersistableCustom<Long> {
    * @return a new BccrExchangeRate instance
    */
   public static BccrExchangeRate instance(
-      LocalDate rateDate,
-      BigDecimal buyRate,
-      BigDecimal sellRate,
-      LocalDateTime fetchedAt) {
+      LocalDate rateDate, BigDecimal buyRate, BigDecimal sellRate, LocalDateTime fetchedAt) {
     BccrExchangeRate rate = new BccrExchangeRate();
     rate.setRateDate(rateDate);
     rate.setBuyIndicatorCode("317");
     rate.setSellIndicatorCode("318");
     rate.setBuyRate(buyRate);
     rate.setSellRate(sellRate);
-    rate.setReferenceRate(buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 6, java.math.RoundingMode.HALF_UP));
+    rate.setReferenceRate(
+        buyRate.add(sellRate).divide(BigDecimal.valueOf(2), 6, java.math.RoundingMode.HALF_UP));
     rate.setSourceCurrency("USD");
     rate.setTargetCurrency("CRC");
     rate.setFetchedAt(fetchedAt);

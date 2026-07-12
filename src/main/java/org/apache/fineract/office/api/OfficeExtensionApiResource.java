@@ -151,7 +151,7 @@ public class OfficeExtensionApiResource {
     final CommandProcessingResult result = writeService.deleteOfficeService(officeId, serviceId);
     return serviceSerializer.serializeResult(result);
   }
-  
+
   /**
    * Lists all addresses associated with the given office.
    *
@@ -176,7 +176,7 @@ public class OfficeExtensionApiResource {
     final Collection<OfficeAddressData> data = readService.retrieveOfficeAddresses(officeId);
     return serviceSerializer.serializeResult(data);
   }
-  
+
   /**
    * Creates a new Address for the given office.
    *

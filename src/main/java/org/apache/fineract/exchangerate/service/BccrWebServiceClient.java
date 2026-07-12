@@ -32,7 +32,8 @@ import org.xml.sax.InputSource;
  * Central Bank. Configuration is loaded from the {@code c_external_service_properties} table,
  * allowing each tenant to have its own BCCR subscription.
  *
- * @see <a href="https://www.bccr.fi.cr/indicadores-economicos/servicio-web">BCCR Web Service Registration</a>
+ * @see <a href="https://www.bccr.fi.cr/indicadores-economicos/servicio-web">BCCR Web Service
+ *     Registration</a>
  */
 @Component
 @RequiredArgsConstructor

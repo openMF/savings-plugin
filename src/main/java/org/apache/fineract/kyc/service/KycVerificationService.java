@@ -6,7 +6,6 @@
  */
 package org.apache.fineract.kyc.service;
 
-
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.kyc.data.KycVerificationSummaryData;
@@ -15,24 +14,25 @@ import org.apache.fineract.kyc.domain.KycVerification;
 
 public interface KycVerificationService {
 
-    /**
-     * Processes the incoming KYC webhook and persists all verification data.
-     *
-     * @param clientId the m_client id to associate
-     * @param payload  the deserialized webhook JSON
-     * @return the persisted KycVerification
-     */
-    KycVerification processWebhook(Long clientId, KycWebhookPayload payload);
+  /**
+   * Processes the incoming KYC webhook and persists all verification data.
+   *
+   * @param clientId the m_client id to associate
+   * @param payload the deserialized webhook JSON
+   * @return the persisted KycVerification
+   */
+  KycVerification processWebhook(Long clientId, KycWebhookPayload payload);
 
-    Optional<KycVerification> findById(Long id);
+  Optional<KycVerification> findById(Long id);
 
-    Optional<KycVerification> findByIdWithDetails(Long id);
+  Optional<KycVerification> findByIdWithDetails(Long id);
 
-    List<KycVerification> findByClientId(Long clientId);
+  List<KycVerification> findByClientId(Long clientId);
 
-    List<KycVerification> findByClientIdAndStatus(Long clientId, Optional<String> status);
-    
-    List<KycVerificationSummaryData> findSummaryByClientId(Long clientId);
-    
-    List<KycVerificationSummaryData> findSummaryByClientIdAndStatus(Long clientId, Optional<String> status);
+  List<KycVerification> findByClientIdAndStatus(Long clientId, Optional<String> status);
+
+  List<KycVerificationSummaryData> findSummaryByClientId(Long clientId);
+
+  List<KycVerificationSummaryData> findSummaryByClientIdAndStatus(
+      Long clientId, Optional<String> status);
 }

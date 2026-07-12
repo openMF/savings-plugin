@@ -13,9 +13,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Aggregated daily exchange rate containing both buy and sell rates from BCCR.
- */
+/** Aggregated daily exchange rate containing both buy and sell rates from BCCR. */
 @Data
 @Builder
 @NoArgsConstructor

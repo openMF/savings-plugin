@@ -6,7 +6,6 @@
  */
 package org.apache.fineract.office.api;
 
-import org.apache.fineract.office.api.OfficeExtensionApiResource;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;

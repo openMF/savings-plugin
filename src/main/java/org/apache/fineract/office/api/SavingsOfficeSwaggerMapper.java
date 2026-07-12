@@ -16,14 +16,21 @@ import org.mapstruct.Mapper;
 @Mapper(config = MapstructMapperConfig.class, componentModel = "spring")
 public interface SavingsOfficeSwaggerMapper {
 
-    SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse toPutOfficesOfficeIdResponse(CommandProcessingResult commandProcessingResult);
+  SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse toPutOfficesOfficeIdResponse(
+      CommandProcessingResult commandProcessingResult);
 
-    default SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse.PutOfficesOfficeIdResponseChanges toPutOfficesOfficeIdResponseChanges(
-            Map<String, Object> changes) {
-        SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse.PutOfficesOfficeIdResponseChanges response = new SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse.PutOfficesOfficeIdResponseChanges();
-        Optional.ofNullable(changes).map(c -> c.get("name")).ifPresent(c -> response.name = String.valueOf(c));
-        return response;
-    }
+  default SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse
+          .PutOfficesOfficeIdResponseChanges
+      toPutOfficesOfficeIdResponseChanges(Map<String, Object> changes) {
+    SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse.PutOfficesOfficeIdResponseChanges
+        response =
+            new SavingsOfficesApiResourceSwagger.PutOfficesOfficeIdResponse
+                .PutOfficesOfficeIdResponseChanges();
+    Optional.ofNullable(changes)
+        .map(c -> c.get("name"))
+        .ifPresent(c -> response.name = String.valueOf(c));
+    return response;
+  }
 
-    SavingsOfficesApiResourceSwagger.GetOfficesResponse toGetOfficesResponse(OfficeData officeData);
+  SavingsOfficesApiResourceSwagger.GetOfficesResponse toGetOfficesResponse(OfficeData officeData);
 }

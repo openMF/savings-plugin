@@ -17,26 +17,27 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Service responsible for loading BCCR service configuration from the Apache Fineract
- * {@code c_external_service_properties} table.
+ * Service responsible for loading BCCR service configuration from the Apache Fineract {@code
+ * c_external_service_properties} table.
  *
  * <p>This service provides tenant-specific configuration, allowing each tenant to have its own BCCR
  * subscription and settings. Configuration is cached for 5 minutes to avoid excessive database
  * queries.
  *
  * <p>The configuration is loaded from the following properties:
+ *
  * <ul>
- *   <li>{@code host} - Base URL of the BCCR Web Service</li>
- *   <li>{@code token} - Subscription token</li>
- *   <li>{@code subscriberName} - Subscriber name</li>
- *   <li>{@code subscriberEmail} - Subscriber email</li>
- *   <li>{@code buyIndicatorCode} - BCCR indicator code for buy rate</li>
- *   <li>{@code sellIndicatorCode} - BCCR indicator code for sell rate</li>
- *   <li>{@code schedulerEnabled} - Whether scheduler is enabled</li>
- *   <li>{@code schedulerCron} - Cron expression for scheduler</li>
- *   <li>{@code backfillDays} - Number of days to backfill</li>
- *   <li>{@code timezone} - Timezone for scheduler</li>
- *   <li>{@code isEnabled} - Whether the service is enabled</li>
+ *   <li>{@code host} - Base URL of the BCCR Web Service
+ *   <li>{@code token} - Subscription token
+ *   <li>{@code subscriberName} - Subscriber name
+ *   <li>{@code subscriberEmail} - Subscriber email
+ *   <li>{@code buyIndicatorCode} - BCCR indicator code for buy rate
+ *   <li>{@code sellIndicatorCode} - BCCR indicator code for sell rate
+ *   <li>{@code schedulerEnabled} - Whether scheduler is enabled
+ *   <li>{@code schedulerCron} - Cron expression for scheduler
+ *   <li>{@code backfillDays} - Number of days to backfill
+ *   <li>{@code timezone} - Timezone for scheduler
+ *   <li>{@code isEnabled} - Whether the service is enabled
  * </ul>
  */
 @Service
@@ -68,7 +69,8 @@ public class BccrConfigurationService {
 
     synchronized (this) {
       // Double-check after acquiring lock
-      if (cachedConfiguration != null && (System.currentTimeMillis() - cacheTimestamp) < CACHE_TTL_MILLIS) {
+      if (cachedConfiguration != null
+          && (System.currentTimeMillis() - cacheTimestamp) < CACHE_TTL_MILLIS) {
         return cachedConfiguration;
       }
 

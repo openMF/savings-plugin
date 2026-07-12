@@ -56,13 +56,10 @@ public class SavingsLiquibaseConfig {
         liquibase.afterPropertiesSet();
 
         LOG.info(
-            "Successfully migrated Savings tables for tenant: {}",
-            tenant.getTenantIdentifier());
+            "Successfully migrated Savings tables for tenant: {}", tenant.getTenantIdentifier());
       } catch (Exception e) {
         LOG.error(
-            "Failed to migrate Savings tables for tenant: {}",
-            tenant.getTenantIdentifier(),
-            e);
+            "Failed to migrate Savings tables for tenant: {}", tenant.getTenantIdentifier(), e);
         throw new RuntimeException("Plugin Database Migration Failed", e);
       } finally {
         // 4. Always clear the context so we don't leak connections

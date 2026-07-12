@@ -6,7 +6,6 @@
  */
 package org.apache.fineract.kyc.domain;
 
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,74 +23,90 @@ import java.time.OffsetDateTime;
 @Table(name = "m_client_kyc_face_match")
 public class KycFaceMatch {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @JsonBackReference
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "kyc_decision_id", nullable = false)
-    private KycDecision kycDecision;
+  @JsonBackReference
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
+  @JoinColumn(name = "kyc_decision_id", nullable = false)
+  private KycDecision kycDecision;
 
-    @Column(name = "node_id", length = 255)
-    private String nodeId;
+  @Column(name = "node_id", length = 255)
+  private String nodeId;
 
-    @Column(name = "match_score", precision = 5, scale = 2)
-    private BigDecimal matchScore;
+  @Column(name = "match_score", precision = 5, scale = 2)
+  private BigDecimal matchScore;
 
-    @Column(name = "match_status", length = 50)
-    private String matchStatus;
+  @Column(name = "match_status", length = 50)
+  private String matchStatus;
 
-    @Column(name = "source_image_url", columnDefinition = "TEXT")
-    private String sourceImageUrl;
+  @Column(name = "source_image_url", columnDefinition = "TEXT")
+  private String sourceImageUrl;
 
-    @Column(name = "target_image_url", columnDefinition = "TEXT")
-    private String targetImageUrl;
+  @Column(name = "target_image_url", columnDefinition = "TEXT")
+  private String targetImageUrl;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+  @Column(name = "created_by", nullable = false)
+  private Long createdBy;
 
-    @Column(name = "created_on_utc", nullable = false)
-    private OffsetDateTime createdOnUtc;
+  @Column(name = "created_on_utc", nullable = false)
+  private OffsetDateTime createdOnUtc;
 
-    @Column(name = "last_modified_by", nullable = false)
-    private Long lastModifiedBy;
+  @Column(name = "last_modified_by", nullable = false)
+  private Long lastModifiedBy;
 
-    @Column(name = "last_modified_on_utc", nullable = false)
-    private OffsetDateTime lastModifiedOnUtc;
+  @Column(name = "last_modified_on_utc", nullable = false)
+  private OffsetDateTime lastModifiedOnUtc;
 
-    protected KycFaceMatch() {}
+  protected KycFaceMatch() {}
 
-    public static KycFaceMatch create(final String nodeId,
-                                      final BigDecimal matchScore,
-                                      final String matchStatus,
-                                      final String sourceImageUrl,
-                                      final String targetImageUrl,
-                                      final Long createdBy) {
-        final KycFaceMatch fm = new KycFaceMatch();
-        fm.nodeId = nodeId;
-        fm.matchScore = matchScore;
-        fm.matchStatus = matchStatus;
-        fm.sourceImageUrl = sourceImageUrl;
-        fm.targetImageUrl = targetImageUrl;
-        fm.createdBy = createdBy;
-        fm.lastModifiedBy = createdBy;
-        final OffsetDateTime now = OffsetDateTime.now();
-        fm.createdOnUtc = now;
-        fm.lastModifiedOnUtc = now;
-        return fm;
-    }
+  public static KycFaceMatch create(
+      final String nodeId,
+      final BigDecimal matchScore,
+      final String matchStatus,
+      final String sourceImageUrl,
+      final String targetImageUrl,
+      final Long createdBy) {
+    final KycFaceMatch fm = new KycFaceMatch();
+    fm.nodeId = nodeId;
+    fm.matchScore = matchScore;
+    fm.matchStatus = matchStatus;
+    fm.sourceImageUrl = sourceImageUrl;
+    fm.targetImageUrl = targetImageUrl;
+    fm.createdBy = createdBy;
+    fm.lastModifiedBy = createdBy;
+    final OffsetDateTime now = OffsetDateTime.now();
+    fm.createdOnUtc = now;
+    fm.lastModifiedOnUtc = now;
+    return fm;
+  }
 
-    public void setKycDecision(final KycDecision kycDecision) {
-        this.kycDecision = kycDecision;
-    }
+  public void setKycDecision(final KycDecision kycDecision) {
+    this.kycDecision = kycDecision;
+  }
 
-    public Long getId() { return id; }
-    public Long getKycDecisionId() {
-        return kycDecision != null ? kycDecision.getId() : null;
-    }
-    public BigDecimal getMatchScore() { return matchScore; }
-    public String getMatchStatus() { return matchStatus; }
-    public String getSourceImageUrl() { return sourceImageUrl; }
-    public String getTargetImageUrl() { return targetImageUrl; }
+  public Long getId() {
+    return id;
+  }
+
+  public Long getKycDecisionId() {
+    return kycDecision != null ? kycDecision.getId() : null;
+  }
+
+  public BigDecimal getMatchScore() {
+    return matchScore;
+  }
+
+  public String getMatchStatus() {
+    return matchStatus;
+  }
+
+  public String getSourceImageUrl() {
+    return sourceImageUrl;
+  }
+
+  public String getTargetImageUrl() {
+    return targetImageUrl;
+  }
 }

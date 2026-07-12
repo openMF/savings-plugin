@@ -6,10 +6,7 @@
  */
 package org.apache.fineract.kyc.domain;
 
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,105 +26,145 @@ import java.util.List;
 @Table(name = "m_client_kyc_decision")
 public class KycDecision {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    // ✅ EAGER: no weaving warning, and decision always needs its verification
-    @JsonBackReference
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "kyc_verification_id", nullable = false)
-    private KycVerification kycVerification;
+  // ✅ EAGER: no weaving warning, and decision always needs its verification
+  @JsonBackReference
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
+  @JoinColumn(name = "kyc_verification_id", nullable = false)
+  private KycVerification kycVerification;
 
-    @Column(name = "decision_status", nullable = false, length = 50)
-    private String decisionStatus;
+  @Column(name = "decision_status", nullable = false, length = 50)
+  private String decisionStatus;
 
-    @Column(name = "decision_workflow_id", length = 255)
-    private String decisionWorkflowId;
+  @Column(name = "decision_workflow_id", length = 255)
+  private String decisionWorkflowId;
 
-    @Column(name = "decision_created_at")
-    private OffsetDateTime decisionCreatedAt;
+  @Column(name = "decision_created_at")
+  private OffsetDateTime decisionCreatedAt;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+  @Column(name = "created_by", nullable = false)
+  private Long createdBy;
 
-    @Column(name = "created_on_utc", nullable = false)
-    private OffsetDateTime createdOnUtc;
+  @Column(name = "created_on_utc", nullable = false)
+  private OffsetDateTime createdOnUtc;
 
-    @Column(name = "last_modified_by", nullable = false)
-    private Long lastModifiedBy;
+  @Column(name = "last_modified_by", nullable = false)
+  private Long lastModifiedBy;
 
-    @Column(name = "last_modified_on_utc", nullable = false)
-    private OffsetDateTime lastModifiedOnUtc;
+  @Column(name = "last_modified_on_utc", nullable = false)
+  private OffsetDateTime lastModifiedOnUtc;
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<KycDecisionFeature> features = new ArrayList<>();
+  @OneToMany(
+      mappedBy = "kycDecision",
+      cascade = CascadeType.ALL,
+      fetch = FetchType.LAZY,
+      orphanRemoval = true)
+  private List<KycDecisionFeature> features = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<KycFaceMatch> faceMatches = new ArrayList<>();
+  @OneToMany(
+      mappedBy = "kycDecision",
+      cascade = CascadeType.ALL,
+      fetch = FetchType.LAZY,
+      orphanRemoval = true)
+  private List<KycFaceMatch> faceMatches = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<KycIdVerification> idVerifications = new ArrayList<>();
+  @OneToMany(
+      mappedBy = "kycDecision",
+      cascade = CascadeType.ALL,
+      fetch = FetchType.LAZY,
+      orphanRemoval = true)
+  private List<KycIdVerification> idVerifications = new ArrayList<>();
 
-    @OneToMany(mappedBy = "kycDecision", cascade = CascadeType.ALL,
-               fetch = FetchType.LAZY, orphanRemoval = true)
-    private List<KycAmlScreening> amlScreenings = new ArrayList<>();
+  @OneToMany(
+      mappedBy = "kycDecision",
+      cascade = CascadeType.ALL,
+      fetch = FetchType.LAZY,
+      orphanRemoval = true)
+  private List<KycAmlScreening> amlScreenings = new ArrayList<>();
 
-    protected KycDecision() {}
+  protected KycDecision() {}
 
-    public static KycDecision create(final String decisionStatus,
-                                     final String decisionWorkflowId,
-                                     final OffsetDateTime decisionCreatedAt,
-                                     final Long createdBy) {
-        final KycDecision d = new KycDecision();
-        d.decisionStatus = decisionStatus;
-        d.decisionWorkflowId = decisionWorkflowId;
-        d.decisionCreatedAt = decisionCreatedAt;
-        d.createdBy = createdBy;
-        d.lastModifiedBy = createdBy;
-        final OffsetDateTime now = OffsetDateTime.now();
-        d.createdOnUtc = now;
-        d.lastModifiedOnUtc = now;
-        return d;
-    }
+  public static KycDecision create(
+      final String decisionStatus,
+      final String decisionWorkflowId,
+      final OffsetDateTime decisionCreatedAt,
+      final Long createdBy) {
+    final KycDecision d = new KycDecision();
+    d.decisionStatus = decisionStatus;
+    d.decisionWorkflowId = decisionWorkflowId;
+    d.decisionCreatedAt = decisionCreatedAt;
+    d.createdBy = createdBy;
+    d.lastModifiedBy = createdBy;
+    final OffsetDateTime now = OffsetDateTime.now();
+    d.createdOnUtc = now;
+    d.lastModifiedOnUtc = now;
+    return d;
+  }
 
-    public void addFeature(final KycDecisionFeature feature) {
-        features.add(feature);
-        feature.setKycDecision(this);
-    }
+  public void addFeature(final KycDecisionFeature feature) {
+    features.add(feature);
+    feature.setKycDecision(this);
+  }
 
-    public void addFaceMatch(final KycFaceMatch faceMatch) {
-        faceMatches.add(faceMatch);
-        faceMatch.setKycDecision(this);
-    }
+  public void addFaceMatch(final KycFaceMatch faceMatch) {
+    faceMatches.add(faceMatch);
+    faceMatch.setKycDecision(this);
+  }
 
-    public void addIdVerification(final KycIdVerification idVerification) {
-        idVerifications.add(idVerification);
-        idVerification.setKycDecision(this);
-    }
+  public void addIdVerification(final KycIdVerification idVerification) {
+    idVerifications.add(idVerification);
+    idVerification.setKycDecision(this);
+  }
 
-    public void addAmlScreening(final KycAmlScreening amlScreening) {
-        amlScreenings.add(amlScreening);
-        amlScreening.setKycDecision(this);
-    }
+  public void addAmlScreening(final KycAmlScreening amlScreening) {
+    amlScreenings.add(amlScreening);
+    amlScreening.setKycDecision(this);
+  }
 
-    public void setKycVerification(final KycVerification kycVerification) {
-        this.kycVerification = kycVerification;
-    }
+  public void setKycVerification(final KycVerification kycVerification) {
+    this.kycVerification = kycVerification;
+  }
 
-    public Long getId() { return id; }
-    public Long getKycVerificationId() {
-        return kycVerification != null ? kycVerification.getId() : null;
-    }
-    public KycVerification getKycVerification() { return kycVerification; }
-    public String getDecisionStatus() { return decisionStatus; }
-    public String getDecisionWorkflowId() { return decisionWorkflowId; }
-    public OffsetDateTime getDecisionCreatedAt() { return decisionCreatedAt; }
-    public List<KycDecisionFeature> getFeatures() { return features; }
-    public List<KycFaceMatch> getFaceMatches() { return faceMatches; }
-    public List<KycIdVerification> getIdVerifications() { return idVerifications; }
-    public List<KycAmlScreening> getAmlScreenings() { return amlScreenings; }
+  public Long getId() {
+    return id;
+  }
+
+  public Long getKycVerificationId() {
+    return kycVerification != null ? kycVerification.getId() : null;
+  }
+
+  public KycVerification getKycVerification() {
+    return kycVerification;
+  }
+
+  public String getDecisionStatus() {
+    return decisionStatus;
+  }
+
+  public String getDecisionWorkflowId() {
+    return decisionWorkflowId;
+  }
+
+  public OffsetDateTime getDecisionCreatedAt() {
+    return decisionCreatedAt;
+  }
+
+  public List<KycDecisionFeature> getFeatures() {
+    return features;
+  }
+
+  public List<KycFaceMatch> getFaceMatches() {
+    return faceMatches;
+  }
+
+  public List<KycIdVerification> getIdVerifications() {
+    return idVerifications;
+  }
+
+  public List<KycAmlScreening> getAmlScreenings() {
+    return amlScreenings;
+  }
 }

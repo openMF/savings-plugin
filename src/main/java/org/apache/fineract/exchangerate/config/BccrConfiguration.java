@@ -22,8 +22,8 @@ import org.springframework.web.client.RestTemplate;
  * Spring configuration for BCCR exchange rate components.
  *
  * <p>This configuration provides the shared {@link RestTemplate} bean used by the BCCR web service
- * client. All tenant-specific configuration is loaded from the {@code c_external_service_properties}
- * table at runtime.
+ * client. All tenant-specific configuration is loaded from the {@code
+ * c_external_service_properties} table at runtime.
  */
 @Configuration
 public class BccrConfiguration {

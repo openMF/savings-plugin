@@ -33,10 +33,11 @@ import org.springframework.stereotype.Component;
  * REST API resource for accessing BCCR exchange rate data.
  *
  * <p>Provides endpoints for:
+ *
  * <ul>
- *   <li>Getting the current/latest exchange rate</li>
- *   <li>Getting historical exchange rates</li>
- *   <li>Manually triggering a rate fetch</li>
+ *   <li>Getting the current/latest exchange rate
+ *   <li>Getting historical exchange rates
+ *   <li>Manually triggering a rate fetch
  * </ul>
  */
 @Path("/v2/exchange-rates")
@@ -124,20 +125,23 @@ public class BccrExchangeRateApiResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       summary = "Manually Fetch Exchange Rate",
-      description = "Triggers a manual fetch of today's exchange rate from BCCR. Requires ADMIN permission.")
+      description =
+          "Triggers a manual fetch of today's exchange rate from BCCR. Requires ADMIN permission.")
   public String fetchTodayRate() {
     context.authenticatedUser().validateHasCreatePermission("EXCHANGE_RATE");
 
     return exchangeRateService
         .fetchAndStoreTodayRate()
-        .map(rate -> {
-          Map<String, Object> response = new HashMap<>();
-          response.put("status", "success");
-          response.put("message", "Exchange rate fetched successfully");
-          response.put("rate", rateToJson(rate));
-          return gson.toJson(response);
-        })
-        .orElse("{\"status\": \"error\", \"message\": \"Failed to fetch exchange rate from BCCR\"}");
+        .map(
+            rate -> {
+              Map<String, Object> response = new HashMap<>();
+              response.put("status", "success");
+              response.put("message", "Exchange rate fetched successfully");
+              response.put("rate", rateToJson(rate));
+              return gson.toJson(response);
+            })
+        .orElse(
+            "{\"status\": \"error\", \"message\": \"Failed to fetch exchange rate from BCCR\"}");
   }
 
   private String rateToJson(BccrExchangeRate rate) {

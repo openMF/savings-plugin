@@ -6,7 +6,6 @@
  */
 package org.apache.fineract.kyc.domain;
 
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,51 +22,57 @@ import java.time.OffsetDateTime;
 @Table(name = "m_client_kyc_aml_hit")
 public class KycAmlHit {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    // ✅ @ManyToOne OWNS the FK — no separate Long amlScreeningId field
-    @JsonBackReference
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "aml_screening_id", nullable = false)
-    private KycAmlScreening amlScreening;
+  // ✅ @ManyToOne OWNS the FK — no separate Long amlScreeningId field
+  @JsonBackReference
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
+  @JoinColumn(name = "aml_screening_id", nullable = false)
+  private KycAmlScreening amlScreening;
 
-    @Column(name = "hit_data", columnDefinition = "TEXT")
-    private String hitData;
+  @Column(name = "hit_data", columnDefinition = "TEXT")
+  private String hitData;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+  @Column(name = "created_by", nullable = false)
+  private Long createdBy;
 
-    @Column(name = "created_on_utc", nullable = false)
-    private OffsetDateTime createdOnUtc;
+  @Column(name = "created_on_utc", nullable = false)
+  private OffsetDateTime createdOnUtc;
 
-    @Column(name = "last_modified_by", nullable = false)
-    private Long lastModifiedBy;
+  @Column(name = "last_modified_by", nullable = false)
+  private Long lastModifiedBy;
 
-    @Column(name = "last_modified_on_utc", nullable = false)
-    private OffsetDateTime lastModifiedOnUtc;
+  @Column(name = "last_modified_on_utc", nullable = false)
+  private OffsetDateTime lastModifiedOnUtc;
 
-    protected KycAmlHit() {}
+  protected KycAmlHit() {}
 
-    public static KycAmlHit create(final String hitData, final Long createdBy) {
-        final KycAmlHit h = new KycAmlHit();
-        h.hitData = hitData;
-        h.createdBy = createdBy;
-        h.lastModifiedBy = createdBy;
-        final OffsetDateTime now = OffsetDateTime.now();
-        h.createdOnUtc = now;
-        h.lastModifiedOnUtc = now;
-        return h;
-    }
+  public static KycAmlHit create(final String hitData, final Long createdBy) {
+    final KycAmlHit h = new KycAmlHit();
+    h.hitData = hitData;
+    h.createdBy = createdBy;
+    h.lastModifiedBy = createdBy;
+    final OffsetDateTime now = OffsetDateTime.now();
+    h.createdOnUtc = now;
+    h.lastModifiedOnUtc = now;
+    return h;
+  }
 
-    public void setAmlScreening(final KycAmlScreening amlScreening) {
-        this.amlScreening = amlScreening;
-    }
+  public void setAmlScreening(final KycAmlScreening amlScreening) {
+    this.amlScreening = amlScreening;
+  }
 
-    public Long getId() { return id; }
-    public Long getAmlScreeningId() {
-        return amlScreening != null ? amlScreening.getId() : null;
-    }
-    public String getHitData() { return hitData; }
+  public Long getId() {
+    return id;
+  }
+
+  public Long getAmlScreeningId() {
+    return amlScreening != null ? amlScreening.getId() : null;
+  }
+
+  public String getHitData() {
+    return hitData;
+  }
 }

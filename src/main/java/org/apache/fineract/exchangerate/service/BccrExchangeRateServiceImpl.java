@@ -26,8 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for managing BCCR exchange rates.
  *
- * <p>This service coordinates the fetching of exchange rates from the BCCR Web Service,
- * stores them in the database, and provides conversion utilities for the transfer fee system.
+ * <p>This service coordinates the fetching of exchange rates from the BCCR Web Service, stores them
+ * in the database, and provides conversion utilities for the transfer fee system.
  */
 @Service
 @RequiredArgsConstructor
@@ -70,8 +70,11 @@ public class BccrExchangeRateServiceImpl implements BccrExchangeRateService {
     }
 
     if (buyRate == null || sellRate == null) {
-      log.warn("Incomplete rate data from BCCR for date: {}. Buy: {}, Sell: {}",
-          today, buyRate, sellRate);
+      log.warn(
+          "Incomplete rate data from BCCR for date: {}. Buy: {}, Sell: {}",
+          today,
+          buyRate,
+          sellRate);
       // If we have at least one rate, use it for both (fallback)
       if (buyRate != null) {
         sellRate = buyRate;
@@ -86,15 +89,16 @@ public class BccrExchangeRateServiceImpl implements BccrExchangeRateService {
     rateRepository.resetLatestFlags();
 
     // Create and save the new rate
-    BccrExchangeRate newRate = BccrExchangeRate.instance(
+    BccrExchangeRate newRate =
+        BccrExchangeRate.instance(today, buyRate, sellRate, LocalDateTime.now(COSTA_RICA_ZONE));
+
+    BccrExchangeRate savedRate = rateRepository.save(newRate);
+    log.info(
+        "Successfully stored BCCR exchange rate for {}: Buy={}, Sell={}, Reference={}",
         today,
         buyRate,
         sellRate,
-        LocalDateTime.now(COSTA_RICA_ZONE));
-
-    BccrExchangeRate savedRate = rateRepository.save(newRate);
-    log.info("Successfully stored BCCR exchange rate for {}: Buy={}, Sell={}, Reference={}",
-        today, buyRate, sellRate, savedRate.getReferenceRate());
+        savedRate.getReferenceRate());
 
     return Optional.of(savedRate);
   }
@@ -147,11 +151,8 @@ public class BccrExchangeRateServiceImpl implements BccrExchangeRateService {
         }
       }
 
-      BccrExchangeRate rate = BccrExchangeRate.instance(
-          date,
-          buyRate,
-          sellRate,
-          LocalDateTime.now(COSTA_RICA_ZONE));
+      BccrExchangeRate rate =
+          BccrExchangeRate.instance(date, buyRate, sellRate, LocalDateTime.now(COSTA_RICA_ZONE));
       rate.setLatest(false); // Historical rates are not "latest"
 
       rateRepository.save(rate);
@@ -200,13 +201,16 @@ public class BccrExchangeRateServiceImpl implements BccrExchangeRateService {
   @Override
   @Transactional(readOnly = true)
   public Optional<BccrDailyRate> getCurrentDailyRate() {
-    return getLatestRate().map(rate -> BccrDailyRate.builder()
-        .date(rate.getRateDate())
-        .buyRate(rate.getBuyRate())
-        .sellRate(rate.getSellRate())
-        .referenceRate(rate.getReferenceRate())
-        .sourceCurrency(rate.getSourceCurrency())
-        .targetCurrency(rate.getTargetCurrency())
-        .build());
+    return getLatestRate()
+        .map(
+            rate ->
+                BccrDailyRate.builder()
+                    .date(rate.getRateDate())
+                    .buyRate(rate.getBuyRate())
+                    .sellRate(rate.getSellRate())
+                    .referenceRate(rate.getReferenceRate())
+                    .sourceCurrency(rate.getSourceCurrency())
+                    .targetCurrency(rate.getTargetCurrency())
+                    .build());
   }
 }

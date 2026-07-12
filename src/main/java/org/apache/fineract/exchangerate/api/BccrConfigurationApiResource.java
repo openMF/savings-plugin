@@ -24,10 +24,11 @@ import org.springframework.stereotype.Component;
  * REST API resource for managing BCCR service configuration.
  *
  * <p>Provides endpoints for:
+ *
  * <ul>
- *   <li>Getting the current BCCR configuration</li>
- *   <li>Invalidating the configuration cache</li>
- *   <li>Checking if the service is enabled</li>
+ *   <li>Getting the current BCCR configuration
+ *   <li>Invalidating the configuration cache
+ *   <li>Checking if the service is enabled
  * </ul>
  */
 @Path("/v2/exchange-rates/configuration")

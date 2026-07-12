@@ -12,8 +12,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Data Transfer Object representing the BCCR service configuration loaded from the
- * {@code c_external_service_properties} table.
+ * Data Transfer Object representing the BCCR service configuration loaded from the {@code
+ * c_external_service_properties} table.
  *
  * <p>Each tenant can have its own BCCR configuration, allowing multi-tenant deployments to use
  * different BCCR subscriptions or settings.

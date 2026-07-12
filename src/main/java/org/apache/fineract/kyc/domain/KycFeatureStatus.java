@@ -14,95 +14,124 @@ import java.time.OffsetDateTime;
 @Table(name = "m_client_kyc_feature_status")
 public class KycFeatureStatus {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    // ── Back-reference to parent (with @JsonIgnore to prevent serialization loops)
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "kyc_verification_id", nullable = false)
-    private KycVerification kycVerification;
+  // ── Back-reference to parent (with @JsonIgnore to prevent serialization loops)
+  @JsonIgnore
+  @ManyToOne(fetch = FetchType.EAGER, optional = false)
+  @JoinColumn(name = "kyc_verification_id", nullable = false)
+  private KycVerification kycVerification;
 
-    @Column(name = "face_matches", nullable = false)
-    private Boolean faceMatches;
+  @Column(name = "face_matches", nullable = false)
+  private Boolean faceMatches;
 
-    @Column(name = "id_verifications", nullable = false)
-    private Boolean idVerifications;
+  @Column(name = "id_verifications", nullable = false)
+  private Boolean idVerifications;
 
-    @Column(name = "aml_screenings", nullable = false)
-    private Boolean amlScreenings;
+  @Column(name = "aml_screenings", nullable = false)
+  private Boolean amlScreenings;
 
-    @Column(name = "decision", nullable = false)
-    private Boolean decision;
+  @Column(name = "decision", nullable = false)
+  private Boolean decision;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+  @Column(name = "created_by", nullable = false)
+  private Long createdBy;
 
-    @Column(name = "created_on_utc", nullable = false)
-    private OffsetDateTime createdOnUtc;
+  @Column(name = "created_on_utc", nullable = false)
+  private OffsetDateTime createdOnUtc;
 
-    @Column(name = "last_modified_by", nullable = false)
-    private Long lastModifiedBy;
+  @Column(name = "last_modified_by", nullable = false)
+  private Long lastModifiedBy;
 
-    @Column(name = "last_modified_on_utc", nullable = false)
-    private OffsetDateTime lastModifiedOnUtc;
-    
-    @Column(name = "kyc_status", nullable = false, length = 50)
-    private String kycStatus;
+  @Column(name = "last_modified_on_utc", nullable = false)
+  private OffsetDateTime lastModifiedOnUtc;
 
-    // ── JPA Constructor ──────────────────────────────────────
+  @Column(name = "kyc_status", nullable = false, length = 50)
+  private String kycStatus;
 
-    protected KycFeatureStatus() {}
+  // ── JPA Constructor ──────────────────────────────────────
 
-    // ── Factory Method ───────────────────────────────────────
+  protected KycFeatureStatus() {}
 
-    public static KycFeatureStatus create(final Boolean faceMatches,
-                                          final Boolean idVerifications,
-                                          final Boolean amlScreenings,
-                                          final Boolean decision,
-                                          final String kycStatus,
-                                          final Long createdBy) {
-        final KycFeatureStatus fs = new KycFeatureStatus();
-        // Default to FALSE if null is passed
-        fs.faceMatches = faceMatches != null ? faceMatches : Boolean.FALSE;
-        fs.idVerifications = idVerifications != null ? idVerifications : Boolean.FALSE;
-        fs.amlScreenings = amlScreenings != null ? amlScreenings : Boolean.FALSE;
-        fs.decision = decision != null ? decision : Boolean.FALSE;
-        fs.kycStatus = kycStatus != null ? kycStatus : "In Review";
-        fs.createdBy = createdBy;
-        fs.lastModifiedBy = createdBy;
-        final OffsetDateTime now = OffsetDateTime.now();
-        fs.createdOnUtc = now;
-        fs.lastModifiedOnUtc = now;
-        return fs;
-    }
+  // ── Factory Method ───────────────────────────────────────
 
-    // ── Relationship Setter ──────────────────────────────────
+  public static KycFeatureStatus create(
+      final Boolean faceMatches,
+      final Boolean idVerifications,
+      final Boolean amlScreenings,
+      final Boolean decision,
+      final String kycStatus,
+      final Long createdBy) {
+    final KycFeatureStatus fs = new KycFeatureStatus();
+    // Default to FALSE if null is passed
+    fs.faceMatches = faceMatches != null ? faceMatches : Boolean.FALSE;
+    fs.idVerifications = idVerifications != null ? idVerifications : Boolean.FALSE;
+    fs.amlScreenings = amlScreenings != null ? amlScreenings : Boolean.FALSE;
+    fs.decision = decision != null ? decision : Boolean.FALSE;
+    fs.kycStatus = kycStatus != null ? kycStatus : "In Review";
+    fs.createdBy = createdBy;
+    fs.lastModifiedBy = createdBy;
+    final OffsetDateTime now = OffsetDateTime.now();
+    fs.createdOnUtc = now;
+    fs.lastModifiedOnUtc = now;
+    return fs;
+  }
 
-    public void setKycVerification(final KycVerification kycVerification) {
-        this.kycVerification = kycVerification;
-    }
+  // ── Relationship Setter ──────────────────────────────────
 
-    // ── Getters ──────────────────────────────────────────────
+  public void setKycVerification(final KycVerification kycVerification) {
+    this.kycVerification = kycVerification;
+  }
 
-    public Long getId() { return id; }
+  // ── Getters ──────────────────────────────────────────────
 
-    /**
-     * Convenience getter to extract the verification ID without 
-     * triggering the full parent object serialization.
-     */
-    public Long getKycVerificationId() {
-        return kycVerification != null ? kycVerification.getId() : null;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Boolean getFaceMatches() { return faceMatches; }
-    public Boolean getIdVerifications() { return idVerifications; }
-    public Boolean getAmlScreenings() { return amlScreenings; }
-    public Boolean getDecision() { return decision; }
-    public String getKycStatus() { return kycStatus; }
-    public Long getCreatedBy() { return createdBy; }
-    public OffsetDateTime getCreatedOnUtc() { return createdOnUtc; }
-    public Long getLastModifiedBy() { return lastModifiedBy; }
-    public OffsetDateTime getLastModifiedOnUtc() { return lastModifiedOnUtc; }
+  /**
+   * Convenience getter to extract the verification ID without triggering the full parent object
+   * serialization.
+   */
+  public Long getKycVerificationId() {
+    return kycVerification != null ? kycVerification.getId() : null;
+  }
+
+  public Boolean getFaceMatches() {
+    return faceMatches;
+  }
+
+  public Boolean getIdVerifications() {
+    return idVerifications;
+  }
+
+  public Boolean getAmlScreenings() {
+    return amlScreenings;
+  }
+
+  public Boolean getDecision() {
+    return decision;
+  }
+
+  public String getKycStatus() {
+    return kycStatus;
+  }
+
+  public Long getCreatedBy() {
+    return createdBy;
+  }
+
+  public OffsetDateTime getCreatedOnUtc() {
+    return createdOnUtc;
+  }
+
+  public Long getLastModifiedBy() {
+    return lastModifiedBy;
+  }
+
+  public OffsetDateTime getLastModifiedOnUtc() {
+    return lastModifiedOnUtc;
+  }
 }

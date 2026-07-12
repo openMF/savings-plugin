@@ -19,7 +19,7 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the new service id
    */
   CommandProcessingResult createOfficeService(Long officeId, String jsonBody);
-  
+
   /**
    * Updates an existing office service, scoped to the given office.
    *
@@ -38,7 +38,7 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the deleted service id
    */
   CommandProcessingResult deleteOfficeService(Long officeId, Long serviceId);
-  
+
   /**
    * Creates a new address for an office.
    *
@@ -47,7 +47,7 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the new address id
    */
   CommandProcessingResult createOfficeAddress(Long officeId, String jsonBody);
-  
+
   /**
    * Updates an existing office address, scoped to the given office.
    *

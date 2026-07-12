@@ -22,7 +22,7 @@ public class SavingsServiceWarning implements InitializingBean {
     log.warn("*                                                *");
     log.warn("*                   Mifos X                      *");
     log.warn("*                Savings Plugin                  *");
-    log.warn("*                   Enabled                      *");    
+    log.warn("*                   Enabled                      *");
     log.warn("*                                                *");
     log.warn("**************************************************");
   }

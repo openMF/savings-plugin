@@ -6,11 +6,11 @@
  */
 package org.apache.fineract.config;
 
-import org.apache.fineract.config.SavingsModuleIsEnabledCondition;
-import org.apache.fineract.infrastructure.core.config.FineractProperties;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.Test;
 import static org.mockito.Mockito.mock;
+
+import org.apache.fineract.infrastructure.core.config.FineractProperties;
+import org.junit.jupiter.api.Test;
 
 class SavingsModuleIsEnabledConditionTest {
 

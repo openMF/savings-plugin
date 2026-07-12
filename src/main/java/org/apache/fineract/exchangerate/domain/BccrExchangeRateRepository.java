@@ -24,7 +24,8 @@ public interface BccrExchangeRateRepository extends JpaRepository<BccrExchangeRa
 
   List<BccrExchangeRate> findByRateDateBetweenOrderByRateDateDesc(LocalDate from, LocalDate to);
 
-  @Query("SELECT r FROM BccrExchangeRate r WHERE r.rateDate = (SELECT MAX(r2.rateDate) FROM BccrExchangeRate r2)")
+  @Query(
+      "SELECT r FROM BccrExchangeRate r WHERE r.rateDate = (SELECT MAX(r2.rateDate) FROM BccrExchangeRate r2)")
   Optional<BccrExchangeRate> findLatestRate();
 
   @Modifying
