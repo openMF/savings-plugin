@@ -69,4 +69,9 @@ public interface BccrExchangeRateService {
    * @return the daily rate DTO, or empty if no rate is available
    */
   Optional<BccrDailyRate> getCurrentDailyRate();
+  
+    BccrExchangeRate createRate(BccrExchangeRate rate);
+    Optional<BccrExchangeRate> getRateById(Long id);
+    BccrExchangeRate updateRate(BccrExchangeRate rate);
+    void deleteRate(Long id);
 }

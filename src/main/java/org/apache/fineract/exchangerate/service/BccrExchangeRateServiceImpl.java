@@ -213,4 +213,46 @@ public class BccrExchangeRateServiceImpl implements BccrExchangeRateService {
                     .targetCurrency(rate.getTargetCurrency())
                     .build());
   }
+  
+  @Override
+    @Transactional
+    public BccrExchangeRate createRate(BccrExchangeRate rate) {
+        if (rate.getRateDate() == null) {
+            rate.setRateDate(LocalDate.now());
+        }
+        if (rate.getFetchedAt() == null) {
+            rate.setFetchedAt(LocalDateTime.now());
+        }
+        if (rate.getSourceCurrency() == null) {
+            rate.setSourceCurrency("USD");
+        }
+        if (rate.getTargetCurrency() == null) {
+            rate.setTargetCurrency("CRC");
+        }
+        return rateRepository.save(rate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<BccrExchangeRate> getRateById(Long id) {
+        return rateRepository.findById(id);
+    }
+
+    @Override
+    @Transactional
+    public BccrExchangeRate updateRate(BccrExchangeRate rate) {
+        if (!rateRepository.existsById(rate.getId())) {
+            throw new IllegalArgumentException("Exchange rate not found with id: " + rate.getId());
+        }
+        return rateRepository.save(rate);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRate(Long id) {
+        if (!rateRepository.existsById(id)) {
+            throw new IllegalArgumentException("Exchange rate not found with id: " + id);
+        }
+        rateRepository.deleteById(id);
+    }
 }
