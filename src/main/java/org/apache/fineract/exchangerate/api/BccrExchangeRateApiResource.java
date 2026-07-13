@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -89,10 +90,15 @@ public class BccrExchangeRateApiResource {
   public String createRate(final String apiRequestBodyAsJson) {
     context.authenticatedUser().validateHasCreatePermission("EXCHANGE_RATE");
 
+    // 1. Deserializar a DTO (evita problemas de Gson con LocalDate)
     BccrExchangeRateRequest req = gson.fromJson(apiRequestBodyAsJson, BccrExchangeRateRequest.class);
-    BccrExchangeRate rate = new BccrExchangeRate();
     
-    rate.setRateDate(req.getRateDate() != null ? req.getRateDate() : LocalDate.now());
+    // 2. Convertir String a LocalDate manualmente
+    LocalDate date = LocalDate.parse(req.getRateDate(), DATE_FORMAT);
+    
+    // 3. Mapear a la entidad de dominio
+    BccrExchangeRate rate = new BccrExchangeRate();
+    rate.setRateDate(date);
     rate.setBuyIndicatorCode(req.getBuyIndicatorCode());
     rate.setSellIndicatorCode(req.getSellIndicatorCode());
     rate.setBuyRate(req.getBuyRate());
@@ -100,11 +106,32 @@ public class BccrExchangeRateApiResource {
     rate.setReferenceRate(req.getReferenceRate());
     rate.setSourceCurrency(req.getSourceCurrency() != null ? req.getSourceCurrency() : "USD");
     rate.setTargetCurrency(req.getTargetCurrency() != null ? req.getTargetCurrency() : "CRC");
+    rate.setFetchedAt(LocalDateTime.now());
     rate.setLatest(req.getLatest() != null ? req.getLatest() : false);
-    rate.setFetchedAt(java.time.LocalDateTime.now());
 
-    BccrExchangeRate createdRate = exchangeRateService.createRate(rate);
-    return gson.toJson(Map.of("status", "success", "rate", rateToJson(createdRate)));
+    // 4. Guardar
+    BccrExchangeRate savedRate = exchangeRateService.createRate(rate);
+    
+    Map<String, Object> response = new HashMap<>();
+    response.put("status", "success");
+    response.put("message", "Exchange rate created successfully");
+    response.put("rate", rateToJson(savedRate));
+    
+    return gson.toJson(response);
+  }
+
+  private String rateToJson(BccrExchangeRate rate) {
+    Map<String, Object> json = new HashMap<>();
+    json.put("id", rate.getId());
+    json.put("rateDate", rate.getRateDate().toString());
+    json.put("buyRate", rate.getBuyRate());
+    json.put("sellRate", rate.getSellRate());
+    json.put("referenceRate", rate.getReferenceRate());
+    json.put("sourceCurrency", rate.getSourceCurrency());
+    json.put("targetCurrency", rate.getTargetCurrency());
+    json.put("fetchedAt", rate.getFetchedAt().toString());
+    json.put("latest", rate.isLatest());
+    return gson.toJson(json);
   }
 
   @PUT
@@ -118,8 +145,11 @@ public class BccrExchangeRateApiResource {
     BccrExchangeRateRequest req = gson.fromJson(apiRequestBodyAsJson, BccrExchangeRateRequest.class);
     BccrExchangeRate rate = exchangeRateService.getRateById(id)
         .orElseThrow(() -> new IllegalArgumentException("Exchange rate not found with id: " + id));
+    
+    // 2. Convertir String a LocalDate manualmente
+    LocalDate date = LocalDate.parse(req.getRateDate(), DATE_FORMAT);
 
-    if (req.getRateDate() != null) rate.setRateDate(req.getRateDate());
+    if (req.getRateDate() != null) rate.setRateDate(date);
     if (req.getBuyIndicatorCode() != null) rate.setBuyIndicatorCode(req.getBuyIndicatorCode());
     if (req.getSellIndicatorCode() != null) rate.setSellIndicatorCode(req.getSellIndicatorCode());
     if (req.getBuyRate() != null) rate.setBuyRate(req.getBuyRate());
@@ -161,17 +191,5 @@ public class BccrExchangeRateApiResource {
         .orElse("{\"status\": \"error\", \"message\": \"Failed to fetch exchange rate from BCCR\"}");
   }
 
-  private String rateToJson(BccrExchangeRate rate) {
-    Map<String, Object> json = new HashMap<>();
-    json.put("id", rate.getId());
-    json.put("rateDate", rate.getRateDate().toString());
-    json.put("buyRate", rate.getBuyRate());
-    json.put("sellRate", rate.getSellRate());
-    json.put("referenceRate", rate.getReferenceRate());
-    json.put("sourceCurrency", rate.getSourceCurrency());
-    json.put("targetCurrency", rate.getTargetCurrency());
-    json.put("fetchedAt", rate.getFetchedAt().toString());
-    json.put("latest", rate.isLatest());
-    return gson.toJson(json);
-  }
+ 
 }

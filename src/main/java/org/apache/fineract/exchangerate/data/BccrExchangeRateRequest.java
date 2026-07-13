@@ -8,11 +8,10 @@ package org.apache.fineract.exchangerate.data;
 
 import lombok.Data;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Data
 public class BccrExchangeRateRequest {
-    private LocalDate rateDate;
+    private String rateDate;
     private String buyIndicatorCode;
     private String sellIndicatorCode;
     private BigDecimal buyRate;
