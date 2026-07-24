@@ -100,6 +100,67 @@ class OfficeExtensionWritePlatformServiceImplTest {
   }
 
   @Test
+  void createOfficeService_nullServiceName_throws() {
+    mockAuth();
+    when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(OFFICE_ID))).thenReturn(1);
+
+    String json = "{\"workingHours\":\"Mon-Fri\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.extractStringNamed("serviceName", element)).thenReturn(null);
+
+    assertThrows(
+        PlatformApiDataValidationException.class, () -> service.createOfficeService(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never())
+        .update(
+            anyString(),
+            any(MapSqlParameterSource.class),
+            any(org.springframework.jdbc.support.GeneratedKeyHolder.class),
+            any(String[].class));
+  }
+
+  @Test
+  void createOfficeService_blankServiceName_throws() {
+    mockAuth();
+    when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(OFFICE_ID))).thenReturn(1);
+
+    String json = "{\"serviceName\":\"   \",\"workingHours\":\"Mon-Fri\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.extractStringNamed("serviceName", element)).thenReturn("   ");
+
+    assertThrows(
+        PlatformApiDataValidationException.class, () -> service.createOfficeService(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never())
+        .update(
+            anyString(),
+            any(MapSqlParameterSource.class),
+            any(org.springframework.jdbc.support.GeneratedKeyHolder.class),
+            any(String[].class));
+  }
+
+  @Test
+  void createOfficeService_serviceNameTooLong_throws() {
+    mockAuth();
+    when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(OFFICE_ID))).thenReturn(1);
+
+    final String serviceName = "A".repeat(256);
+    String json = "{\"serviceName\":\"" + serviceName + "\",\"workingHours\":\"Mon-Fri\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.extractStringNamed("serviceName", element)).thenReturn(serviceName);
+
+    assertThrows(
+        PlatformApiDataValidationException.class, () -> service.createOfficeService(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never())
+        .update(
+            anyString(),
+            any(MapSqlParameterSource.class),
+            any(org.springframework.jdbc.support.GeneratedKeyHolder.class),
+            any(String[].class));
+  }
+
+  @Test
   void updateOfficeService_withServiceName_updatesAndReturnsChanges() {
     mockAuth();
 
@@ -137,6 +198,79 @@ class OfficeExtensionWritePlatformServiceImplTest {
 
     assertNotNull(result);
     assertEquals(3, result.getChanges().size());
+  }
+
+  @Test
+  void updateOfficeService_withServiceExternalIdOnly_updatesAndReturnsChanges() {
+    mockAuth();
+
+    String json = "{\"serviceExternalId\":\"external-1\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.parameterExists("serviceName", element)).thenReturn(false);
+    when(fromJsonHelper.parameterExists("serviceExternalId", element)).thenReturn(true);
+    when(fromJsonHelper.extractStringNamed("serviceExternalId", element)).thenReturn("external-1");
+    when(fromJsonHelper.parameterExists("workingHours", element)).thenReturn(false);
+    when(namedJdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+
+    CommandProcessingResult result = service.updateOfficeService(OFFICE_ID, SERVICE_ID, json);
+
+    assertNotNull(result);
+    assertEquals(1, result.getChanges().size());
+    assertEquals("external-1", result.getChanges().get("serviceExternalId"));
+  }
+
+  @Test
+  void updateOfficeService_withWorkingHoursOnly_updatesAndReturnsChanges() {
+    mockAuth();
+
+    String json = "{\"workingHours\":\"Mon-Fri\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.parameterExists("serviceName", element)).thenReturn(false);
+    when(fromJsonHelper.parameterExists("serviceExternalId", element)).thenReturn(false);
+    when(fromJsonHelper.parameterExists("workingHours", element)).thenReturn(true);
+    when(fromJsonHelper.extractStringNamed("workingHours", element)).thenReturn("Mon-Fri");
+    when(namedJdbcTemplate.update(anyString(), any(MapSqlParameterSource.class))).thenReturn(1);
+
+    CommandProcessingResult result = service.updateOfficeService(OFFICE_ID, SERVICE_ID, json);
+
+    assertNotNull(result);
+    assertEquals(1, result.getChanges().size());
+    assertEquals("Mon-Fri", result.getChanges().get("workingHours"));
+  }
+
+  @Test
+  void updateOfficeService_blankServiceName_throws() {
+    mockAuth();
+
+    String json = "{\"serviceName\":\" \"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.parameterExists("serviceName", element)).thenReturn(true);
+    when(fromJsonHelper.extractStringNamed("serviceName", element)).thenReturn(" ");
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> service.updateOfficeService(OFFICE_ID, SERVICE_ID, json));
+    verify(namedJdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
+  }
+
+  @Test
+  void updateOfficeService_serviceNameTooLong_throws() {
+    mockAuth();
+
+    final String serviceName = "A".repeat(256);
+    String json = "{\"serviceName\":\"" + serviceName + "\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.parameterExists("serviceName", element)).thenReturn(true);
+    when(fromJsonHelper.extractStringNamed("serviceName", element)).thenReturn(serviceName);
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> service.updateOfficeService(OFFICE_ID, SERVICE_ID, json));
+    verify(namedJdbcTemplate, never()).update(anyString(), any(MapSqlParameterSource.class));
   }
 
   @Test
@@ -253,6 +387,46 @@ class OfficeExtensionWritePlatformServiceImplTest {
         .thenReturn(new java.math.BigDecimal("95.0"));
     when(fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element))
         .thenReturn(new java.math.BigDecimal("-99.13"));
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> service.saveOfficeGeolocation(OFFICE_ID, json));
+  }
+
+  @Test
+  void saveOfficeGeolocation_longitudeAboveMaximum_throws() {
+    mockAuth();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json = "{\"latitude\":\"19.43\",\"longitude\":\"181.0\",\"locale\":\"en\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element))
+        .thenReturn(new java.math.BigDecimal("19.43"));
+    when(fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element))
+        .thenReturn(new java.math.BigDecimal("181.0"));
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> service.saveOfficeGeolocation(OFFICE_ID, json));
+  }
+
+  @Test
+  void saveOfficeGeolocation_longitudeBelowMinimum_throws() {
+    mockAuth();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json = "{\"latitude\":\"19.43\",\"longitude\":\"-181.0\",\"locale\":\"en\"}";
+    var element = new com.google.gson.JsonParser().parse(json);
+    when(fromJsonHelper.parse(json)).thenReturn(element);
+    when(fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element))
+        .thenReturn(new java.math.BigDecimal("19.43"));
+    when(fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element))
+        .thenReturn(new java.math.BigDecimal("-181.0"));
 
     assertThrows(
         PlatformApiDataValidationException.class,
