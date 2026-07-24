@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.List;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -20,6 +21,8 @@ import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSer
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
+import org.apache.fineract.office.data.OfficeWorkingHoursData;
+import org.apache.fineract.office.data.OfficeWorkingHoursDayData;
 import org.apache.fineract.office.service.OfficeExtensionReadPlatformService;
 import org.apache.fineract.office.service.OfficeExtensionWritePlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -37,6 +40,7 @@ class OfficeExtensionApiResourceTest {
   @Mock private OfficeExtensionWritePlatformService writeService;
   @Mock private DefaultToApiJsonSerializer<OfficeServiceData> serviceSerializer;
   @Mock private DefaultToApiJsonSerializer<OfficeGeolocationData> geolocationSerializer;
+  @Mock private DefaultToApiJsonSerializer<OfficeWorkingHoursData> workingHoursSerializer;
 
   private OfficeExtensionApiResource resource;
 
@@ -47,12 +51,18 @@ class OfficeExtensionApiResourceTest {
   void setUp() {
     resource =
         new OfficeExtensionApiResource(
-            context, readService, writeService, serviceSerializer, geolocationSerializer);
+            context,
+            readService,
+            writeService,
+            serviceSerializer,
+            geolocationSerializer,
+            workingHoursSerializer);
   }
 
-  private void mockAuthenticatedUser() {
+  private AppUser mockAuthenticatedUser() {
     AppUser user = mock(AppUser.class);
     when(context.authenticatedUser()).thenReturn(user);
+    return user;
   }
 
   @Test
@@ -157,5 +167,44 @@ class OfficeExtensionApiResourceTest {
 
     assertNotNull(result);
     verify(writeService).deleteOfficeGeolocation(OFFICE_ID);
+  }
+
+  @Test
+  void retrieveOfficeWorkingHours_requiresReadPermissionAndReturnsData() {
+    AppUser user = mockAuthenticatedUser();
+    OfficeWorkingHoursData data =
+        OfficeWorkingHoursData.instance(
+            OFFICE_ID,
+            List.of(
+                OfficeWorkingHoursDayData.instance(
+                    OFFICE_ID,
+                    "MONDAY",
+                    true,
+                    LocalTime.parse("09:00"),
+                    LocalTime.parse("17:00"))));
+    when(readService.retrieveOfficeWorkingHours(OFFICE_ID)).thenReturn(data);
+    when(workingHoursSerializer.serializeResult(data)).thenReturn("{}");
+
+    String result = resource.retrieveOfficeWorkingHours(OFFICE_ID);
+
+    assertNotNull(result);
+    verify(user).validateHasReadPermission("OFFICE");
+    verify(readService).retrieveOfficeWorkingHours(OFFICE_ID);
+  }
+
+  @Test
+  void saveOfficeWorkingHours_requiresUpdatePermissionAndDelegatesToWriteService() {
+    AppUser user = mockAuthenticatedUser();
+    CommandProcessingResult cpr =
+        new CommandProcessingResultBuilder().withOfficeId(OFFICE_ID).build();
+    String jsonBody = "{\"days\":[]}";
+    when(writeService.saveOfficeWorkingHours(OFFICE_ID, jsonBody)).thenReturn(cpr);
+    when(workingHoursSerializer.serializeResult(cpr)).thenReturn("{}");
+
+    String result = resource.saveOfficeWorkingHours(OFFICE_ID, jsonBody);
+
+    assertNotNull(result);
+    verify(user).validateHasUpdatePermission("OFFICE");
+    verify(writeService).saveOfficeWorkingHours(OFFICE_ID, jsonBody);
   }
 }

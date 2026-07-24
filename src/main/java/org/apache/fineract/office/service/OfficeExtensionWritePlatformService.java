@@ -83,4 +83,13 @@ public interface OfficeExtensionWritePlatformService {
    * @return the result containing the deleted record id
    */
   CommandProcessingResult deleteOfficeGeolocation(Long officeId);
+
+  /**
+   * Creates or replaces the single weekly working-hours schedule for an office.
+   *
+   * @param officeId the office identifier
+   * @param jsonBody the JSON request body
+   * @return the result containing the office id and applied changes
+   */
+  CommandProcessingResult saveOfficeWorkingHours(Long officeId, String jsonBody);
 }

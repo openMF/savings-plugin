@@ -30,6 +30,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.office.data.OfficeAddressData;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
+import org.apache.fineract.office.data.OfficeWorkingHoursData;
 import org.apache.fineract.office.service.OfficeExtensionReadPlatformService;
 import org.apache.fineract.office.service.OfficeExtensionWritePlatformService;
 import org.springframework.stereotype.Component;
@@ -55,6 +56,7 @@ public class OfficeExtensionApiResource {
   private final OfficeExtensionWritePlatformService writeService;
   private final DefaultToApiJsonSerializer<OfficeServiceData> serviceSerializer;
   private final DefaultToApiJsonSerializer<OfficeGeolocationData> geolocationSerializer;
+  private final DefaultToApiJsonSerializer<OfficeWorkingHoursData> workingHoursSerializer;
 
   /**
    * Lists all services associated with the given office.
@@ -312,5 +314,51 @@ public class OfficeExtensionApiResource {
     this.context.authenticatedUser().validateHasDeletePermission(RESOURCE_NAME_FOR_PERMISSIONS);
     final CommandProcessingResult result = writeService.deleteOfficeGeolocation(officeId);
     return geolocationSerializer.serializeResult(result);
+  }
+
+  /**
+   * Retrieves the weekly working-hours schedule for the given office.
+   *
+   * @param officeId the office identifier
+   * @return JSON representation of the office's weekly schedule
+   */
+  @GET
+  @Path("{officeId}/schedules")
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "Retrieve Office Working Hours",
+      description = "Returns the single weekly working-hours schedule for the specified office.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "OK",
+      content = @Content(schema = @Schema(implementation = OfficeWorkingHoursData.class)))
+  public String retrieveOfficeWorkingHours(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId) {
+    this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final OfficeWorkingHoursData data = readService.retrieveOfficeWorkingHours(officeId);
+    return workingHoursSerializer.serializeResult(data);
+  }
+
+  /**
+   * Creates or replaces the weekly working-hours schedule for the given office.
+   *
+   * @param officeId the office identifier
+   * @param jsonBody the JSON request body containing the seven weekday rows
+   * @return JSON with the office id and schedule changes
+   */
+  @PUT
+  @Path("{officeId}/schedules")
+  @Consumes({MediaType.APPLICATION_JSON})
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "Save Office Working Hours",
+      description = "Creates or replaces the single weekly working-hours schedule for the office.")
+  @ApiResponse(responseCode = "200", description = "OK")
+  public String saveOfficeWorkingHours(
+      @PathParam("officeId") @Parameter(description = "officeId") final Long officeId,
+      @Parameter(hidden = true) final String jsonBody) {
+    this.context.authenticatedUser().validateHasUpdatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    final CommandProcessingResult result = writeService.saveOfficeWorkingHours(officeId, jsonBody);
+    return workingHoursSerializer.serializeResult(result);
   }
 }
