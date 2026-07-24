@@ -61,6 +61,7 @@ public class OfficeExtensionWritePlatformServiceImpl
 
     final JsonElement element = this.fromJsonHelper.parse(jsonBody);
     final String serviceName = this.fromJsonHelper.extractStringNamed("serviceName", element);
+    validateServiceName(serviceName);
     final String serviceExternalId =
         this.fromJsonHelper.extractStringNamed("serviceExternalId", element);
     final String workingHours = this.fromJsonHelper.extractStringNamed("workingHours", element);
@@ -103,6 +104,7 @@ public class OfficeExtensionWritePlatformServiceImpl
 
     if (this.fromJsonHelper.parameterExists("serviceName", element)) {
       final String serviceName = this.fromJsonHelper.extractStringNamed("serviceName", element);
+      validateServiceName(serviceName);
       sql.append("service_name = :serviceName");
       params.addValue("serviceName", serviceName);
       changes.put("serviceName", serviceName);
@@ -223,6 +225,17 @@ public class OfficeExtensionWritePlatformServiceImpl
           "SELECT 1 FROM m_office WHERE id = ?", Integer.class, officeId);
     } catch (final EmptyResultDataAccessException e) {
       throw new OfficeNotFoundException(officeId, e);
+    }
+  }
+
+  private void validateServiceName(final String serviceName) {
+    final List<ApiParameterError> errors = new ArrayList<>();
+    final DataValidatorBuilder validator = new DataValidatorBuilder(errors).resource(RESOURCE_NAME);
+
+    validator.parameter("serviceName").value(serviceName).notBlank().notExceedingLengthOf(255);
+
+    if (!errors.isEmpty()) {
+      throw new PlatformApiDataValidationException(errors);
     }
   }
 
