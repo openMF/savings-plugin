@@ -7,11 +7,20 @@
 package org.apache.fineract.office.service;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import java.sql.Time;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -27,6 +36,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
@@ -47,6 +57,7 @@ public class OfficeExtensionWritePlatformServiceImpl
   private static final BigDecimal LAT_MAX = new BigDecimal("90");
   private static final BigDecimal LNG_MIN = new BigDecimal("-180");
   private static final BigDecimal LNG_MAX = new BigDecimal("180");
+  private static final int WEEKDAY_COUNT = 7;
 
   private final JdbcTemplate jdbcTemplate;
   private final NamedParameterJdbcTemplate namedJdbcTemplate;
@@ -219,6 +230,42 @@ public class OfficeExtensionWritePlatformServiceImpl
     return new CommandProcessingResultBuilder().withOfficeId(officeId).build();
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public CommandProcessingResult saveOfficeWorkingHours(
+      final Long officeId, final String jsonBody) {
+    this.context.authenticatedUser();
+    validateOfficeExists(officeId);
+
+    final JsonElement element = this.fromJsonHelper.parse(jsonBody);
+    final List<OfficeWorkingHoursDayCommand> days = parseAndValidateWorkingHours(element);
+
+    this.jdbcTemplate.update(
+        "DELETE FROM m_selfservice_office_working_hours WHERE office_id = ?", officeId);
+
+    final SqlParameterSource[] batch =
+        days.stream()
+            .map(
+                day ->
+                    new MapSqlParameterSource()
+                        .addValue("officeId", officeId)
+                        .addValue("weekday", day.weekday.name())
+                        .addValue("enabled", day.enabled)
+                        .addValue("openingTime", toSqlTime(day.openingTime))
+                        .addValue("closingTime", toSqlTime(day.closingTime)))
+            .toArray(SqlParameterSource[]::new);
+
+    this.namedJdbcTemplate.batchUpdate(
+        "INSERT INTO m_selfservice_office_working_hours"
+            + " (office_id, weekday, enabled, opening_time, closing_time)"
+            + " VALUES (:officeId, :weekday, :enabled, :openingTime, :closingTime)",
+        batch);
+
+    final Map<String, Object> changes = new HashMap<>();
+    changes.put("days", days);
+    return new CommandProcessingResultBuilder().withOfficeId(officeId).with(changes).build();
+  }
+
   private void validateOfficeExists(final Long officeId) {
     try {
       this.jdbcTemplate.queryForObject(
@@ -268,6 +315,168 @@ public class OfficeExtensionWritePlatformServiceImpl
     }
     if (!errors.isEmpty()) {
       throw new PlatformApiDataValidationException(errors);
+    }
+  }
+
+  private List<OfficeWorkingHoursDayCommand> parseAndValidateWorkingHours(
+      final JsonElement element) {
+    final List<ApiParameterError> errors = new ArrayList<>();
+    final DataValidatorBuilder validator =
+        new DataValidatorBuilder(errors).resource("officeWorkingHours");
+
+    final JsonArray daysArray =
+        this.fromJsonHelper.parameterExists("days", element)
+            ? this.fromJsonHelper.extractJsonArrayNamed("days", element)
+            : null;
+
+    validator.parameter("days").value(daysArray).notNull();
+    if (!errors.isEmpty()) {
+      throw new PlatformApiDataValidationException(errors);
+    }
+
+    validator.parameter("days").value(daysArray).jsonArrayNotEmpty();
+    if (daysArray.size() != WEEKDAY_COUNT) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.working.hours.days.must.contain.full.week",
+              "Office working hours must contain exactly seven weekdays",
+              "days",
+              daysArray.size()));
+    }
+
+    final Map<java.time.DayOfWeek, OfficeWorkingHoursDayCommand> days =
+        new EnumMap<>(java.time.DayOfWeek.class);
+    for (int i = 0; i < daysArray.size(); i++) {
+      final JsonElement dayElement = daysArray.get(i);
+      if (dayElement == null || !dayElement.isJsonObject()) {
+        errors.add(
+            ApiParameterError.parameterError(
+                "validation.msg.office.working.hours.day.must.be.object",
+                "Each office working-hours day must be an object",
+                "days[" + i + "]"));
+        continue;
+      }
+
+      final JsonObject dayObject = dayElement.getAsJsonObject();
+      final String weekdayValue = this.fromJsonHelper.extractStringNamed("weekday", dayObject);
+      final Boolean enabled = this.fromJsonHelper.extractBooleanNamed("enabled", dayObject);
+
+      validator.parameter("days[" + i + "].weekday").value(weekdayValue).notBlank();
+      validator.parameter("days[" + i + "].enabled").value(enabled).notNull();
+
+      final java.time.DayOfWeek weekday = parseWeekday(weekdayValue, i, errors);
+      final LocalTime openingTime = parseTime("openingTime", dayObject, i, errors);
+      final LocalTime closingTime = parseTime("closingTime", dayObject, i, errors);
+
+      if (weekday != null) {
+        if (days.containsKey(weekday)) {
+          errors.add(
+              ApiParameterError.parameterError(
+                  "validation.msg.office.working.hours.weekday.duplicate",
+                  "Office working hours cannot contain duplicate weekdays",
+                  "days[" + i + "].weekday",
+                  weekdayValue));
+        } else {
+          days.put(weekday, new OfficeWorkingHoursDayCommand(weekday, enabled, openingTime, closingTime));
+        }
+      }
+
+      if (Boolean.TRUE.equals(enabled)) {
+        validator.parameter("days[" + i + "].openingTime").value(openingTime).notNull();
+        validator.parameter("days[" + i + "].closingTime").value(closingTime).notNull();
+        if (openingTime != null
+            && closingTime != null
+            && !openingTime.isBefore(closingTime)) {
+          errors.add(
+              ApiParameterError.parameterError(
+                  "validation.msg.office.working.hours.opening.before.closing",
+                  "Opening time must be before closing time for enabled weekdays",
+                  "days[" + i + "].openingTime",
+                  openingTime));
+        }
+      }
+    }
+
+    for (final java.time.DayOfWeek weekday : EnumSet.allOf(java.time.DayOfWeek.class)) {
+      if (!days.containsKey(weekday)) {
+        errors.add(
+            ApiParameterError.parameterError(
+                "validation.msg.office.working.hours.weekday.missing",
+                "Office working hours must include " + weekday.name(),
+                "days",
+                weekday.name()));
+      }
+    }
+
+    if (!errors.isEmpty()) {
+      throw new PlatformApiDataValidationException(errors);
+    }
+
+    return Arrays.stream(java.time.DayOfWeek.values()).map(days::get).toList();
+  }
+
+  private java.time.DayOfWeek parseWeekday(
+      final String weekdayValue, final int index, final List<ApiParameterError> errors) {
+    if (weekdayValue == null || weekdayValue.isBlank()) {
+      return null;
+    }
+    try {
+      return java.time.DayOfWeek.valueOf(weekdayValue.trim().toUpperCase(Locale.ENGLISH));
+    } catch (final IllegalArgumentException e) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.working.hours.weekday.invalid",
+              "Weekday must be one of MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY",
+              "days[" + index + "].weekday",
+              weekdayValue));
+      return null;
+    }
+  }
+
+  private LocalTime parseTime(
+      final String parameterName,
+      final JsonObject dayObject,
+      final int index,
+      final List<ApiParameterError> errors) {
+    if (!this.fromJsonHelper.parameterExists(parameterName, dayObject)) {
+      return null;
+    }
+    final String timeValue = this.fromJsonHelper.extractStringNamed(parameterName, dayObject);
+    if (timeValue == null || timeValue.isBlank()) {
+      return null;
+    }
+    try {
+      return LocalTime.parse(timeValue.trim());
+    } catch (final DateTimeParseException e) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.working.hours.time.invalid",
+              "Time must use a valid ISO local time value such as 09:00",
+              "days[" + index + "]." + parameterName,
+              timeValue));
+      return null;
+    }
+  }
+
+  private Time toSqlTime(final LocalTime localTime) {
+    return localTime != null ? Time.valueOf(localTime) : null;
+  }
+
+  private static final class OfficeWorkingHoursDayCommand {
+    private final java.time.DayOfWeek weekday;
+    private final Boolean enabled;
+    private final LocalTime openingTime;
+    private final LocalTime closingTime;
+
+    private OfficeWorkingHoursDayCommand(
+        final java.time.DayOfWeek weekday,
+        final Boolean enabled,
+        final LocalTime openingTime,
+        final LocalTime closingTime) {
+      this.weekday = weekday;
+      this.enabled = enabled;
+      this.openingTime = openingTime;
+      this.closingTime = closingTime;
     }
   }
 

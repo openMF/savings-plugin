@@ -33,6 +33,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 
 @ExtendWith(MockitoExtension.class)
 class OfficeExtensionWritePlatformServiceImplTest {
@@ -439,5 +440,141 @@ class OfficeExtensionWritePlatformServiceImplTest {
     service.deleteOfficeGeolocation(OFFICE_ID);
     verify(jdbcTemplate)
         .update("DELETE FROM m_selfservice_office_geolocation WHERE office_id = ?", OFFICE_ID);
+  }
+
+  @Test
+  void saveOfficeWorkingHours_validFullWeek_replacesSchedule() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+    when(jdbcTemplate.update(
+            eq("DELETE FROM m_selfservice_office_working_hours WHERE office_id = ?"),
+            eq(OFFICE_ID)))
+        .thenReturn(7);
+    when(namedJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
+        .thenReturn(new int[] {1, 1, 1, 1, 1, 1, 1});
+
+    CommandProcessingResult result =
+        scheduleService.saveOfficeWorkingHours(OFFICE_ID, validWeeklyScheduleJson());
+
+    assertNotNull(result);
+    assertEquals(OFFICE_ID, result.getOfficeId());
+    verify(jdbcTemplate)
+        .update("DELETE FROM m_selfservice_office_working_hours WHERE office_id = ?", OFFICE_ID);
+    verify(namedJdbcTemplate).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_disabledDayMayOmitTimes() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+    when(namedJdbcTemplate.batchUpdate(anyString(), any(SqlParameterSource[].class)))
+        .thenReturn(new int[] {1, 1, 1, 1, 1, 1, 1});
+
+    CommandProcessingResult result =
+        scheduleService.saveOfficeWorkingHours(OFFICE_ID, validWeeklyScheduleJson());
+
+    assertNotNull(result);
+    verify(namedJdbcTemplate).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_invalidTimes_throwValidationException() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json =
+        validWeeklyScheduleJson().replace("\"openingTime\":\"09:00\"", "\"openingTime\":\"25:00\"");
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> scheduleService.saveOfficeWorkingHours(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_enabledDayOpeningTimeMustBeBeforeClosingTime() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json =
+        validWeeklyScheduleJson().replace("\"closingTime\":\"17:00\"", "\"closingTime\":\"09:00\"");
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> scheduleService.saveOfficeWorkingHours(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_duplicateWeekday_throwsValidationException() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json = validWeeklyScheduleJson().replace("\"SUNDAY\"", "\"MONDAY\"");
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> scheduleService.saveOfficeWorkingHours(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_missingEnabled_throwsValidationException() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT 1 FROM m_office WHERE id = ?"), eq(Integer.class), eq(OFFICE_ID)))
+        .thenReturn(1);
+
+    String json = validWeeklyScheduleJson().replace("\"enabled\":true,", "");
+
+    assertThrows(
+        PlatformApiDataValidationException.class,
+        () -> scheduleService.saveOfficeWorkingHours(OFFICE_ID, json));
+    verify(namedJdbcTemplate, never()).batchUpdate(anyString(), any(SqlParameterSource[].class));
+  }
+
+  @Test
+  void saveOfficeWorkingHours_nonExistentOffice_throws() {
+    mockAuth();
+    OfficeExtensionWritePlatformServiceImpl scheduleService = serviceWithRealJsonHelper();
+    when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(999L)))
+        .thenThrow(new EmptyResultDataAccessException(1));
+
+    assertThrows(
+        OfficeNotFoundException.class,
+        () -> scheduleService.saveOfficeWorkingHours(999L, validWeeklyScheduleJson()));
+  }
+
+  private OfficeExtensionWritePlatformServiceImpl serviceWithRealJsonHelper() {
+    return new OfficeExtensionWritePlatformServiceImpl(
+        jdbcTemplate, namedJdbcTemplate, context, new FromJsonHelper());
+  }
+
+  private String validWeeklyScheduleJson() {
+    return "{\"days\":["
+        + "{\"weekday\":\"MONDAY\",\"enabled\":true,\"openingTime\":\"09:00\",\"closingTime\":\"17:00\"},"
+        + "{\"weekday\":\"TUESDAY\",\"enabled\":true,\"openingTime\":\"09:00\",\"closingTime\":\"17:00\"},"
+        + "{\"weekday\":\"WEDNESDAY\",\"enabled\":true,\"openingTime\":\"09:00\",\"closingTime\":\"17:00\"},"
+        + "{\"weekday\":\"THURSDAY\",\"enabled\":true,\"openingTime\":\"09:00\",\"closingTime\":\"17:00\"},"
+        + "{\"weekday\":\"FRIDAY\",\"enabled\":true,\"openingTime\":\"09:00\",\"closingTime\":\"17:00\"},"
+        + "{\"weekday\":\"SATURDAY\",\"enabled\":false},"
+        + "{\"weekday\":\"SUNDAY\",\"enabled\":false}"
+        + "]}";
   }
 }

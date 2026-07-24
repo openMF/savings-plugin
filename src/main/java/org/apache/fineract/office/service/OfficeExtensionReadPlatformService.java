@@ -10,6 +10,7 @@ import java.util.Collection;
 import org.apache.fineract.office.data.OfficeAddressData;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
+import org.apache.fineract.office.data.OfficeWorkingHoursData;
 
 /** Read-only platform service for retrieving office services and geolocation data. */
 public interface OfficeExtensionReadPlatformService {
@@ -37,6 +38,14 @@ public interface OfficeExtensionReadPlatformService {
    * @return the geolocation data, or {@code null} if none exists
    */
   OfficeGeolocationData retrieveOfficeGeolocation(Long officeId);
+
+  /**
+   * Retrieves the weekly working-hours schedule for the given office.
+   *
+   * @param officeId the office identifier
+   * @return the weekly schedule; contains an empty day collection if none is configured
+   */
+  OfficeWorkingHoursData retrieveOfficeWorkingHours(Long officeId);
 
   Collection<OfficeAddressData> retrieveOfficeAddrConfiguration(String entity);
 

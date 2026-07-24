@@ -55,4 +55,5 @@
   <include file="parts/043-add-bccr-permissions.xml" relativeToChangelogFile="true"/>
   <include file="parts/044-create-initial-sinpe-audit-schema.xml" relativeToChangelogFile="true"/>  
   <include file="parts/045-create-office-services-table.xml" relativeToChangelogFile="true"/>
+  <include file="parts/046-create-office-working-hours-table.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

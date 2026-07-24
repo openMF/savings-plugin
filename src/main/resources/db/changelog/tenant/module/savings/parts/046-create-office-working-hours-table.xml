@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+    <changeSet author="fineract" id="savings-046-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_selfservice_office_working_hours"/>
+            </not>
+        </preConditions>
+
+        <comment>Create office weekly working hours table</comment>
+
+        <createTable tableName="m_selfservice_office_working_hours">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weekday" type="VARCHAR(9)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opening_time" type="TIME"/>
+            <column name="closing_time" type="TIME"/>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_selfservice_office_working_hours_office"
+                                 baseTableName="m_selfservice_office_working_hours" baseColumnNames="office_id"
+                                 referencedTableName="m_office" referencedColumnNames="id"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"/>
+
+        <addUniqueConstraint constraintName="uk_selfservice_office_working_hours_office_day"
+                             tableName="m_selfservice_office_working_hours"
+                             columnNames="office_id, weekday"/>
+
+        <createIndex indexName="idx_selfservice_office_working_hours_office"
+                     tableName="m_selfservice_office_working_hours">
+            <column name="office_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

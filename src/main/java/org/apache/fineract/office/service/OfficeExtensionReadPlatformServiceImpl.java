@@ -9,12 +9,16 @@ package org.apache.fineract.office.service;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.office.data.OfficeAddressData;
 import org.apache.fineract.office.data.OfficeGeolocationData;
 import org.apache.fineract.office.data.OfficeServiceData;
+import org.apache.fineract.office.data.OfficeWorkingHoursData;
+import org.apache.fineract.office.data.OfficeWorkingHoursDayData;
+import org.apache.fineract.organisation.office.exception.OfficeNotFoundException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -87,6 +91,33 @@ public class OfficeExtensionReadPlatformServiceImpl implements OfficeExtensionRe
           officeId);
     } catch (final EmptyResultDataAccessException e) {
       return null;
+    }
+  }
+
+  @Override
+  public OfficeWorkingHoursData retrieveOfficeWorkingHours(final Long officeId) {
+    this.context.authenticatedUser();
+    validateOfficeExists(officeId);
+
+    final Collection<OfficeWorkingHoursDayData> days =
+        this.jdbcTemplate.query(
+            "SELECT wh.office_id, wh.weekday, wh.enabled, wh.opening_time, wh.closing_time"
+                + " FROM m_selfservice_office_working_hours wh WHERE wh.office_id = ?"
+                + " ORDER BY CASE wh.weekday WHEN 'MONDAY' THEN 1 WHEN 'TUESDAY' THEN 2"
+                + " WHEN 'WEDNESDAY' THEN 3 WHEN 'THURSDAY' THEN 4 WHEN 'FRIDAY' THEN 5"
+                + " WHEN 'SATURDAY' THEN 6 WHEN 'SUNDAY' THEN 7 END",
+            new OfficeWorkingHoursDayRowMapper(),
+            officeId);
+
+    return OfficeWorkingHoursData.instance(officeId, days);
+  }
+
+  private void validateOfficeExists(final Long officeId) {
+    try {
+      this.jdbcTemplate.queryForObject(
+          "SELECT 1 FROM m_office WHERE id = ?", Integer.class, officeId);
+    } catch (final EmptyResultDataAccessException e) {
+      throw new OfficeNotFoundException(officeId, e);
     }
   }
 
@@ -164,6 +195,22 @@ public class OfficeExtensionReadPlatformServiceImpl implements OfficeExtensionRe
       final BigDecimal latitude = rs.getBigDecimal("latitude");
       final BigDecimal longitude = rs.getBigDecimal("longitude");
       return OfficeGeolocationData.instance(id, officeId, latitude, longitude);
+    }
+  }
+
+  private static final class OfficeWorkingHoursDayRowMapper
+      implements RowMapper<OfficeWorkingHoursDayData> {
+    @Override
+    public OfficeWorkingHoursDayData mapRow(final ResultSet rs, final int rowNum)
+        throws SQLException {
+      final Time openingTime = rs.getTime("opening_time");
+      final Time closingTime = rs.getTime("closing_time");
+      return OfficeWorkingHoursDayData.instance(
+          rs.getLong("office_id"),
+          rs.getString("weekday"),
+          rs.getBoolean("enabled"),
+          openingTime != null ? openingTime.toLocalTime() : null,
+          closingTime != null ? closingTime.toLocalTime() : null);
     }
   }
 
