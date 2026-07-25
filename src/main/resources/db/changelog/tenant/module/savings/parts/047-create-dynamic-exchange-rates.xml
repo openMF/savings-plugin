@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright since 2026 Mifos Initiative
+
+ <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-047-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_exchange_rate"/>
+            </not>
+        </preConditions>
+
+        <comment>Create administrator-configured dynamic exchange rates table</comment>
+
+        <createTable tableName="m_exchange_rate">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source_currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="exchange_rate" type="DECIMAL(32,12)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_from" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_to" type="DATE"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+            columnNames="source_currency_code, target_currency_code, effective_from"
+            constraintName="uk_exchange_rate_pair_effective_from"
+            tableName="m_exchange_rate"/>
+
+        <sql>
+            ALTER TABLE m_exchange_rate
+            ADD CONSTRAINT ck_exchange_rate_positive CHECK (exchange_rate &gt; 0);
+        </sql>
+
+        <sql>
+            ALTER TABLE m_exchange_rate
+            ADD CONSTRAINT ck_exchange_rate_distinct_currencies
+            CHECK (source_currency_code &lt;&gt; target_currency_code);
+        </sql>
+
+        <sql>
+            ALTER TABLE m_exchange_rate
+            ADD CONSTRAINT ck_exchange_rate_effective_range
+            CHECK (effective_to IS NULL OR effective_to &gt;= effective_from);
+        </sql>
+
+        <createIndex indexName="idx_exchange_rate_pair_active_dates" tableName="m_exchange_rate">
+            <column name="source_currency_code"/>
+            <column name="target_currency_code"/>
+            <column name="active"/>
+            <column name="effective_from"/>
+            <column name="effective_to"/>
+        </createIndex>
+
+        <createIndex indexName="idx_exchange_rate_active" tableName="m_exchange_rate">
+            <column name="active"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-047-2">
+        <comment>Insert dynamic exchange-rate permissions</comment>
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'self_service', 'READ_EXCHANGE_RATE', 'EXCHANGE_RATE', 'READ', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code = 'READ_EXCHANGE_RATE');
+        </sql>
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'self_service', 'CREATE_EXCHANGE_RATE', 'EXCHANGE_RATE', 'CREATE', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code = 'CREATE_EXCHANGE_RATE');
+        </sql>
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'self_service', 'UPDATE_EXCHANGE_RATE', 'EXCHANGE_RATE', 'UPDATE', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code = 'UPDATE_EXCHANGE_RATE');
+        </sql>
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'self_service', 'DELETE_EXCHANGE_RATE', 'EXCHANGE_RATE', 'DELETE', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code = 'DELETE_EXCHANGE_RATE');
+        </sql>
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'self_service', 'CONVERT_CURRENCY', 'CURRENCY', 'CONVERT', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code = 'CONVERT_CURRENCY');
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-047-3">
+        <comment>Assign dynamic exchange-rate permissions to default roles</comment>
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id
+            FROM m_role r, m_permission p
+            WHERE r.name = 'Super user'
+            AND p.code IN ('READ_EXCHANGE_RATE', 'CREATE_EXCHANGE_RATE', 'UPDATE_EXCHANGE_RATE',
+                           'DELETE_EXCHANGE_RATE', 'CONVERT_CURRENCY')
+            AND NOT EXISTS (
+                SELECT 1 FROM m_role_permission rp
+                WHERE rp.role_id = r.id AND rp.permission_id = p.id
+            );
+        </sql>
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id
+            FROM m_role r, m_permission p
+            WHERE r.name = 'Self Service User'
+            AND p.code IN ('READ_EXCHANGE_RATE', 'CONVERT_CURRENCY')
+            AND NOT EXISTS (
+                SELECT 1 FROM m_role_permission rp
+                WHERE rp.role_id = r.id AND rp.permission_id = p.id
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

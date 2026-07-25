@@ -56,4 +56,5 @@
   <include file="parts/044-create-initial-sinpe-audit-schema.xml" relativeToChangelogFile="true"/>  
   <include file="parts/045-create-office-services-table.xml" relativeToChangelogFile="true"/>
   <include file="parts/046-create-office-working-hours-table.xml" relativeToChangelogFile="true"/>
+  <include file="parts/047-create-dynamic-exchange-rates.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
