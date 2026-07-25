@@ -59,7 +59,7 @@ public class ExchangeRateWritePlatformServiceImpl implements ExchangeRateWritePl
 
   @Override
   @PreAuthorize(CREATE_EXCHANGE_RATE_PERMISSION)
-  @Transactional(isolation = Isolation.SERIALIZABLE)
+  @Transactional(transactionManager = "jdbcTransactionManager", isolation = Isolation.SERIALIZABLE)
   public CommandProcessingResult createExchangeRate(final String jsonBody) {
     this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
     final ExchangeRateCommand command = this.validator.validateCreate(jsonBody);
@@ -110,7 +110,7 @@ public class ExchangeRateWritePlatformServiceImpl implements ExchangeRateWritePl
 
   @Override
   @PreAuthorize(UPDATE_EXCHANGE_RATE_PERMISSION)
-  @Transactional(isolation = Isolation.SERIALIZABLE)
+  @Transactional(transactionManager = "jdbcTransactionManager", isolation = Isolation.SERIALIZABLE)
   public CommandProcessingResult updateExchangeRate(
       final Long exchangeRateId, final String jsonBody) {
     this.context.authenticatedUser().validateHasUpdatePermission(RESOURCE_NAME_FOR_PERMISSIONS);

@@ -30,7 +30,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.exchangerate.data.CurrencyConversionData;
 import org.apache.fineract.exchangerate.data.ExchangeRateData;
+import org.apache.fineract.exchangerate.data.ExchangeRateSynchronizationResult;
 import org.apache.fineract.exchangerate.service.ExchangeRateReadPlatformService;
+import org.apache.fineract.exchangerate.service.ExchangeRateSynchronizationService;
 import org.apache.fineract.exchangerate.service.ExchangeRateWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -51,6 +53,7 @@ public class ExchangeRateApiResource {
 
   private static final String RESOURCE_NAME_FOR_PERMISSIONS = "EXCHANGE_RATE";
   private static final String CONVERT_PERMISSION = "CONVERT_CURRENCY";
+  private static final String SYNC_PERMISSION = "SYNC_EXCHANGE_RATE";
   private static final String READ_EXCHANGE_RATE_PERMISSION =
       "hasAuthority('ALL_FUNCTIONS') or hasAuthority('READ_EXCHANGE_RATE')";
   private static final String CREATE_EXCHANGE_RATE_PERMISSION =
@@ -61,12 +64,17 @@ public class ExchangeRateApiResource {
       "hasAuthority('ALL_FUNCTIONS') or hasAuthority('DELETE_EXCHANGE_RATE')";
   private static final String CONVERT_CURRENCY_PERMISSION =
       "hasAuthority('ALL_FUNCTIONS') or hasAuthority('CONVERT_CURRENCY')";
+  private static final String SYNC_EXCHANGE_RATE_PERMISSION =
+      "hasAuthority('ALL_FUNCTIONS') or hasAuthority('SYNC_EXCHANGE_RATE')";
 
   private final PlatformSecurityContext context;
   private final ExchangeRateReadPlatformService readService;
   private final ExchangeRateWritePlatformService writeService;
+  private final ExchangeRateSynchronizationService synchronizationService;
   private final DefaultToApiJsonSerializer<ExchangeRateData> exchangeRateSerializer;
   private final DefaultToApiJsonSerializer<CurrencyConversionData> conversionSerializer;
+  private final DefaultToApiJsonSerializer<ExchangeRateSynchronizationResult>
+      synchronizationSerializer;
 
   @GET
   @Produces({MediaType.APPLICATION_JSON})
@@ -120,6 +128,29 @@ public class ExchangeRateApiResource {
     this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME_FOR_PERMISSIONS);
     final CommandProcessingResult result = this.writeService.createExchangeRate(jsonBody);
     return this.exchangeRateSerializer.serializeResult(result);
+  }
+
+  /**
+   * Imports provider exchange rates for the requested base currency and returns the synchronization
+   * summary.
+   *
+   * @param jsonBody request body containing the optional base currency
+   * @return serialized synchronization summary
+   */
+  @POST
+  @Path("sync")
+  @Consumes({MediaType.APPLICATION_JSON})
+  @Produces({MediaType.APPLICATION_JSON})
+  @PreAuthorize(SYNC_EXCHANGE_RATE_PERMISSION)
+  @Operation(
+      summary = "Synchronize Exchange Rates",
+      description = "Imports latest exchange rates from the configured external provider.")
+  @ApiResponse(responseCode = "200", description = "OK")
+  public String synchronizeExchangeRates(@Parameter(hidden = true) final String jsonBody) {
+    this.context.authenticatedUser().validateHasPermissionTo(SYNC_PERMISSION);
+    final ExchangeRateSynchronizationResult result =
+        this.synchronizationService.synchronize(jsonBody);
+    return this.synchronizationSerializer.serializeResult(result);
   }
 
   @PUT

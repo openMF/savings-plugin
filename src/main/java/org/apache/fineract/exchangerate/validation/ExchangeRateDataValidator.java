@@ -50,6 +50,7 @@ public class ExchangeRateDataValidator {
           "targetCurrency",
           "amount",
           "conversionDate");
+  private static final Set<String> SYNCHRONIZATION_PARAMETERS = Set.of("baseCurrency");
 
   private final FromJsonHelper fromJsonHelper;
   private final CurrencyReadPlatformService currencyReadPlatformService;
@@ -129,6 +130,28 @@ public class ExchangeRateDataValidator {
     validateSupportedCurrency("sourceCurrency", sourceCurrency);
     validateSupportedCurrency("targetCurrency", targetCurrency);
     return new CurrencyConversionCommand(sourceCurrency, targetCurrency, amount, conversionDate);
+  }
+
+  /** Validates an optional synchronization request and resolves the base tenant currency. */
+  public String validateSynchronization(final String jsonBody, final String defaultBaseCurrency) {
+    final String baseCurrency;
+    if (jsonBody == null || jsonBody.isBlank()) {
+      baseCurrency = normalizeCurrencyCode(defaultBaseCurrency);
+    } else {
+      final JsonElement element = this.fromJsonHelper.parse(jsonBody);
+      this.fromJsonHelper.checkForUnsupportedParameters(
+          element.getAsJsonObject(), SYNCHRONIZATION_PARAMETERS);
+      baseCurrency =
+          normalizeCurrencyCode(this.fromJsonHelper.extractStringNamed("baseCurrency", element));
+    }
+
+    final List<ApiParameterError> errors = new ArrayList<>();
+    final DataValidatorBuilder validator = new DataValidatorBuilder(errors).resource(RESOURCE_NAME);
+    validator.parameter("baseCurrency").value(baseCurrency).notBlank().notExceedingLengthOf(3);
+    throwIfErrors(errors);
+
+    validateSupportedCurrency("baseCurrency", baseCurrency);
+    return baseCurrency;
   }
 
   /** Returns configured currency metadata or raises a validation error for unsupported codes. */
@@ -213,6 +236,10 @@ public class ExchangeRateDataValidator {
     } else if (this.fromJsonHelper.parameterExists(aliasParameter, element)) {
       value = this.fromJsonHelper.extractStringNamed(aliasParameter, element);
     }
+    return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+  }
+
+  private String normalizeCurrencyCode(final String value) {
     return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
   }
 

@@ -6,6 +6,7 @@
  */
 package org.apache.fineract.exchangerate.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -16,7 +17,9 @@ import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.exchangerate.data.CurrencyConversionData;
 import org.apache.fineract.exchangerate.data.ExchangeRateData;
+import org.apache.fineract.exchangerate.data.ExchangeRateSynchronizationResult;
 import org.apache.fineract.exchangerate.service.ExchangeRateReadPlatformService;
+import org.apache.fineract.exchangerate.service.ExchangeRateSynchronizationService;
 import org.apache.fineract.exchangerate.service.ExchangeRateWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -35,8 +38,12 @@ class ExchangeRateApiResourceTest {
   @Mock private PlatformSecurityContext context;
   @Mock private ExchangeRateReadPlatformService readService;
   @Mock private ExchangeRateWritePlatformService writeService;
+  @Mock private ExchangeRateSynchronizationService synchronizationService;
   @Mock private DefaultToApiJsonSerializer<ExchangeRateData> exchangeRateSerializer;
   @Mock private DefaultToApiJsonSerializer<CurrencyConversionData> conversionSerializer;
+
+  @Mock
+  private DefaultToApiJsonSerializer<ExchangeRateSynchronizationResult> synchronizationSerializer;
 
   private ExchangeRateApiResource resource;
 
@@ -47,8 +54,10 @@ class ExchangeRateApiResourceTest {
             this.context,
             this.readService,
             this.writeService,
+            this.synchronizationService,
             this.exchangeRateSerializer,
-            this.conversionSerializer);
+            this.conversionSerializer,
+            this.synchronizationSerializer);
   }
 
   @Test
@@ -141,6 +150,22 @@ class ExchangeRateApiResourceTest {
 
     verify(user).validateHasPermissionTo("CONVERT_CURRENCY");
     verify(this.readService).convert(jsonBody);
+  }
+
+  @Test
+  void synchronizeExchangeRatesRequiresSyncPermissionAndDelegates() {
+    final AppUser user = mockAuthenticatedUser();
+    final String jsonBody = "{\"baseCurrency\":\"USD\"}";
+    final ExchangeRateSynchronizationResult data =
+        ExchangeRateSynchronizationResult.instance(2, 1, null, "frankfurter", "USD", null);
+    when(this.synchronizationService.synchronize(jsonBody)).thenReturn(data);
+    when(this.synchronizationSerializer.serializeResult(data)).thenReturn("{}");
+
+    assertEquals("{}", this.resource.synchronizeExchangeRates(jsonBody));
+
+    verify(user).validateHasPermissionTo("SYNC_EXCHANGE_RATE");
+    verify(this.synchronizationService).synchronize(jsonBody);
+    verify(this.synchronizationSerializer).serializeResult(data);
   }
 
   private AppUser mockAuthenticatedUser() {
