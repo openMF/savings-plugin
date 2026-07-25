@@ -15,9 +15,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.exchangerate.config.ExchangeRateProviderProperties;
 import org.apache.fineract.exchangerate.data.CurrencyConversionCommand;
 import org.apache.fineract.exchangerate.data.CurrencyConversionData;
 import org.apache.fineract.exchangerate.data.ExchangeRateData;
@@ -31,6 +36,8 @@ import org.apache.fineract.organisation.monetary.domain.Money;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +49,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExchangeRateReadPlatformServiceImpl implements ExchangeRateReadPlatformService {
 
   private static final MathContext MONEY_CONTEXT = new MathContext(19, RoundingMode.HALF_UP);
+  private static final String RATE_SOURCE_DIRECT = "DIRECT";
+  private static final String RATE_SOURCE_PROVIDER = "PROVIDER";
+  private static final String RATE_SOURCE_CROSS_RATE = "CROSS_RATE";
   private static final String RESOURCE_NAME_FOR_PERMISSIONS = "EXCHANGE_RATE";
   private static final String CONVERT_PERMISSION = "CONVERT_CURRENCY";
   private static final String READ_EXCHANGE_RATE_PERMISSION =
@@ -50,8 +60,10 @@ public class ExchangeRateReadPlatformServiceImpl implements ExchangeRateReadPlat
       "hasAuthority('ALL_FUNCTIONS') or hasAuthority('CONVERT_CURRENCY')";
 
   private final JdbcTemplate jdbcTemplate;
+  private final NamedParameterJdbcTemplate namedJdbcTemplate;
   private final PlatformSecurityContext context;
   private final ExchangeRateDataValidator validator;
+  private final ExchangeRateProviderProperties properties;
 
   @Override
   @PreAuthorize(READ_EXCHANGE_RATE_PERMISSION)
@@ -126,56 +138,151 @@ public class ExchangeRateReadPlatformServiceImpl implements ExchangeRateReadPlat
   public CurrencyConversionData convert(final String jsonBody) {
     this.context.authenticatedUser().validateHasPermissionTo(CONVERT_PERMISSION);
     final CurrencyConversionCommand command = this.validator.validateConversion(jsonBody);
-    final ExchangeRateData exchangeRate =
-        retrieveActiveRate(
+    final ResolvedExchangeRate exchangeRate =
+        resolveExchangeRate(
             command.sourceCurrencyCode(), command.targetCurrencyCode(), command.conversionDate());
     final CurrencyData targetCurrency =
         this.validator.validateSupportedCurrency("targetCurrency", command.targetCurrencyCode());
     final BigDecimal convertedAmount =
         Money.of(
                 targetCurrency,
-                command.amount().multiply(exchangeRate.getExchangeRate(), MONEY_CONTEXT),
+                command.amount().multiply(exchangeRate.exchangeRate(), MONEY_CONTEXT),
                 MONEY_CONTEXT)
             .getAmount();
 
     return CurrencyConversionData.instance(
         command.sourceCurrencyCode(),
         command.targetCurrencyCode(),
-        exchangeRate.getExchangeRate(),
+        exchangeRate.exchangeRate(),
         command.amount(),
         convertedAmount,
-        command.conversionDate());
+        command.conversionDate(),
+        exchangeRate.rateSource(),
+        exchangeRate.baseCurrency());
   }
 
-  private ExchangeRateData retrieveActiveRate(
+  private ResolvedExchangeRate resolveExchangeRate(
+      final String sourceCurrencyCode, final String targetCurrencyCode, final LocalDate date) {
+    return retrieveDirectActiveRate(sourceCurrencyCode, targetCurrencyCode, date)
+        .orElseGet(() -> retrieveCrossRate(sourceCurrencyCode, targetCurrencyCode, date));
+  }
+
+  private Optional<ResolvedExchangeRate> retrieveDirectActiveRate(
       final String sourceCurrencyCode, final String targetCurrencyCode, final LocalDate date) {
     try {
-      return this.jdbcTemplate.queryForObject(
-          "SELECT id, source_currency_code, target_currency_code, exchange_rate,"
-              + " effective_from, effective_to, active, created_date, last_modified_date"
-              + " FROM m_exchange_rate"
-              + " WHERE source_currency_code = ? AND target_currency_code = ?"
-              + " AND active = true AND effective_from <= ?"
-              + " AND (effective_to IS NULL OR effective_to >= ?)"
-              + " ORDER BY effective_from DESC, id DESC LIMIT 1",
-          new ExchangeRateRowMapper(),
-          sourceCurrencyCode,
-          targetCurrencyCode,
-          date,
-          date);
+      return Optional.ofNullable(
+          this.jdbcTemplate.queryForObject(
+              "SELECT exchange_rate, provider"
+                  + " FROM m_exchange_rate"
+                  + " WHERE source_currency_code = ? AND target_currency_code = ?"
+                  + " AND active = true AND effective_from <= ?"
+                  + " AND (effective_to IS NULL OR effective_to >= ?)"
+                  + " ORDER BY CASE WHEN provider IS NULL THEN 0 ELSE 1 END,"
+                  + " effective_from DESC, id DESC LIMIT 1",
+              (rs, rowNum) ->
+                  new ResolvedExchangeRate(
+                      rs.getBigDecimal("exchange_rate"),
+                      rs.getString("provider") == null ? RATE_SOURCE_DIRECT : RATE_SOURCE_PROVIDER,
+                      null),
+              sourceCurrencyCode,
+              targetCurrencyCode,
+              date,
+              date));
     } catch (final EmptyResultDataAccessException e) {
-      final ApiParameterError error =
-          ApiParameterError.generalError(
-              "validation.msg.exchangeRate.not.found.for.conversion",
-              "No active exchange rate exists for "
-                  + sourceCurrencyCode
-                  + " to "
-                  + targetCurrencyCode
-                  + " on "
-                  + date
-                  + ".");
-      throw new PlatformApiDataValidationException(List.of(error));
+      return Optional.empty();
     }
+  }
+
+  private ResolvedExchangeRate retrieveCrossRate(
+      final String sourceCurrencyCode, final String targetCurrencyCode, final LocalDate date) {
+    final String baseCurrencyCode = normalizeCurrencyCode(this.properties.getBaseCurrency());
+    this.validator.validateSupportedCurrency("baseCurrency", baseCurrencyCode);
+
+    final Map<String, ResolvedExchangeRate> baseRates =
+        retrieveBaseRates(baseCurrencyCode, Set.of(sourceCurrencyCode, targetCurrencyCode), date);
+    final ResolvedExchangeRate sourceRate =
+        baseCurrencyCode.equals(sourceCurrencyCode)
+            ? new ResolvedExchangeRate(BigDecimal.ONE, RATE_SOURCE_DIRECT, null)
+            : baseRates.get(sourceCurrencyCode);
+    final ResolvedExchangeRate targetRate =
+        baseCurrencyCode.equals(targetCurrencyCode)
+            ? new ResolvedExchangeRate(BigDecimal.ONE, RATE_SOURCE_DIRECT, null)
+            : baseRates.get(targetCurrencyCode);
+
+    if (sourceRate == null || targetRate == null) {
+      throw noRateForConversion(sourceCurrencyCode, targetCurrencyCode, date);
+    }
+
+    return new ResolvedExchangeRate(
+        targetRate.exchangeRate().divide(sourceRate.exchangeRate(), MONEY_CONTEXT),
+        RATE_SOURCE_CROSS_RATE,
+        baseCurrencyCode);
+  }
+
+  private Map<String, ResolvedExchangeRate> retrieveBaseRates(
+      final String baseCurrencyCode,
+      final Set<String> requestedCurrencyCodes,
+      final LocalDate date) {
+    final Set<String> targetCurrencyCodes =
+        requestedCurrencyCodes.stream()
+            .filter(currencyCode -> !baseCurrencyCode.equals(currencyCode))
+            .collect(java.util.stream.Collectors.toSet());
+    if (targetCurrencyCodes.isEmpty()) {
+      return Map.of();
+    }
+
+    final MapSqlParameterSource params =
+        new MapSqlParameterSource()
+            .addValue("baseCurrencyCode", baseCurrencyCode)
+            .addValue("targetCurrencyCodes", targetCurrencyCodes)
+            .addValue("date", date);
+    final List<BaseRateRow> rows =
+        this.namedJdbcTemplate.query(
+            "SELECT target_currency_code, exchange_rate, provider"
+                + " FROM m_exchange_rate"
+                + " WHERE source_currency_code = :baseCurrencyCode"
+                + " AND target_currency_code IN (:targetCurrencyCodes)"
+                + " AND active = true AND effective_from <= :date"
+                + " AND (effective_to IS NULL OR effective_to >= :date)"
+                + " ORDER BY target_currency_code,"
+                + " CASE WHEN provider IS NULL THEN 0 ELSE 1 END,"
+                + " effective_from DESC, id DESC",
+            params,
+            (rs, rowNum) ->
+                new BaseRateRow(
+                    rs.getString("target_currency_code"),
+                    rs.getBigDecimal("exchange_rate"),
+                    rs.getString("provider")));
+
+    final Map<String, ResolvedExchangeRate> rates = new HashMap<>();
+    for (final BaseRateRow row : rows) {
+      rates.putIfAbsent(
+          row.targetCurrencyCode(),
+          new ResolvedExchangeRate(
+              row.exchangeRate(),
+              row.provider() == null ? RATE_SOURCE_DIRECT : RATE_SOURCE_PROVIDER,
+              null));
+    }
+    return rates;
+  }
+
+  private String normalizeCurrencyCode(final String currencyCode) {
+    return currencyCode == null ? null : currencyCode.trim().toUpperCase(Locale.ROOT);
+  }
+
+  private PlatformApiDataValidationException noRateForConversion(
+      final String sourceCurrencyCode, final String targetCurrencyCode, final LocalDate date) {
+    final ApiParameterError error =
+        ApiParameterError.generalError(
+            "validation.msg.exchangeRate.not.found.for.conversion",
+            "No active exchange rate exists for "
+                + sourceCurrencyCode
+                + " to "
+                + targetCurrencyCode
+                + " on "
+                + date
+                + ".");
+    return new PlatformApiDataValidationException(List.of(error));
   }
 
   private void validateId(final Long exchangeRateId) {
@@ -221,4 +328,9 @@ public class ExchangeRateReadPlatformServiceImpl implements ExchangeRateReadPlat
           : null;
     }
   }
+
+  private record ResolvedExchangeRate(
+      BigDecimal exchangeRate, String rateSource, String baseCurrency) {}
+
+  private record BaseRateRow(String targetCurrencyCode, BigDecimal exchangeRate, String provider) {}
 }

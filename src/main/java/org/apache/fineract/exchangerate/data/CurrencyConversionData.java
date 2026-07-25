@@ -18,6 +18,8 @@ public final class CurrencyConversionData {
   private final BigDecimal sourceAmount;
   private final BigDecimal convertedAmount;
   private final LocalDate effectiveDate;
+  private final String rateSource;
+  private final String baseCurrency;
 
   private CurrencyConversionData(
       final String sourceCurrency,
@@ -25,13 +27,17 @@ public final class CurrencyConversionData {
       final BigDecimal exchangeRate,
       final BigDecimal sourceAmount,
       final BigDecimal convertedAmount,
-      final LocalDate effectiveDate) {
+      final LocalDate effectiveDate,
+      final String rateSource,
+      final String baseCurrency) {
     this.sourceCurrency = sourceCurrency;
     this.targetCurrency = targetCurrency;
     this.exchangeRate = exchangeRate;
     this.sourceAmount = sourceAmount;
     this.convertedAmount = convertedAmount;
     this.effectiveDate = effectiveDate;
+    this.rateSource = rateSource;
+    this.baseCurrency = baseCurrency;
   }
 
   /** Creates a conversion DTO for serialization. */
@@ -43,7 +49,35 @@ public final class CurrencyConversionData {
       final BigDecimal convertedAmount,
       final LocalDate effectiveDate) {
     return new CurrencyConversionData(
-        sourceCurrency, targetCurrency, exchangeRate, sourceAmount, convertedAmount, effectiveDate);
+        sourceCurrency,
+        targetCurrency,
+        exchangeRate,
+        sourceAmount,
+        convertedAmount,
+        effectiveDate,
+        null,
+        null);
+  }
+
+  /** Creates a conversion DTO with rate-source metadata for serialization. */
+  public static CurrencyConversionData instance(
+      final String sourceCurrency,
+      final String targetCurrency,
+      final BigDecimal exchangeRate,
+      final BigDecimal sourceAmount,
+      final BigDecimal convertedAmount,
+      final LocalDate effectiveDate,
+      final String rateSource,
+      final String baseCurrency) {
+    return new CurrencyConversionData(
+        sourceCurrency,
+        targetCurrency,
+        exchangeRate,
+        sourceAmount,
+        convertedAmount,
+        effectiveDate,
+        rateSource,
+        baseCurrency);
   }
 
   /** Returns the source currency code. */
@@ -74,5 +108,15 @@ public final class CurrencyConversionData {
   /** Returns the conversion date used to choose the rate. */
   public LocalDate getEffectiveDate() {
     return effectiveDate;
+  }
+
+  /** Returns DIRECT, PROVIDER, or CROSS_RATE when available. */
+  public String getRateSource() {
+    return rateSource;
+  }
+
+  /** Returns the configured base currency when a cross-rate conversion was used. */
+  public String getBaseCurrency() {
+    return baseCurrency;
   }
 }
