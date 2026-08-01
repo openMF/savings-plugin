@@ -129,9 +129,17 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
       SinpeSubscriptionRequest request = buildSubscriptionRequest(client, phoneNumber, iban);
 
       // 4. Call external SINPE
-      sinpeExternalApiClient.createSubscription(request);
+      String externalResponse = sinpeExternalApiClient.createSubscription(request);
 
-      return new CommandProcessingResultBuilder().withClientId(clientId).build();
+        Map<String, Object> changes = new HashMap<>();
+        changes.put("phoneNumber", phoneNumber);
+        changes.put("iban", iban);
+        changes.put("externalResponse", externalResponse);   // <-- the real SINPE response
+
+        return new CommandProcessingResultBuilder()
+            .withClientId(clientId)
+            .with(changes)
+            .build();
     }
 
     /**
@@ -201,8 +209,16 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
   public CommandProcessingResult deleteSubscription(Long clientId, String phoneNumber, String otp) {
     context.authenticatedUser().validateHasPermissionTo("DELETE_SINPE_ENROLLMENT");
     validateOtp(clientId, phoneNumber, otp);
-    sinpeExternalApiClient.deleteSubscription(phoneNumber);
-    return new CommandProcessingResultBuilder().withClientId(clientId).build();
+    String externalResponse = sinpeExternalApiClient.deleteSubscription(phoneNumber);
+
+    Map<String, Object> changes = new HashMap<>();
+    changes.put("phoneNumber", phoneNumber);
+    changes.put("externalResponse", externalResponse);   // <-- the real SINPE response
+
+    return new CommandProcessingResultBuilder()
+        .withClientId(clientId)
+        .with(changes)
+        .build();
   }
 
   private void validateOtp(Long clientId, String mobileNumber, String otp) {

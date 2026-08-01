@@ -65,16 +65,18 @@ public class SavingsSinpeExternalApiClient {
     return headers;
   }
 
-  public void createSubscription(SinpeSubscriptionRequest request) {
+  public String createSubscription(SinpeSubscriptionRequest request) {
     Map<String, String> props = getServiceProperties();
     if (!isEnabled(props)) {
       log.warn("SinpeService disabled – skipping createSubscription for {}", request.getPhoneNumber());
-      return;
+      return null;
     }
     String url = getHost(props) + "/subscription";
     HttpEntity<SinpeSubscriptionRequest> entity = new HttpEntity<>(request, buildHeaders(props));
     try {
-      restTemplate.postForObject(url, entity, String.class);
+      String body = restTemplate.postForObject(url, entity, String.class);
+      log.info("createSubscription response body={}", body);
+      return body;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create SINPE subscription: " + e.getMessage(), e);
     }
@@ -96,16 +98,19 @@ public class SavingsSinpeExternalApiClient {
     }
   }
 
-  public void deleteSubscription(String phoneNumber) {
+  public String deleteSubscription(String phoneNumber) {
     Map<String, String> props = getServiceProperties();
     if (!isEnabled(props)) {
       log.warn("SinpeService disabled – skipping deleteSubscription for {}", phoneNumber);
-      return;
+      return null;
     }
     String url = getHost(props) + "/subscription/" + phoneNumber;
     HttpEntity<Void> entity = new HttpEntity<>(buildHeaders(props));
     try {
-      restTemplate.exchange(url, HttpMethod.DELETE, entity, String.class);
+      var response = restTemplate.exchange(url, HttpMethod.DELETE, entity, String.class);
+      String body = response.getBody();
+      log.info("deleteSubscription HTTP status={}, body={}", response.getStatusCode(), body);
+      return body;
     } catch (Exception e) {
       throw new RuntimeException("Failed to delete SINPE subscription: " + e.getMessage(), e);
     }
