@@ -6,15 +6,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.fastpayment.sinpe.data.SinpePhoneStatusData;
 import org.apache.fineract.fastpayment.sinpe.data.SinpeSubscriptionEditRequest;
-import org.apache.fineract.fastpayment.sinpe.data.SinpeSubscriptionRequest;
+import org.apache.fineract.fastpayment.sinpe.service.SinpeEnrollmentReadPlatformService;
 import org.apache.fineract.fastpayment.sinpe.service.SinpeEnrollmentWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
@@ -33,6 +34,8 @@ public class SinpeEnrollmentApiResource {
   private final PlatformSecurityContext context;
   private final DefaultToApiJsonSerializer<CommandProcessingResult> toApiJsonSerializer;
   private final SinpeEnrollmentWritePlatformService writePlatformService;
+  private final SinpeEnrollmentReadPlatformService readPlatformService;
+  private final DefaultToApiJsonSerializer<SinpePhoneStatusData> phoneStatusSerializer;
 
   @POST
   @Path("/request")
@@ -167,5 +170,18 @@ public class SinpeEnrollmentApiResource {
       CommandProcessingResult result =
           writePlatformService.deleteSubscription(clientId, phoneNumber, otp);
       return toApiJsonSerializer.serialize(result);
+    }
+    
+    @GET
+    @Path("/phone/{phoneNumber}")
+    @Produces({MediaType.APPLICATION_JSON})
+    @Operation(
+        summary = "Get SINPE Móvil phone status",
+        description = "Retrieves the current status of a phone number from the external SINPE system.")
+    public String getPhoneStatus(@PathParam("phoneNumber") final String phoneNumber) {
+      context.authenticatedUser().validateHasPermissionTo("READ_SINPE_ENROLLMENT");
+
+      SinpePhoneStatusData data = readPlatformService.retrievePhoneStatus(phoneNumber);
+      return phoneStatusSerializer.serialize(data);
     }
 }

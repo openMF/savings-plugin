@@ -110,4 +110,31 @@ public class SavingsSinpeExternalApiClient {
       throw new RuntimeException("Failed to delete SINPE subscription: " + e.getMessage(), e);
     }
   }
+  
+  /**
+    * GET {host}/phone/{phoneNumber}
+    */
+   public String getPhoneStatus(String phoneNumber) {
+     Map<String, String> props = getServiceProperties();
+     if (!isEnabled(props)) {
+       log.warn("SinpeService disabled – skipping getPhoneStatus for {}", phoneNumber);
+       return null;
+     }
+
+     String url = getHost(props) + "/phone/" + phoneNumber;
+     log.info("getPhoneStatus calling GET url={}", url);
+
+     HttpEntity<Void> entity = new HttpEntity<>(buildHeaders(props));
+     try {
+       var response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+       log.info(
+           "getPhoneStatus HTTP status={}, body={}",
+           response.getStatusCode(),
+           response.getBody());
+       return response.getBody();
+     } catch (Exception e) {
+       log.error("Failed to retrieve SINPE phone status for {}", phoneNumber, e);
+       throw new RuntimeException("Failed to retrieve SINPE phone status: " + e.getMessage(), e);
+     }
+   }
 }
