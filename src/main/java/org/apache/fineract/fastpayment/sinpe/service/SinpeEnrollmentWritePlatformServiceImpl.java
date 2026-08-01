@@ -166,7 +166,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
           .dailyMaxAmountIncoming(0)
           .monthlyMaxAmountIncoming(0)
           .overwriteAmounts(false)
-          .token("12345")                        // or generate a token if the external system requires it
+          .token(null)                        // or generate a token if the external system requires it
           .build();
     }
 
