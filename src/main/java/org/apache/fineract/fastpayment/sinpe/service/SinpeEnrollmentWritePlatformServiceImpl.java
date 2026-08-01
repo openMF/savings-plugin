@@ -103,15 +103,72 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
         .build();
   }
 
-  @Override
-  @Transactional
-  public CommandProcessingResult createSubscription(
-      Long clientId, SinpeSubscriptionRequest request, String otp) {
-    context.authenticatedUser().validateHasPermissionTo("UPDATE_SINPE_ENROLLMENT");
-    validateOtp(clientId, request.getPhoneNumber(), otp);
-    sinpeExternalApiClient.createSubscription(request);
-    return new CommandProcessingResultBuilder().withClientId(clientId).build();
-  }
+    @Override
+    @Transactional
+    public CommandProcessingResult createSubscription(
+        Long clientId, String phoneNumber, String iban, String otp) {
+
+      context.authenticatedUser().validateHasPermissionTo("UPDATE_SINPE_ENROLLMENT");
+
+      // 1. Validate OTP first
+      validateOtp(clientId, phoneNumber, otp);
+
+      // 2. Load client (multi-tenant aware)
+      Client client = clientRepository.findOneWithNotFoundDetection(clientId);
+
+      // 3. Build the full external request from client data + defaults
+      SinpeSubscriptionRequest request = buildSubscriptionRequest(client, phoneNumber, iban);
+
+      // 4. Call external SINPE
+      sinpeExternalApiClient.createSubscription(request);
+
+      return new CommandProcessingResultBuilder().withClientId(clientId).build();
+    }
+
+    /**
+     * Enriches the minimal payload with data taken from the Client entity
+     * and sensible defaults for the external SINPE API.
+     */
+    private SinpeSubscriptionRequest buildSubscriptionRequest(
+        Client client, String phoneNumber, String iban) {
+
+      String customerName = client.getDisplayName();
+      if (StringUtils.isBlank(customerName)) {
+        customerName = StringUtils.trimToEmpty(client.getFirstname()) + " "
+            + StringUtils.trimToEmpty(client.getLastname());
+        customerName = customerName.trim();
+      }
+
+      // Prefer externalId, fall back to account number / mobile
+      String customerId = null;
+      if (client.getExternalId() != null && StringUtils.isNotBlank(client.getExternalId().getValue())) {
+        customerId = client.getExternalId().getValue();
+      } else if (StringUtils.isNotBlank(client.getAccountNumber())) {
+        customerId = client.getAccountNumber();
+      } else {
+        customerId = phoneNumber;
+      }
+
+      String customerEmail = client.getEmailAddress(); // may be null – external API usually tolerates it
+
+      return SinpeSubscriptionRequest.builder()
+          .phoneNumber(phoneNumber)
+          .customerName(customerName)
+          .customerId(customerId)
+          .customerEmail(customerEmail)
+          .notificationType("AMBAS")          // default – change if business requires otherwise
+          .iban(iban)
+          .currencyCode("CRC")                // Costa Rica default
+          .dailyMaxAmountNc(0)
+          .monthlyMaxAmountNc(0)
+          .dailyMaxAmountNotAuth(0)
+          .monthlyMaxAmountNotAuth(0)
+          .dailyMaxAmountIncoming(0)
+          .monthlyMaxAmountIncoming(0)
+          .overwriteAmounts(false)
+          .token("12345")                        // or generate a token if the external system requires it
+          .build();
+    }
 
   @Override
   @Transactional

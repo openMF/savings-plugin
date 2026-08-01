@@ -73,27 +73,46 @@ public class SinpeEnrollmentApiResource {
   }
 
   @POST
-  @Path("/subscription")
-  @Consumes({MediaType.APPLICATION_JSON})
-  @Produces({MediaType.APPLICATION_JSON})
-  @Operation(
-      summary = "Create SINPE Subscription",
-      description = "Creates a new SINPE subscription in the external system. Requires a valid OTP.")
-  public String createSubscription(final String apiRequestBodyAsJson) {
-    context.authenticatedUser().validateHasPermissionTo("UPDATE_SINPE_ENROLLMENT");
+    @Path("/subscription")
+    @Consumes({MediaType.APPLICATION_JSON})
+    @Produces({MediaType.APPLICATION_JSON})
+    @Operation(
+        summary = "Create SINPE Subscription",
+        description = "Creates a new SINPE subscription. Only clientId, phoneNumber, iban and otp are required.")
+    public String createSubscription(final String apiRequestBodyAsJson) {
+      context.authenticatedUser().validateHasPermissionTo("UPDATE_SINPE_ENROLLMENT");
 
-    JsonObject json = JsonParser.parseString(apiRequestBodyAsJson).getAsJsonObject();
-    Long clientId = json.get("clientId").getAsLong();
-    String otp = json.get("otp").getAsString();
-    json.remove("otp");
-    json.remove("clientId");
+      JsonObject json = JsonParser.parseString(apiRequestBodyAsJson).getAsJsonObject();
 
-    SinpeSubscriptionRequest request =
-        new com.google.gson.Gson().fromJson(json.toString(), SinpeSubscriptionRequest.class);
-    CommandProcessingResult result =
-        writePlatformService.createSubscription(clientId, request, otp);
-    return toApiJsonSerializer.serialize(result);
-  }
+      if (!json.has("clientId") || json.get("clientId").isJsonNull()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.clientId.required", "clientId is required.");
+      }
+      if (!json.has("phoneNumber") || json.get("phoneNumber").isJsonNull()
+          || json.get("phoneNumber").getAsString().isBlank()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.phoneNumber.required", "phoneNumber is required.");
+      }
+      if (!json.has("iban") || json.get("iban").isJsonNull()
+          || json.get("iban").getAsString().isBlank()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.iban.required", "iban is required.");
+      }
+      if (!json.has("otp") || json.get("otp").isJsonNull()
+          || json.get("otp").getAsString().isBlank()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.otp.required", "OTP is required for this operation.");
+      }
+
+      Long clientId = json.get("clientId").getAsLong();
+      String phoneNumber = json.get("phoneNumber").getAsString();
+      String iban = json.get("iban").getAsString();
+      String otp = json.get("otp").getAsString();
+
+      CommandProcessingResult result =
+          writePlatformService.createSubscription(clientId, phoneNumber, iban, otp);
+      return toApiJsonSerializer.serialize(result);
+    }
 
   @POST
   @Path("/subscription/edit")
