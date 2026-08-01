@@ -17,6 +17,7 @@ import org.apache.fineract.fastpayment.sinpe.data.SinpeSubscriptionEditRequest;
 import org.apache.fineract.fastpayment.sinpe.data.SinpeSubscriptionRequest;
 import org.apache.fineract.fastpayment.sinpe.service.SinpeEnrollmentWritePlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.springframework.stereotype.Component;
@@ -118,19 +119,34 @@ public class SinpeEnrollmentApiResource {
   }
 
   @DELETE
-  @Path("/subscription/{phoneNumber}")
-  @Produces({MediaType.APPLICATION_JSON})
-  @Operation(
-      summary = "Delete SINPE Subscription",
-      description = "Deletes a SINPE subscription. Requires a valid OTP.")
-  public String deleteSubscription(
-      @PathParam("phoneNumber") final String phoneNumber,
-      @QueryParam("clientId") final Long clientId,
-      @QueryParam("otp") final String otp) {
-    context.authenticatedUser().validateHasPermissionTo("DELETE_SINPE_ENROLLMENT");
+    @Path("/subscription/{phoneNumber}")
+    @Consumes({MediaType.APPLICATION_JSON})
+    @Produces({MediaType.APPLICATION_JSON})
+    @Operation(
+        summary = "Delete SINPE Subscription",
+        description = "Deletes a SINPE subscription. Requires a valid OTP in the request body.")
+    public String deleteSubscription(
+        @PathParam("phoneNumber") final String phoneNumber,
+        final String apiRequestBodyAsJson) {
 
-    CommandProcessingResult result =
-        writePlatformService.deleteSubscription(clientId, phoneNumber, otp);
-    return toApiJsonSerializer.serialize(result);
-  }
+      context.authenticatedUser().validateHasPermissionTo("DELETE_SINPE_ENROLLMENT");
+
+      JsonObject json = JsonParser.parseString(apiRequestBodyAsJson).getAsJsonObject();
+
+      if (!json.has("clientId") || json.get("clientId").isJsonNull()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.clientId.required", "clientId is required.");
+      }
+      if (!json.has("otp") || json.get("otp").isJsonNull() || json.get("otp").getAsString().isBlank()) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.sinpe.otp.required", "OTP is required for this operation.");
+      }
+
+      Long clientId = json.get("clientId").getAsLong();
+      String otp = json.get("otp").getAsString();
+
+      CommandProcessingResult result =
+          writePlatformService.deleteSubscription(clientId, phoneNumber, otp);
+      return toApiJsonSerializer.serialize(result);
+    }
 }
