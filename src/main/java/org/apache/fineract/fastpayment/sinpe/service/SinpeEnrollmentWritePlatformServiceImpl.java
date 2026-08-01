@@ -133,6 +133,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
   }
 
   private void validateOtp(Long clientId, String mobileNumber, String otp) {
+    log.info("validateOtp called – otp=[{}], blank={}", otp, StringUtils.isBlank(otp));
     if (StringUtils.isBlank(otp)) {
       throw new GeneralPlatformDomainRuleException(
           "error.msg.sinpe.otp.required", "OTP is required for this operation.");
