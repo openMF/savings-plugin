@@ -2,6 +2,8 @@ package org.apache.fineract.fastpayment.sinpe.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -67,10 +69,17 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
 
     // TODO: integrate with SMS/notification service. For now log (remove in production).
     log.info("SINPE OTP generated for clientId={}, mobile={}, otp={}", clientId, mobileNumber, otp);
+    
+    Map<String, Object> testingMap = new HashMap<>();
+
+    // Add entries with different value types
+    testingMap.put("mobileNumber", mobileNumber);       // String value
+    testingMap.put("otp", otp);             // Integer value (autoboxed)
 
     return new CommandProcessingResultBuilder()
         .withClientId(clientId)
         .withEntityId(enrollment.getId())
+        .with(testingMap)
         .build();
   }
 
