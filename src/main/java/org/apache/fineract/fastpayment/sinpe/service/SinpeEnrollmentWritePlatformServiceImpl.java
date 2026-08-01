@@ -27,7 +27,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
   private final PlatformSecurityContext context;
   private final SinpeEnrollmentRepository enrollmentRepository;
   private final ClientRepositoryWrapper clientRepository;
-  private final SinpeExternalApiClient sinpeExternalApiClient;
+  private final SavingsSinpeExternalApiClient sinpeExternalApiClient;
 
   @Override
   @Transactional

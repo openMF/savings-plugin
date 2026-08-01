@@ -15,13 +15,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-@Component
+/**
+ * Tenant-aware SINPE external API client owned by the Savings Plugin.
+ * Explicit bean name avoids clash with selfservice-plugin and fastpayment modules.
+ */
+@Component("savingsSinpeExternalApiClient")
 @Slf4j
 @RequiredArgsConstructor
-public class SinpeExternalApiClient {
+public class SavingsSinpeExternalApiClient {
 
   private final JdbcTemplate jdbcTemplate;
   private final RestTemplate restTemplate = new RestTemplate();
+
   private static final String SERVICE_NAME = "SinpeService";
 
   private Map<String, String> getServiceProperties() {
