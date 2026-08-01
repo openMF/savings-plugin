@@ -58,4 +58,5 @@
   <include file="parts/046-create-office-working-hours-table.xml" relativeToChangelogFile="true"/>
   <include file="parts/047-create-dynamic-exchange-rates.xml" relativeToChangelogFile="true"/>
   <include file="parts/048-add-exchange-rate-provider-sync.xml" relativeToChangelogFile="true"/>
+  <include file="parts/049-create-sinpe-enrollment-schema.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>

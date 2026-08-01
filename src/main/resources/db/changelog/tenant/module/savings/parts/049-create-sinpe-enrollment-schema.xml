@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-049-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_sinpe_enrollment"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_sinpe_enrollment">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mobile_number" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_verified" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="verified_on" type="timestamp"/>
+            <column name="pending_otp" type="varchar(10)"/>
+            <column name="otp_expiry" type="timestamp"/>
+            <column name="created_by" type="bigint"/>
+            <column name="created_on_utc" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="bigint"/>
+            <column name="last_modified_on_utc" type="timestamp with time zone"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="m_sinpe_enrollment"
+                                 baseColumnNames="client_id"
+                                 constraintName="fk_sinpe_enrollment_client"
+                                 referencedTableName="m_client"
+                                 referencedColumnNames="id"/>
+
+        <createIndex indexName="idx_sinpe_enrollment_client_mobile" tableName="m_sinpe_enrollment" unique="true">
+            <column name="client_id"/>
+            <column name="mobile_number"/>
+        </createIndex>
+        <createIndex indexName="idx_sinpe_enrollment_mobile" tableName="m_sinpe_enrollment">
+            <column name="mobile_number"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Permissions -->
+    <changeSet author="fineract" id="ss-049-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_permission WHERE code = 'CREATE_SINPE_ENROLLMENT'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="CREATE_SINPE_ENROLLMENT"/>
+            <column name="entity_name" value="SINPE_ENROLLMENT"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="UPDATE_SINPE_ENROLLMENT"/>
+            <column name="entity_name" value="SINPE_ENROLLMENT"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="DELETE_SINPE_ENROLLMENT"/>
+            <column name="entity_name" value="SINPE_ENROLLMENT"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="READ_SINPE_ENROLLMENT"/>
+            <column name="entity_name" value="SINPE_ENROLLMENT"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="assign-sinpe-enrollment-permissions-superuser" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_role_permission rp
+                INNER JOIN m_role r ON rp.role_id = r.id
+                INNER JOIN m_permission p ON rp.permission_id = p.id
+                WHERE r.name = 'Super user' AND p.code = 'CREATE_SINPE_ENROLLMENT'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id
+            FROM m_role r, m_permission p
+            WHERE r.name = 'Super user'
+              AND p.code IN ('CREATE_SINPE_ENROLLMENT','UPDATE_SINPE_ENROLLMENT','DELETE_SINPE_ENROLLMENT','READ_SINPE_ENROLLMENT')
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission rp
+                  WHERE rp.role_id = r.id AND rp.permission_id = p.id
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>
