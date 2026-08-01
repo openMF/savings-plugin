@@ -150,6 +150,13 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
       }
 
       String customerEmail = client.getEmailAddress(); // may be null – external API usually tolerates it
+      
+      SecureRandom secureRandom = new SecureRandom();
+      // Generate number between 0 (inclusive) and 100000 (exclusive)
+      int num = secureRandom.nextInt(100000);
+        
+        // Format to 5 digits, padding with zeros if needed (e.g., 00042)
+      String formatted = String.format("%05d", num);
 
       return SinpeSubscriptionRequest.builder()
           .phoneNumber(phoneNumber)
@@ -166,7 +173,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
           .dailyMaxAmountIncoming(0)
           .monthlyMaxAmountIncoming(0)
           .overwriteAmounts(false)
-          .token(null)                        // or generate a token if the external system requires it
+          .token(formatted)                        // or generate a token if the external system requires it
           .build();
     }
 
