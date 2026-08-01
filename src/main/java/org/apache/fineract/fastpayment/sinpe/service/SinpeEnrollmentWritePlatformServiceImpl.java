@@ -11,6 +11,7 @@ import org.apache.fineract.fastpayment.sinpe.domain.SinpeEnrollment;
 import org.apache.fineract.fastpayment.sinpe.domain.SinpeEnrollmentRepository;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -36,10 +37,13 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
     context.authenticatedUser().validateHasPermissionTo("CREATE_SINPE_ENROLLMENT");
 
     if (mobileNumber == null || !mobileNumber.matches("\\d{8}")) {
-      throw new IllegalArgumentException("Invalid SINPE Móvil phone number. Must be 8 digits.");
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.sinpe.mobile.invalid",
+          "Invalid SINPE Móvil phone number. Must be 8 digits.");
     }
 
-    Client client = clientRepository.findOneWithNotFoundDetection(clientId);
+    // Ensures the client exists (throws PlatformDataIntegrityException / not-found if missing)
+    clientRepository.findOneWithNotFoundDetection(clientId);
 
     var existingVerified =
         enrollmentRepository.findByClientIdAndMobileNumberAndVerifiedTrue(clientId, mobileNumber);
@@ -78,11 +82,16 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
     SinpeEnrollment enrollment =
         enrollmentRepository
             .findByClientIdAndMobileNumber(clientId, mobileNumber)
-            .orElseThrow(() -> new IllegalArgumentException("No enrollment request found."));
+            .orElseThrow(
+                () ->
+                    new GeneralPlatformDomainRuleException(
+                        "error.msg.sinpe.enrollment.not.found",
+                        "No enrollment request found for the given client and phone number."));
 
     LocalDateTime now = DateUtils.getLocalDateTimeOfTenant();
     if (!enrollment.isOtpValid(otp, now)) {
-      throw new IllegalArgumentException("Invalid or expired OTP.");
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.sinpe.otp.invalid", "Invalid or expired OTP.");
     }
 
     enrollment.markAsVerified(now);
@@ -125,15 +134,23 @@ public class SinpeEnrollmentWritePlatformServiceImpl implements SinpeEnrollmentW
 
   private void validateOtp(Long clientId, String mobileNumber, String otp) {
     if (StringUtils.isBlank(otp)) {
-      throw new IllegalArgumentException("OTP is required for this operation.");
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.sinpe.otp.required", "OTP is required for this operation.");
     }
+
     SinpeEnrollment enrollment =
         enrollmentRepository
             .findByClientIdAndMobileNumber(clientId, mobileNumber)
-            .orElseThrow(() -> new IllegalArgumentException("No enrollment found for phone."));
+            .orElseThrow(
+                () ->
+                    new GeneralPlatformDomainRuleException(
+                        "error.msg.sinpe.enrollment.not.found",
+                        "No enrollment found for the given client and phone number."));
+
     LocalDateTime now = DateUtils.getLocalDateTimeOfTenant();
     if (!enrollment.isOtpValid(otp, now)) {
-      throw new IllegalArgumentException("Invalid or expired OTP.");
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.sinpe.otp.invalid", "Invalid or expired OTP.");
     }
     // Note: OTP is intentionally not consumed so it can be reused for edit/delete within the window
   }
