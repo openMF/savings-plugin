@@ -20,10 +20,13 @@
             <column name="value" value="SAME_BANK"/>
             <column name="description" value="Same Bank Transfer"/>
             <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="is_system_defined" valueBoolean="false"/>
             <column name="order_position" valueNumeric="100"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type" where="value = 'SAME_BANK'"/>
+            <delete tableName="m_payment_type">
+                <where>value = 'SAME_BANK'</where>
+            </delete>
         </rollback>
     </changeSet>
 
@@ -39,10 +42,13 @@
             <column name="value" value="PIN"/>
             <column name="description" value="PIN Payment"/>
             <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="is_system_defined" valueBoolean="false"/>
             <column name="order_position" valueNumeric="110"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type" where="value = 'PIN'"/>
+            <delete tableName="m_payment_type">
+                <where>value = 'PIN'</where>
+            </delete>
         </rollback>
     </changeSet>
 
@@ -58,10 +64,13 @@
             <column name="value" value="SINPE"/>
             <column name="description" value="SINPE Instant Transfer (Costa Rica)"/>
             <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="is_system_defined" valueBoolean="false"/>
             <column name="order_position" valueNumeric="120"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type" where="value = 'SINPE'"/>
+            <delete tableName="m_payment_type">
+                <where>value = 'SINPE'</where>
+            </delete>
         </rollback>
     </changeSet>
 
@@ -77,10 +86,13 @@
             <column name="value" value="PAYMENT_LINK"/>
             <column name="description" value="Payment Link"/>
             <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="is_system_defined" valueBoolean="false"/>
             <column name="order_position" valueNumeric="130"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type" where="value = 'PAYMENT_LINK'"/>
+            <delete tableName="m_payment_type">
+                <where>value = 'PAYMENT_LINK'</where>
+            </delete>
         </rollback>
     </changeSet>
 
