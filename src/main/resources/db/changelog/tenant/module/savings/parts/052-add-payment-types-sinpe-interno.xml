@@ -24,7 +24,9 @@
             <column name="order_position" valueNumeric="140"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type" where="value = 'SINPE_INTERNO'"/>
+            <delete tableName="m_payment_type">
+                <where>value = 'SINPE_INTERNO'</where>
+            </delete>
         </rollback>
     </changeSet>
 
