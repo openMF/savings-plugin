@@ -60,4 +60,5 @@
   <include file="parts/048-add-exchange-rate-provider-sync.xml" relativeToChangelogFile="true"/>
   <include file="parts/049-create-sinpe-enrollment-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/050-add-payment-types.xml" relativeToChangelogFile="true"/>
+  <include file="parts/051-extend-sinpe-enrollment-link-state.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
