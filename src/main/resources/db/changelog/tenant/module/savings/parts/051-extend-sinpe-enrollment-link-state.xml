@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-051-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_sinpe_enrollment" columnName="savings_account_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_sinpe_enrollment">
+            <column name="savings_account_id" type="bigint"/>
+            <column name="iban" type="varchar(100)"/>
+            <column name="status" type="varchar(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="linked_on_utc" type="timestamp"/>
+            <column name="unlinked_on_utc" type="timestamp"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="m_sinpe_enrollment"
+                                 baseColumnNames="savings_account_id"
+                                 constraintName="fk_sinpe_enrollment_savings_account"
+                                 referencedTableName="m_savings_account"
+                                 referencedColumnNames="id"/>
+        <createIndex indexName="idx_sinpe_enrollment_mobile_status" tableName="m_sinpe_enrollment">
+            <column name="mobile_number"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex indexName="idx_sinpe_enrollment_savings_status" tableName="m_sinpe_enrollment">
+            <column name="savings_account_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
