@@ -1,26 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
- Copyright since 2026 Mifos Initiative
- This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  Copyright since 2026 Mifos Initiative
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
-    
-    <!--
-        Adds custom payment types required by the Self-Service Plugin.
-        Runs against every tenant database.
-        Idempotent: skips rows that already exist (matched by value).
-    -->
+
+    <!-- SAME_BANK -->
     <changeSet author="fineract" id="ss-050-1">
-
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="m_payment_type"/>
-        </preConditions>
-
-        <!-- SAME_BANK -->
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM m_payment_type WHERE value = 'SAME_BANK'
             </sqlCheck>
@@ -31,9 +22,15 @@
             <column name="is_cash_payment" valueBoolean="false"/>
             <column name="order_position" valueNumeric="100"/>
         </insert>
+        <rollback>
+            <delete tableName="m_payment_type" where="value = 'SAME_BANK'"/>
+        </rollback>
+    </changeSet>
 
-        <!-- PIN -->
+    <!-- PIN -->
+    <changeSet author="fineract" id="ss-050-2">
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM m_payment_type WHERE value = 'PIN'
             </sqlCheck>
@@ -44,9 +41,15 @@
             <column name="is_cash_payment" valueBoolean="false"/>
             <column name="order_position" valueNumeric="110"/>
         </insert>
+        <rollback>
+            <delete tableName="m_payment_type" where="value = 'PIN'"/>
+        </rollback>
+    </changeSet>
 
-        <!-- SINPE -->
+    <!-- SINPE -->
+    <changeSet author="fineract" id="ss-050-3">
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM m_payment_type WHERE value = 'SINPE'
             </sqlCheck>
@@ -57,9 +60,15 @@
             <column name="is_cash_payment" valueBoolean="false"/>
             <column name="order_position" valueNumeric="120"/>
         </insert>
+        <rollback>
+            <delete tableName="m_payment_type" where="value = 'SINPE'"/>
+        </rollback>
+    </changeSet>
 
-        <!-- PAYMENT_LINK -->
+    <!-- PAYMENT_LINK -->
+    <changeSet author="fineract" id="ss-050-4">
         <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM m_payment_type WHERE value = 'PAYMENT_LINK'
             </sqlCheck>
@@ -70,11 +79,8 @@
             <column name="is_cash_payment" valueBoolean="false"/>
             <column name="order_position" valueNumeric="130"/>
         </insert>
-
         <rollback>
-            <delete tableName="m_payment_type">
-                <where>value IN ('SAME_BANK', 'PIN', 'SINPE', 'PAYMENT_LINK')</where>
-            </delete>
+            <delete tableName="m_payment_type" where="value = 'PAYMENT_LINK'"/>
         </rollback>
     </changeSet>
 
