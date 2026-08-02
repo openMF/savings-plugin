@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Copyright since 2026 Mifos Initiative
@@ -25,11 +24,8 @@
             <column name="order_position" valueNumeric="140"/>
         </insert>
         <rollback>
-            <delete tableName="m_payment_type">
-                <where>value = 'SINPE_INTERNO'</where>
-            </delete>
+            <delete tableName="m_payment_type" where="value = 'SINPE_INTERNO'"/>
         </rollback>
     </changeSet>
-
 
 </databaseChangeLog>
