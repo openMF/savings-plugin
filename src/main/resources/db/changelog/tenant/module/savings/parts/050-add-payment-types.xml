@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+    
+    <!--
+        Adds custom payment types required by the Self-Service Plugin.
+        Runs against every tenant database.
+        Idempotent: skips rows that already exist (matched by value).
+    -->
+    <changeSet author="fineract" id="ss-050-1">
+
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
+        </preConditions>
+
+        <!-- SAME_BANK -->
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_payment_type WHERE value = 'SAME_BANK'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_payment_type">
+            <column name="value" value="SAME_BANK"/>
+            <column name="description" value="Same Bank Transfer"/>
+            <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="order_position" valueNumeric="100"/>
+        </insert>
+
+        <!-- PIN -->
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_payment_type WHERE value = 'PIN'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_payment_type">
+            <column name="value" value="PIN"/>
+            <column name="description" value="PIN Payment"/>
+            <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="order_position" valueNumeric="110"/>
+        </insert>
+
+        <!-- SINPE -->
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_payment_type WHERE value = 'SINPE'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_payment_type">
+            <column name="value" value="SINPE"/>
+            <column name="description" value="SINPE Instant Transfer (Costa Rica)"/>
+            <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="order_position" valueNumeric="120"/>
+        </insert>
+
+        <!-- PAYMENT_LINK -->
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_payment_type WHERE value = 'PAYMENT_LINK'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_payment_type">
+            <column name="value" value="PAYMENT_LINK"/>
+            <column name="description" value="Payment Link"/>
+            <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="order_position" valueNumeric="130"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="m_payment_type">
+                <where>value IN ('SAME_BANK', 'PIN', 'SINPE', 'PAYMENT_LINK')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
