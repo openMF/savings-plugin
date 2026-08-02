@@ -1,0 +1,35 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright since 2026 Mifos Initiative
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- SINPE -->
+    <changeSet author="fineract" id="ss-051-1">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <tableExists tableName="m_payment_type"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_payment_type WHERE value = 'SINPE_INTERNO'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_payment_type">
+            <column name="value" value="SINPE_INTERNO"/>
+            <column name="description" value="SINPE Movil Internal Transfer"/>
+            <column name="is_cash_payment" valueBoolean="false"/>
+            <column name="is_system_defined" valueBoolean="false"/>
+            <column name="order_position" valueNumeric="140"/>
+        </insert>
+        <rollback>
+            <delete tableName="m_payment_type">
+                <where>value = 'SINPE_INTERNO'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+
+</databaseChangeLog>
