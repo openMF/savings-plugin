@@ -128,6 +128,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl
 
     Map<String, Object> changes = new HashMap<>();
     changes.put("mobileNumber", mobileNumber);
+    changes.put("otp", otp);
 
     return new CommandProcessingResultBuilder()
         .withClientId(clientId)
