@@ -228,7 +228,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl
     // 2. Load client (multi-tenant aware)
     Client client = clientRepository.findOneWithNotFoundDetection(clientId);
     SavingsAccount savingsAccount = validateSavingsAccount(clientId, iban);
-    validateDuplicateLink(enrollment, phoneNumber, savingsAccount.getId());
+    validateDuplicateLink(enrollment, phoneNumber);
 
     // 3. Build the full external request from client data + defaults
     SinpeSubscriptionRequest request =
@@ -463,8 +463,7 @@ public class SinpeEnrollmentWritePlatformServiceImpl
 
   private void validateDuplicateLink(
       final SinpeEnrollment current,
-      final String phoneNumber,
-      final Long savingsAccountId) {
+      final String phoneNumber) {
     enrollmentRepository
         .findFirstByMobileNumberAndStatus(phoneNumber, LINKED)
         .filter(existing -> !isSameEnrollment(existing, current))
@@ -473,15 +472,6 @@ public class SinpeEnrollmentWritePlatformServiceImpl
               throw new GeneralPlatformDomainRuleException(
                   "error.msg.sinpe.identifier.already.linked",
                   "Phone number is already linked to a savings account.");
-            });
-    enrollmentRepository
-        .findFirstBySavingsAccountIdAndStatus(savingsAccountId, LINKED)
-        .filter(existing -> !isSameEnrollment(existing, current))
-        .ifPresent(
-            existing -> {
-              throw new GeneralPlatformDomainRuleException(
-                  "error.msg.sinpe.account.already.linked",
-                  "Savings account is already linked to a phone number.");
             });
   }
 

@@ -1,5 +1,6 @@
 package org.apache.fineract.fastpayment.sinpe.domain;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -44,5 +45,15 @@ public interface SinpeEnrollmentRepository
    * @return matching enrollment, if present
    */
   Optional<SinpeEnrollment> findFirstBySavingsAccountIdAndStatus(
+      Long savingsAccountId, String status);
+
+  /**
+   * Finds active enrollment rows for a savings account and local link status.
+   *
+   * @param savingsAccountId savings account identifier
+   * @param status local link status
+   * @return matching enrollments
+   */
+  List<SinpeEnrollment> findBySavingsAccountIdAndStatusOrderByMobileNumberAsc(
       Long savingsAccountId, String status);
 }
