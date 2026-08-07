@@ -12,8 +12,10 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.fastpayment.sinpe.data.SinpeLinkedPhoneData;
 import org.apache.fineract.fastpayment.sinpe.data.SinpePhoneStatusData;
 import org.apache.fineract.fastpayment.sinpe.data.SinpeSubscriptionEditRequest;
 import org.apache.fineract.fastpayment.sinpe.service.SinpeEnrollmentReadPlatformService;
@@ -48,6 +50,10 @@ public final class SinpeEnrollmentApiResource {
   /** Serializer for phone status responses. */
   private final DefaultToApiJsonSerializer<SinpePhoneStatusData>
       phoneStatusSerializer;
+
+  /** Serializer for linked phone responses. */
+  private final DefaultToApiJsonSerializer<SinpeLinkedPhoneData>
+      linkedPhoneSerializer;
 
   /**
    * Starts the existing SINPE phone OTP request flow.
@@ -251,6 +257,28 @@ public final class SinpeEnrollmentApiResource {
     SinpePhoneStatusData data =
         readPlatformService.retrievePhoneStatus(phoneNumber);
     return phoneStatusSerializer.serialize(data);
+  }
+
+  /**
+   * Retrieves active local phone links for a savings account.
+   *
+   * @param savingsAccountId savings account identifier
+   * @return serialized linked phone data
+   */
+  @GET
+  @Path("/savingsaccounts/{savingsAccountId}/phones")
+  @Produces({MediaType.APPLICATION_JSON})
+  @Operation(
+      summary = "List linked SINPE Móvil phones for savings account",
+      description = "Returns active local SINPE phone links for a savings account.")
+  public String retrieveLinkedPhones(
+      @PathParam("savingsAccountId") final Long savingsAccountId) {
+    context.authenticatedUser()
+        .validateHasPermissionTo("READ_SINPE_ENROLLMENT");
+
+    Collection<SinpeLinkedPhoneData> data =
+        readPlatformService.retrieveLinkedPhones(savingsAccountId);
+    return linkedPhoneSerializer.serializeResult(data);
   }
 
   private String getOptionalString(

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,6 +45,7 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
   private static final Long USER_ID = 7L;
   private static final Long SAVINGS_ACCOUNT_ID = 31L;
   private static final String PHONE_NUMBER = "88887777";
+  private static final String OTHER_PHONE_NUMBER = "88886666";
   private static final String IBAN = "CR05015202001026284066";
   private static final String OTP = "123456";
   private static final String PREVIOUS_OTP = "OLDOTP";
@@ -80,7 +82,7 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
   }
 
   @Test
-  void requestEnrollmentCreatesPhoneOtpWithoutReturningOtp() {
+  void requestEnrollmentCreatesPhoneOtpAndReturnsIt() {
     when(clientRepository.findOneWithNotFoundDetection(CLIENT_ID)).thenReturn(client);
     when(enrollmentRepository.findByClientIdAndMobileNumberAndVerifiedTrue(CLIENT_ID, PHONE_NUMBER))
         .thenReturn(Optional.empty());
@@ -92,7 +94,7 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
 
     assertEquals(CLIENT_ID, result.getClientId());
     assertEquals(PHONE_NUMBER, result.getChanges().get("mobileNumber"));
-    assertFalse(result.getChanges().containsKey("otp"));
+    assertTrue(result.getChanges().containsKey("otp"));
     verify(clientRepository).findOneWithNotFoundDetection(CLIENT_ID);
     verify(enrollmentRepository).saveAndFlush(any(SinpeEnrollment.class));
   }
@@ -104,9 +106,8 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
         .thenReturn(Optional.of(enrollment));
     when(clientRepository.findOneWithNotFoundDetection(CLIENT_ID)).thenReturn(client);
     mockValidSavingsAccount(CLIENT_ID, IBAN);
+    when(savingsAccount.getId()).thenReturn(SAVINGS_ACCOUNT_ID);
     when(enrollmentRepository.findFirstByMobileNumberAndStatus(PHONE_NUMBER, "LINKED"))
-        .thenReturn(Optional.empty());
-    when(enrollmentRepository.findFirstBySavingsAccountIdAndStatus(SAVINGS_ACCOUNT_ID, "LINKED"))
         .thenReturn(Optional.empty());
     when(sinpeExternalApiClient.createSubscription(any())).thenReturn(PROVIDER_RESPONSE);
 
@@ -212,26 +213,34 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
   }
 
   @Test
-  void createSubscriptionRejectsDuplicateSavingsAccountLink() {
+  void createSubscriptionAllowsDifferentPhoneLinkedToSameSavingsAccount() {
     SinpeEnrollment enrollment = verifiedEnrollment();
-    SinpeEnrollment existing = verifiedEnrollment();
+    SinpeEnrollment existing = verifiedEnrollment(OTHER_PHONE_NUMBER, OTP);
     existing.markAsLinked(SAVINGS_ACCOUNT_ID, IBAN, LocalDateTime.now());
     when(enrollmentRepository.findByClientIdAndMobileNumber(CLIENT_ID, PHONE_NUMBER))
         .thenReturn(Optional.of(enrollment));
     when(clientRepository.findOneWithNotFoundDetection(CLIENT_ID)).thenReturn(client);
     mockValidSavingsAccount(CLIENT_ID, IBAN);
+    when(savingsAccount.getId()).thenReturn(SAVINGS_ACCOUNT_ID);
     when(enrollmentRepository.findFirstByMobileNumberAndStatus(PHONE_NUMBER, "LINKED"))
         .thenReturn(Optional.empty());
-    when(enrollmentRepository.findFirstBySavingsAccountIdAndStatus(SAVINGS_ACCOUNT_ID, "LINKED"))
+    lenient()
+        .when(
+            enrollmentRepository.findFirstBySavingsAccountIdAndStatus(
+                SAVINGS_ACCOUNT_ID, "LINKED"))
         .thenReturn(Optional.of(existing));
+    when(sinpeExternalApiClient.createSubscription(any())).thenReturn(PROVIDER_RESPONSE);
 
-    GeneralPlatformDomainRuleException exception =
-        assertThrows(
-            GeneralPlatformDomainRuleException.class,
-            () -> service.createSubscription(CLIENT_ID, PHONE_NUMBER, IBAN, OTP));
+    service.createSubscription(CLIENT_ID, PHONE_NUMBER, IBAN, OTP);
 
-    assertEquals("error.msg.sinpe.account.already.linked", exception.getGlobalisationMessageCode());
-    verify(sinpeExternalApiClient, never()).createSubscription(any());
+    assertTrue(enrollment.isLinked());
+    assertEquals(SAVINGS_ACCOUNT_ID, enrollment.getSavingsAccountId());
+    assertEquals(OTHER_PHONE_NUMBER, existing.getMobileNumber());
+    assertEquals(SAVINGS_ACCOUNT_ID, existing.getSavingsAccountId());
+    verify(sinpeExternalApiClient).createSubscription(any());
+    verify(enrollmentRepository).saveAndFlush(enrollment);
+    verify(enrollmentRepository, never())
+        .findFirstBySavingsAccountIdAndStatus(SAVINGS_ACCOUNT_ID, "LINKED");
   }
 
   @Test
@@ -262,8 +271,6 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
     when(clientRepository.findOneWithNotFoundDetection(CLIENT_ID)).thenReturn(client);
     mockValidSavingsAccount(CLIENT_ID, IBAN);
     when(enrollmentRepository.findFirstByMobileNumberAndStatus(PHONE_NUMBER, "LINKED"))
-        .thenReturn(Optional.empty());
-    when(enrollmentRepository.findFirstBySavingsAccountIdAndStatus(SAVINGS_ACCOUNT_ID, "LINKED"))
         .thenReturn(Optional.empty());
     when(sinpeExternalApiClient.createSubscription(any())).thenReturn(null);
 
@@ -431,7 +438,11 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
   }
 
   private SinpeEnrollment verifiedEnrollment(String otp) {
-    SinpeEnrollment enrollment = new SinpeEnrollment(CLIENT_ID, PHONE_NUMBER, USER_ID);
+    return verifiedEnrollment(PHONE_NUMBER, otp);
+  }
+
+  private SinpeEnrollment verifiedEnrollment(String mobileNumber, String otp) {
+    SinpeEnrollment enrollment = new SinpeEnrollment(CLIENT_ID, mobileNumber, USER_ID);
     enrollment.setPendingOtp(otp, LocalDateTime.now().plusMinutes(5));
     return enrollment;
   }
@@ -442,6 +453,5 @@ class SinpeEnrollmentWritePlatformServiceImplTest {
     when(savingsAccount.clientId()).thenReturn(ownerClientId);
     when(savingsAccount.isActive()).thenReturn(true);
     when(savingsAccount.getExternalId()).thenReturn(externalId);
-    when(savingsAccount.getId()).thenReturn(SAVINGS_ACCOUNT_ID);
   }
 }
