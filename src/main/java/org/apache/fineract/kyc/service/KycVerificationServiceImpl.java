@@ -31,6 +31,7 @@ import org.apache.fineract.kyc.repository.KycVerificationRepository;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class KycVerificationServiceImpl implements KycVerificationService {
@@ -47,7 +48,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       final KycVerificationRepository kycVerificationRepository,
       final ObjectMapper objectMapper,
       final ClientRepositoryWrapper clientRepositoryWrapper,
-      KycStatusDerivationService kycStatusDerivationService) {
+      final KycStatusDerivationService kycStatusDerivationService) {
     this.kycVerificationRepository = kycVerificationRepository;
     this.objectMapper = objectMapper;
     this.clientRepositoryWrapper = clientRepositoryWrapper;
@@ -60,12 +61,13 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
     this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
 
-    // Idempotency
+    // Idempotency: if session already exists, update status/feature flags from latest webhook
+    // instead of returning the stale row (status.updated can move In Review → Declined/Approved).
     if (payload.getSessionId() != null) {
       final Optional<KycVerification> existing =
           kycVerificationRepository.findBySessionId(payload.getSessionId());
       if (existing.isPresent()) {
-        return existing.get();
+        return updateExistingVerification(existing.get(), payload);
       }
     }
 
@@ -83,137 +85,190 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             serializeMetadata(payload.getMetadata()),
             SYSTEM_USER_ID);
 
-    // 2. Build the decision aggregate
-    if (payload.getDecision() != null) {
-      final Decision decisionDto = payload.getDecision();
-
-      final OffsetDateTime decisionCreatedAt = parseOffsetDateTime(decisionDto.getCreatedAt());
-      final KycDecision decision =
-          KycDecision.create(
-              decisionDto.getStatus(),
-              decisionDto.getWorkflowId(),
-              decisionCreatedAt,
-              SYSTEM_USER_ID);
-
-      // 2a. Features
-      if (decisionDto.getFeatures() != null) {
-        for (final String featureName : decisionDto.getFeatures()) {
-          decision.addFeature(KycDecisionFeature.create(featureName, SYSTEM_USER_ID));
-        }
-      }
-
-      // 2b. Face matches
-      if (decisionDto.getFaceMatches() != null) {
-        for (final FaceMatch fmDto : decisionDto.getFaceMatches()) {
-          decision.addFaceMatch(
-              KycFaceMatch.create(
-                  fmDto.getNodeId(),
-                  fmDto.getScore(),
-                  fmDto.getStatus(),
-                  fmDto.getSourceImage(),
-                  fmDto.getTargetImage(),
-                  SYSTEM_USER_ID));
-        }
-      }
-
-      // 2c. ID verifications
-      if (decisionDto.getIdVerifications() != null) {
-        for (final IdVerification idDto : decisionDto.getIdVerifications()) {
-          decision.addIdVerification(
-              KycIdVerification.create(
-                  idDto.getNodeId(),
-                  idDto.getStatus(),
-                  idDto.getFirstName(),
-                  idDto.getLastName(),
-                  idDto.getFullName(),
-                  parseLocalDate(idDto.getDateOfBirth()),
-                  idDto.getGender(),
-                  idDto.getAge(),
-                  idDto.getNationality(),
-                  idDto.getDocumentNumber(),
-                  idDto.getDocumentType(),
-                  idDto.getIssuingState(),
-                  idDto.getIssuingStateName(),
-                  idDto.getPersonalNumber(),
-                  parseLocalDate(idDto.getExpirationDate()),
-                  idDto.getFormattedAddress(),
-                  serializeParsedAddress(idDto.getParsedAddress()),
-                  SYSTEM_USER_ID));
-        }
-      }
-
-      // 2d. AML screenings
-      if (decisionDto.getAmlScreenings() != null) {
-        for (final AmlScreening amlDto : decisionDto.getAmlScreenings()) {
-          final LocalDate screenedDob =
-              amlDto.getScreenedData() != null
-                  ? parseLocalDate(amlDto.getScreenedData().getDateOfBirth())
-                  : null;
-
-          final KycAmlScreening screening =
-              KycAmlScreening.create(
-                  amlDto.getNodeId(),
-                  amlDto.getStatus(),
-                  amlDto.getTotalHits(),
-                  amlDto.getScreenedData() != null
-                      ? amlDto.getScreenedData().getNationality()
-                      : null,
-                  amlDto.getScreenedData() != null ? amlDto.getScreenedData().getFullName() : null,
-                  amlDto.getScreenedData() != null
-                      ? amlDto.getScreenedData().getDocumentNumber()
-                      : null,
-                  screenedDob,
-                  SYSTEM_USER_ID);
-
-          if (amlDto.getHits() != null) {
-            for (final Object hitObj : amlDto.getHits()) {
-              screening.addHit(KycAmlHit.create(serializeToJson(hitObj), SYSTEM_USER_ID));
-            }
-          }
-
-          decision.addAmlScreening(screening);
-        }
-      }
-
-      // ── Determine feature statuses from the payload ──
-      final boolean hasFaceMatches =
-          decisionDto.getFaceMatches() != null && !decisionDto.getFaceMatches().isEmpty();
-      final boolean hasIdVerifications =
-          decisionDto.getIdVerifications() != null && !decisionDto.getIdVerifications().isEmpty();
-      final boolean hasAmlScreenings =
-          decisionDto.getAmlScreenings() != null && !decisionDto.getAmlScreenings().isEmpty();
-      final boolean hasDecision = decisionDto.getStatus() != null;
-
-      // Derive the overall status
-      final String kycStatus =
-          kycStatusDerivationService.deriveStatus(
-              hasFaceMatches,
-              hasIdVerifications,
-              hasAmlScreenings,
-              hasDecision,
-              decisionDto.getStatus());
-
-      final KycFeatureStatus featureStatus =
-          KycFeatureStatus.create(
-              hasFaceMatches,
-              hasIdVerifications,
-              hasAmlScreenings,
-              hasDecision,
-              kycStatus,
-              SYSTEM_USER_ID);
-
-      // Link feature status to verification
-      verification.setFeatureStatus(featureStatus);
-
-      // ✅ Single point: setDecision calls decision.setKycVerification(this) internally
-      verification.setDecision(decision);
-    }
+    // 2. Build the decision aggregate + feature status
+    applyDecisionAndFeatureStatus(verification, payload);
 
     // ✅ ONE saveAndFlush — EclipseLink cascades the entire tree
     // Insert order: verification → decision → features/faceMatches/idVerifications/amlScreenings →
     // hits
     // EclipseLink fills FK columns automatically from the @ManyToOne relationships
     return kycVerificationRepository.saveAndFlush(verification);
+  }
+
+  /**
+   * Updates an existing verification when the same sessionId is re-delivered (e.g. status.updated).
+   * Rebuilds decision + feature status from the latest payload so authentication sees the correct
+   * kycValidations (faceMatches / idVerifications / amlScreenings / decision / status).
+   */
+  private KycVerification updateExistingVerification(
+      final KycVerification verification, final KycWebhookPayload payload) {
+
+    // Refresh root-level fields from the latest webhook
+    verification.updateFromWebhook(
+        payload.getStatus(),
+        payload.getTimestamp(),
+        payload.getWebhookType(),
+        payload.getWorkflowId(),
+        payload.getWorkflowVersion(),
+        serializeMetadata(payload.getMetadata()));
+
+    // Rebuild decision aggregate and feature status from the latest payload
+    applyDecisionAndFeatureStatus(verification, payload);
+
+    return kycVerificationRepository.saveAndFlush(verification);
+  }
+
+  /**
+   * Builds (or rebuilds) the decision tree and derives KycFeatureStatus from the payload.
+   *
+   * <p>Feature flags reflect whether each check was <strong>Approved</strong> by the provider,
+   * not merely whether the array is present. Overall status prefers the provider decision status
+   * (Approved / Declined / In Review / …).
+   */
+  private void applyDecisionAndFeatureStatus(
+      final KycVerification verification, final KycWebhookPayload payload) {
+
+    if (payload.getDecision() == null) {
+      return;
+    }
+
+    final Decision decisionDto = payload.getDecision();
+
+    final OffsetDateTime decisionCreatedAt = parseOffsetDateTime(decisionDto.getCreatedAt());
+    final KycDecision decision =
+        KycDecision.create(
+            decisionDto.getStatus(),
+            decisionDto.getWorkflowId(),
+            decisionCreatedAt,
+            SYSTEM_USER_ID);
+
+    // 2a. Features
+    if (decisionDto.getFeatures() != null) {
+      for (final String featureName : decisionDto.getFeatures()) {
+        decision.addFeature(KycDecisionFeature.create(featureName, SYSTEM_USER_ID));
+      }
+    }
+
+    // 2b. Face matches
+    if (decisionDto.getFaceMatches() != null) {
+      for (final FaceMatch fmDto : decisionDto.getFaceMatches()) {
+        decision.addFaceMatch(
+            KycFaceMatch.create(
+                fmDto.getNodeId(),
+                fmDto.getScore(),
+                fmDto.getStatus(),
+                fmDto.getSourceImage(),
+                fmDto.getTargetImage(),
+                SYSTEM_USER_ID));
+      }
+    }
+
+    // 2c. ID verifications
+    if (decisionDto.getIdVerifications() != null) {
+      for (final IdVerification idDto : decisionDto.getIdVerifications()) {
+        decision.addIdVerification(
+            KycIdVerification.create(
+                idDto.getNodeId(),
+                idDto.getStatus(),
+                idDto.getFirstName(),
+                idDto.getLastName(),
+                idDto.getFullName(),
+                parseLocalDate(idDto.getDateOfBirth()),
+                idDto.getGender(),
+                idDto.getAge(),
+                idDto.getNationality(),
+                idDto.getDocumentNumber(),
+                idDto.getDocumentType(),
+                idDto.getIssuingState(),
+                idDto.getIssuingStateName(),
+                idDto.getPersonalNumber(),
+                parseLocalDate(idDto.getExpirationDate()),
+                idDto.getFormattedAddress(),
+                serializeParsedAddress(idDto.getParsedAddress()),
+                SYSTEM_USER_ID));
+      }
+    }
+
+    // 2d. AML screenings
+    if (decisionDto.getAmlScreenings() != null) {
+      for (final AmlScreening amlDto : decisionDto.getAmlScreenings()) {
+        final LocalDate screenedDob =
+            amlDto.getScreenedData() != null
+                ? parseLocalDate(amlDto.getScreenedData().getDateOfBirth())
+                : null;
+
+        final KycAmlScreening screening =
+            KycAmlScreening.create(
+                amlDto.getNodeId(),
+                amlDto.getStatus(),
+                amlDto.getTotalHits(),
+                amlDto.getScreenedData() != null
+                    ? amlDto.getScreenedData().getNationality()
+                    : null,
+                amlDto.getScreenedData() != null ? amlDto.getScreenedData().getFullName() : null,
+                amlDto.getScreenedData() != null
+                    ? amlDto.getScreenedData().getDocumentNumber()
+                    : null,
+                screenedDob,
+                SYSTEM_USER_ID);
+
+        if (amlDto.getHits() != null) {
+          for (final Object hitObj : amlDto.getHits()) {
+            screening.addHit(KycAmlHit.create(serializeToJson(hitObj), SYSTEM_USER_ID));
+          }
+        }
+
+        decision.addAmlScreening(screening);
+      }
+    }
+
+    // ── Feature flags = Approved by provider (not mere presence) ──
+    final boolean faceMatchesApproved =
+        decisionDto.getFaceMatches() != null
+            && decisionDto.getFaceMatches().stream()
+                .anyMatch(fm -> isApprovedStatus(fm.getStatus()));
+
+    final boolean idVerificationsApproved =
+        decisionDto.getIdVerifications() != null
+            && decisionDto.getIdVerifications().stream()
+                .anyMatch(id -> isApprovedStatus(id.getStatus()));
+
+    final boolean amlScreeningsApproved =
+        decisionDto.getAmlScreenings() != null
+            && decisionDto.getAmlScreenings().stream()
+                .anyMatch(aml -> isApprovedStatus(aml.getStatus()));
+
+    final boolean hasDecision = StringUtils.hasText(decisionDto.getStatus());
+
+    // Overall status prefers the explicit provider decision status
+    final String kycStatus =
+        kycStatusDerivationService.deriveStatus(
+            faceMatchesApproved,
+            idVerificationsApproved,
+            amlScreeningsApproved,
+            hasDecision,
+            decisionDto.getStatus());
+
+    final KycFeatureStatus featureStatus =
+        KycFeatureStatus.create(
+            faceMatchesApproved,
+            idVerificationsApproved,
+            amlScreeningsApproved,
+            hasDecision,
+            kycStatus,
+            SYSTEM_USER_ID);
+
+    // Link feature status + decision to verification
+    verification.setFeatureStatus(featureStatus);
+    // setDecision calls decision.setKycVerification(this) internally
+    verification.setDecision(decision);
+
+    // Keep root kycStatus in sync with derived / provider status
+    verification.setKycStatus(kycStatus);
+  }
+
+  private static boolean isApprovedStatus(final String status) {
+    return status != null && "Approved".equalsIgnoreCase(status.trim());
   }
 
   @Override
@@ -244,7 +299,9 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   // Helpers
 
   private OffsetDateTime parseOffsetDateTime(final String isoDateTime) {
-    if (isoDateTime == null) return null;
+    if (isoDateTime == null) {
+      return null;
+    }
     try {
       return OffsetDateTime.parse(isoDateTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } catch (Exception e) {
@@ -254,12 +311,16 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   }
 
   private LocalDate parseLocalDate(final String dateStr) {
-    if (dateStr == null) return null;
+    if (dateStr == null) {
+      return null;
+    }
     return LocalDate.parse(dateStr);
   }
 
   private String serializeMetadata(final Object metadata) {
-    if (metadata == null) return null;
+    if (metadata == null) {
+      return null;
+    }
     try {
       return objectMapper.writeValueAsString(metadata);
     } catch (Exception e) {
@@ -268,7 +329,9 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   }
 
   private String serializeParsedAddress(final Object parsedAddress) {
-    if (parsedAddress == null) return null;
+    if (parsedAddress == null) {
+      return null;
+    }
     try {
       return objectMapper.writeValueAsString(parsedAddress);
     } catch (Exception e) {
@@ -277,7 +340,9 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   }
 
   private String serializeToJson(final Object obj) {
-    if (obj == null) return null;
+    if (obj == null) {
+      return null;
+    }
     try {
       return objectMapper.writeValueAsString(obj);
     } catch (Exception e) {

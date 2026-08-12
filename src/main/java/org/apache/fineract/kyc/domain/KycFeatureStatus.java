@@ -7,7 +7,15 @@
 package org.apache.fineract.kyc.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -36,6 +44,9 @@ public class KycFeatureStatus {
   @Column(name = "decision", nullable = false)
   private Boolean decision;
 
+  @Column(name = "kyc_status", nullable = false, length = 50)
+  private String kycStatus;
+
   @Column(name = "created_by", nullable = false)
   private Long createdBy;
 
@@ -48,15 +59,10 @@ public class KycFeatureStatus {
   @Column(name = "last_modified_on_utc", nullable = false)
   private OffsetDateTime lastModifiedOnUtc;
 
-  @Column(name = "kyc_status", nullable = false, length = 50)
-  private String kycStatus;
-
   // ── JPA Constructor ──────────────────────────────────────
-
   protected KycFeatureStatus() {}
 
   // ── Factory Method ───────────────────────────────────────
-
   public static KycFeatureStatus create(
       final Boolean faceMatches,
       final Boolean idVerifications,
@@ -64,8 +70,9 @@ public class KycFeatureStatus {
       final Boolean decision,
       final String kycStatus,
       final Long createdBy) {
+
     final KycFeatureStatus fs = new KycFeatureStatus();
-    // Default to FALSE if null is passed
+    // Default to FALSE / "In Review" if null is passed
     fs.faceMatches = faceMatches != null ? faceMatches : Boolean.FALSE;
     fs.idVerifications = idVerifications != null ? idVerifications : Boolean.FALSE;
     fs.amlScreenings = amlScreenings != null ? amlScreenings : Boolean.FALSE;
@@ -79,14 +86,46 @@ public class KycFeatureStatus {
     return fs;
   }
 
-  // ── Relationship Setter ──────────────────────────────────
+  /**
+   * Updates feature flags and overall status from a later webhook for the same session
+   * (e.g. status.updated: In Review → Declined / Approved).
+   * Used by the idempotent update path in {@code KycVerificationServiceImpl}.
+   */
+  public void update(
+      final Boolean faceMatches,
+      final Boolean idVerifications,
+      final Boolean amlScreenings,
+      final Boolean decision,
+      final String kycStatus,
+      final Long modifiedBy) {
 
+    if (faceMatches != null) {
+      this.faceMatches = faceMatches;
+    }
+    if (idVerifications != null) {
+      this.idVerifications = idVerifications;
+    }
+    if (amlScreenings != null) {
+      this.amlScreenings = amlScreenings;
+    }
+    if (decision != null) {
+      this.decision = decision;
+    }
+    if (kycStatus != null) {
+      this.kycStatus = kycStatus;
+    }
+    if (modifiedBy != null) {
+      this.lastModifiedBy = modifiedBy;
+    }
+    this.lastModifiedOnUtc = OffsetDateTime.now();
+  }
+
+  // ── Relationship Setter ──────────────────────────────────
   public void setKycVerification(final KycVerification kycVerification) {
     this.kycVerification = kycVerification;
   }
 
   // ── Getters ──────────────────────────────────────────────
-
   public Long getId() {
     return id;
   }
@@ -97,6 +136,10 @@ public class KycFeatureStatus {
    */
   public Long getKycVerificationId() {
     return kycVerification != null ? kycVerification.getId() : null;
+  }
+
+  public KycVerification getKycVerification() {
+    return kycVerification;
   }
 
   public Boolean getFaceMatches() {
@@ -117,6 +160,11 @@ public class KycFeatureStatus {
 
   public String getKycStatus() {
     return kycStatus;
+  }
+
+  public void setKycStatus(final String kycStatus) {
+    this.kycStatus = kycStatus;
+    this.lastModifiedOnUtc = OffsetDateTime.now();
   }
 
   public Long getCreatedBy() {

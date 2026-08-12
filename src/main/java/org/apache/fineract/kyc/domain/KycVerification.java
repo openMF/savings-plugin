@@ -6,26 +6,20 @@
  */
 package org.apache.fineract.kyc.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "m_client_kyc_verification")
 public class KycVerification {
-
-  /**
-   * @return the createdOnUtc
-   */
-  public OffsetDateTime getCreatedOnUtc() {
-    return createdOnUtc;
-  }
-
-  /**
-   * @param createdOnUtc the createdOnUtc to set
-   */
-  public void setCreatedOnUtc(OffsetDateTime createdOnUtc) {
-    this.createdOnUtc = createdOnUtc;
-  }
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -87,17 +81,6 @@ public class KycVerification {
       orphanRemoval = true)
   private KycFeatureStatus featureStatus;
 
-  public KycFeatureStatus getFeatureStatus() {
-    return featureStatus;
-  }
-
-  public void setFeatureStatus(final KycFeatureStatus featureStatus) {
-    this.featureStatus = featureStatus;
-    if (featureStatus != null) {
-      featureStatus.setKycVerification(this);
-    }
-  }
-
   protected KycVerification() {}
 
   public static KycVerification create(
@@ -111,6 +94,7 @@ public class KycVerification {
       final Long kycCreatedAt,
       final String metadata,
       final Long createdBy) {
+
     final KycVerification v = new KycVerification();
     v.clientId = clientId;
     v.sessionId = sessionId;
@@ -124,10 +108,54 @@ public class KycVerification {
     v.createdBy = createdBy;
     v.lastModifiedBy = createdBy;
     final OffsetDateTime now = OffsetDateTime.now();
-    v.setCreatedOnUtc(now);
+    v.createdOnUtc = now;
     v.lastModifiedOnUtc = now;
     return v;
   }
+
+  /**
+   * Updates root-level fields from a later webhook for the same sessionId
+   * (e.g. status.updated: In Review → Declined / Approved).
+   * Does not touch decision / featureStatus; those are rebuilt by the service.
+   */
+  public void updateFromWebhook(
+      final String kycStatus,
+      final Long kycTimestamp,
+      final String webhookType,
+      final String workflowId,
+      final Integer workflowVersion,
+      final String metadata) {
+
+    if (kycStatus != null) {
+      this.kycStatus = kycStatus;
+    }
+    if (kycTimestamp != null) {
+      this.kycTimestamp = kycTimestamp;
+    }
+    if (webhookType != null) {
+      this.webhookType = webhookType;
+    }
+    if (workflowId != null) {
+      this.workflowId = workflowId;
+    }
+    if (workflowVersion != null) {
+      this.workflowVersion = workflowVersion;
+    }
+    if (metadata != null) {
+      this.metadata = metadata;
+    }
+    this.lastModifiedOnUtc = OffsetDateTime.now();
+  }
+
+  /**
+   * Convenience overload when only status / timestamp / webhook type change.
+   */
+  public void updateFromWebhook(
+      final String kycStatus, final Long kycTimestamp, final String webhookType) {
+    updateFromWebhook(kycStatus, kycTimestamp, webhookType, null, null, null);
+  }
+
+  // ── getters / setters ──────────────────────────────────────────────────
 
   public Long getId() {
     return id;
@@ -157,6 +185,11 @@ public class KycVerification {
     return kycStatus;
   }
 
+  public void setKycStatus(final String kycStatus) {
+    this.kycStatus = kycStatus;
+    this.lastModifiedOnUtc = OffsetDateTime.now();
+  }
+
   public Long getKycTimestamp() {
     return kycTimestamp;
   }
@@ -169,6 +202,34 @@ public class KycVerification {
     return metadata;
   }
 
+  public Long getCreatedBy() {
+    return createdBy;
+  }
+
+  public OffsetDateTime getCreatedOnUtc() {
+    return createdOnUtc;
+  }
+
+  public void setCreatedOnUtc(final OffsetDateTime createdOnUtc) {
+    this.createdOnUtc = createdOnUtc;
+  }
+
+  public Long getLastModifiedBy() {
+    return lastModifiedBy;
+  }
+
+  public void setLastModifiedBy(final Long lastModifiedBy) {
+    this.lastModifiedBy = lastModifiedBy;
+  }
+
+  public OffsetDateTime getLastModifiedOnUtc() {
+    return lastModifiedOnUtc;
+  }
+
+  public void setLastModifiedOnUtc(final OffsetDateTime lastModifiedOnUtc) {
+    this.lastModifiedOnUtc = lastModifiedOnUtc;
+  }
+
   public KycDecision getDecision() {
     return decision;
   }
@@ -177,6 +238,17 @@ public class KycVerification {
     this.decision = decision;
     if (decision != null) {
       decision.setKycVerification(this);
+    }
+  }
+
+  public KycFeatureStatus getFeatureStatus() {
+    return featureStatus;
+  }
+
+  public void setFeatureStatus(final KycFeatureStatus featureStatus) {
+    this.featureStatus = featureStatus;
+    if (featureStatus != null) {
+      featureStatus.setKycVerification(this);
     }
   }
 }

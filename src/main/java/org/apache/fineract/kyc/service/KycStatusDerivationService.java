@@ -1,46 +1,53 @@
-/**
- * Copyright since 2026 Mifos Initiative
- *
- * <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
- * of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
 package org.apache.fineract.kyc.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class KycStatusDerivationService {
 
   /**
-   * Derives the KYC status from the boolean flags and the decision status received from the
-   * external KYC provider.
+   * Derives the overall KYC status that will be returned in the self-service
+   * authentication response under {@code kycValidations.status}.
    *
-   * <p>Rules: - All TRUE + decision "Approved" → "Approved" - Decision "Declined" → "Rejected" -
-   * Decision "Approved" but missing features → "In Review" - No decision or null → "In Review"
+   * <p>Priority:
+   * <ol>
+   *   <li>Explicit decision status from the provider (Approved, Declined, In Review, …)</li>
+   *   <li>Fallback based on feature flags when no decision status is present</li>
+   * </ol>
    */
   public String deriveStatus(
-      final boolean faceMatches,
-      final boolean idVerifications,
-      final boolean amlScreenings,
-      final boolean decision,
-      final String providerDecisionStatus) {
+      final boolean faceMatchesApproved,
+      final boolean idVerificationsApproved,
+      final boolean amlScreeningsApproved,
+      final boolean hasDecision,
+      final String decisionStatus) {
 
-    // All features completed and provider approved
-    if (faceMatches && idVerifications && amlScreenings && decision) {
-      if ("Approved".equalsIgnoreCase(providerDecisionStatus)) {
+    if (StringUtils.hasText(decisionStatus)) {
+      // Normalise well-known Didit values
+      if ("Approved".equalsIgnoreCase(decisionStatus)) {
         return "Approved";
       }
-      if ("Declined".equalsIgnoreCase(providerDecisionStatus)) {
-        return "Rejected";
+      if ("Declined".equalsIgnoreCase(decisionStatus)
+          || "Rejected".equalsIgnoreCase(decisionStatus)) {
+        return "Declined";
       }
+      if ("In Review".equalsIgnoreCase(decisionStatus)
+          || "Pending".equalsIgnoreCase(decisionStatus)
+          || "In Progress".equalsIgnoreCase(decisionStatus)) {
+        return "In Review";
+      }
+      // Pass through any other provider value (e.g. "Awaiting User", "Resubmitted")
+      return decisionStatus;
     }
 
-    // Provider explicitly declined
-    if ("Declined".equalsIgnoreCase(providerDecisionStatus)) {
-      return "Rejected";
+    // No decision status → derive from feature flags
+    if (faceMatchesApproved && idVerificationsApproved && amlScreeningsApproved) {
+      return "Approved";
     }
-
-    // Anything else is still in progress or pending
+    if (hasDecision) {
+      return "Declined";
+    }
     return "In Review";
   }
 }
