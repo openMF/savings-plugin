@@ -39,8 +39,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   private final KycVerificationRepository kycVerificationRepository;
   private final ObjectMapper objectMapper;
   private final ClientRepositoryWrapper clientRepositoryWrapper;
-  // TODO ADD a SYSTEM GENERATED USER FOR THIS PLUGIN
-  // System user ID for automated webhook processing; adjust per your auth setup
   private static final Long SYSTEM_USER_ID = 1L;
   private final KycStatusDerivationService kycStatusDerivationService;
 
@@ -61,8 +59,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
     this.clientRepositoryWrapper.findOneWithNotFoundDetection(clientId);
 
-    // Idempotency: if session already exists, update status/feature flags from latest webhook
-    // instead of returning the stale row (status.updated can move In Review → Declined/Approved).
+    // Same sessionId → update in place (Declined → Approved must overwrite, not keep stale flags)
     if (payload.getSessionId() != null) {
       final Optional<KycVerification> existing =
           kycVerificationRepository.findBySessionId(payload.getSessionId());
@@ -71,7 +68,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
-    // 1. Build the root verification entity (NOT persisted yet)
     final KycVerification verification =
         KycVerification.create(
             clientId,
@@ -85,25 +81,19 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             serializeMetadata(payload.getMetadata()),
             SYSTEM_USER_ID);
 
-    // 2. Build the decision aggregate + feature status
-    applyDecisionAndFeatureStatus(verification, payload);
+    applyDecisionAndFeatureStatus(verification, payload, false);
 
-    // ✅ ONE saveAndFlush — EclipseLink cascades the entire tree
-    // Insert order: verification → decision → features/faceMatches/idVerifications/amlScreenings →
-    // hits
-    // EclipseLink fills FK columns automatically from the @ManyToOne relationships
     return kycVerificationRepository.saveAndFlush(verification);
   }
 
   /**
-   * Updates an existing verification when the same sessionId is re-delivered (e.g. status.updated).
-   * Rebuilds decision + feature status from the latest payload so authentication sees the correct
-   * kycValidations (faceMatches / idVerifications / amlScreenings / decision / status).
+   * Updates an existing verification for the same sessionId.
+   * Feature status is updated IN PLACE so auth no longer sees a stale Declined row
+   * after a later Approved (or data.updated) webhook.
    */
   private KycVerification updateExistingVerification(
       final KycVerification verification, final KycWebhookPayload payload) {
 
-    // Refresh root-level fields from the latest webhook
     verification.updateFromWebhook(
         payload.getStatus(),
         payload.getTimestamp(),
@@ -112,21 +102,19 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         payload.getWorkflowVersion(),
         serializeMetadata(payload.getMetadata()));
 
-    // Rebuild decision aggregate and feature status from the latest payload
-    applyDecisionAndFeatureStatus(verification, payload);
+    applyDecisionAndFeatureStatus(verification, payload, true);
 
     return kycVerificationRepository.saveAndFlush(verification);
   }
 
   /**
-   * Builds (or rebuilds) the decision tree and derives KycFeatureStatus from the payload.
-   *
-   * <p>Feature flags reflect whether each check was <strong>Approved</strong> by the provider,
-   * not merely whether the array is present. Overall status prefers the provider decision status
-   * (Approved / Declined / In Review / …).
+   * @param updateInPlace when true, mutate existing KycFeatureStatus instead of replacing it
+   *     (avoids EclipseLink OneToOne + orphanRemoval keeping the old Declined flags).
    */
   private void applyDecisionAndFeatureStatus(
-      final KycVerification verification, final KycWebhookPayload payload) {
+      final KycVerification verification,
+      final KycWebhookPayload payload,
+      final boolean updateInPlace) {
 
     if (payload.getDecision() == null) {
       return;
@@ -142,14 +130,12 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             decisionCreatedAt,
             SYSTEM_USER_ID);
 
-    // 2a. Features
     if (decisionDto.getFeatures() != null) {
       for (final String featureName : decisionDto.getFeatures()) {
         decision.addFeature(KycDecisionFeature.create(featureName, SYSTEM_USER_ID));
       }
     }
 
-    // 2b. Face matches
     if (decisionDto.getFaceMatches() != null) {
       for (final FaceMatch fmDto : decisionDto.getFaceMatches()) {
         decision.addFaceMatch(
@@ -163,7 +149,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
-    // 2c. ID verifications
     if (decisionDto.getIdVerifications() != null) {
       for (final IdVerification idDto : decisionDto.getIdVerifications()) {
         decision.addIdVerification(
@@ -189,7 +174,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
-    // 2d. AML screenings
     if (decisionDto.getAmlScreenings() != null) {
       for (final AmlScreening amlDto : decisionDto.getAmlScreenings()) {
         final LocalDate screenedDob =
@@ -222,7 +206,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
-    // ── Feature flags = Approved by provider (not mere presence) ──
+    // Feature flags = Approved by provider (not mere presence)
     final boolean faceMatchesApproved =
         decisionDto.getFaceMatches() != null
             && decisionDto.getFaceMatches().stream()
@@ -240,7 +224,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
     final boolean hasDecision = StringUtils.hasText(decisionDto.getStatus());
 
-    // Overall status prefers the explicit provider decision status
     final String kycStatus =
         kycStatusDerivationService.deriveStatus(
             faceMatchesApproved,
@@ -249,21 +232,31 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             hasDecision,
             decisionDto.getStatus());
 
-    final KycFeatureStatus featureStatus =
-        KycFeatureStatus.create(
-            faceMatchesApproved,
-            idVerificationsApproved,
-            amlScreeningsApproved,
-            hasDecision,
-            kycStatus,
-            SYSTEM_USER_ID);
+    // ── Feature status: update in place on re-delivery, create on first insert ──
+    if (updateInPlace && verification.getFeatureStatus() != null) {
+      verification
+          .getFeatureStatus()
+          .update(
+              faceMatchesApproved,
+              idVerificationsApproved,
+              amlScreeningsApproved,
+              hasDecision,
+              kycStatus,
+              SYSTEM_USER_ID);
+    } else {
+      final KycFeatureStatus featureStatus =
+          KycFeatureStatus.create(
+              faceMatchesApproved,
+              idVerificationsApproved,
+              amlScreeningsApproved,
+              hasDecision,
+              kycStatus,
+              SYSTEM_USER_ID);
+      verification.setFeatureStatus(featureStatus);
+    }
 
-    // Link feature status + decision to verification
-    verification.setFeatureStatus(featureStatus);
-    // setDecision calls decision.setKycVerification(this) internally
+    // Decision: replace aggregate (orphanRemoval clears previous children)
     verification.setDecision(decision);
-
-    // Keep root kycStatus in sync with derived / provider status
     verification.setKycStatus(kycStatus);
   }
 
@@ -295,8 +288,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       final Long clientId, final Optional<String> status) {
     return kycVerificationRepository.findByClientIdAndKycStatus(clientId, status);
   }
-
-  // Helpers
 
   private OffsetDateTime parseOffsetDateTime(final String isoDateTime) {
     if (isoDateTime == null) {

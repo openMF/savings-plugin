@@ -1,16 +1,8 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
+ * Copyright since 2026 Mifos Initiative
  *
- * <p>http://www.apache.org/licenses/LICENSE-2.0
- *
- * <p>Unless required by applicable law or agreed to in writing, software distributed under the
- * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing permissions and
- * limitations under the License.
+ * <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ * of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 package org.apache.fineract.kyc.repository;
 
@@ -23,23 +15,33 @@ import org.springframework.stereotype.Repository;
 public interface KycFeatureStatusRepository extends JpaRepository<KycFeatureStatus, Long> {
 
   /**
-   * Traverses the kycVerification relationship and queries by its id field. Underscore notation:
-   * KycVerification_Id → kycVerification.id
-   */
-  Optional<KycFeatureStatus> findByKycVerification_Id(Long kycVerificationId);
-
-  /**
-   * Latest feature status by client ID. Traverses: kycVerification.clientId, orders by
-   * kycVerification.id DESC
+   * Legacy: latest feature status by verification id (descending).
+   * Kept for backward compatibility.
    */
   Optional<KycFeatureStatus> findFirstByKycVerification_ClientIdOrderByKycVerification_IdDesc(
       Long clientId);
 
   /**
-   * Latest APPROVED feature status by client ID. Traverses: kycVerification.clientId AND
-   * kycVerification.kycStatus
+   * Legacy: latest feature status for a given verification-level KYC status.
+   * Kept for backward compatibility with {@code getApprovedKycFeatureStatus}.
    */
   Optional<KycFeatureStatus>
       findFirstByKycVerification_ClientIdAndKycVerification_KycStatusOrderByKycVerification_IdDesc(
+          Long clientId, String kycStatus);
+
+  /**
+   * Latest feature status for the client ordered by last modification time, then id.
+   * Used so a Declined → Approved update on the same session is visible on authentication.
+   */
+  Optional<KycFeatureStatus>
+      findFirstByKycVerification_ClientIdOrderByLastModifiedOnUtcDescIdDesc(Long clientId);
+
+  /**
+   * Latest feature status for the client with the given feature-level {@code kycStatus}
+   * (e.g. {@code "Approved"}), ordered by last modification time, then id.
+   * Prefer this over Declined when the user re-applies and is later approved.
+   */
+  Optional<KycFeatureStatus>
+      findFirstByKycVerification_ClientIdAndKycStatusOrderByLastModifiedOnUtcDescIdDesc(
           Long clientId, String kycStatus);
 }
