@@ -48,6 +48,6 @@ public class KycStatusDerivationService {
     if (hasDecision) {
       return "Declined";
     }
-    return "In Review";
+    return "Pending";
   }
 }
