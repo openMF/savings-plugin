@@ -33,9 +33,11 @@ public class KycStatusDerivationService {
         return "Declined";
       }
       if ("In Review".equalsIgnoreCase(decisionStatus)
-          || "Pending".equalsIgnoreCase(decisionStatus)
           || "In Progress".equalsIgnoreCase(decisionStatus)) {
         return "In Review";
+      }
+      if ("Pending".equalsIgnoreCase(decisionStatus)) {
+        return "Pending";
       }
       // Pass through any other provider value (e.g. "Awaiting User", "Resubmitted")
       return decisionStatus;
