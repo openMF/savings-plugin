@@ -86,10 +86,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
     return kycVerificationRepository.saveAndFlush(verification);
   }
 
-  /**
+    /**
    * Updates an existing verification for the same sessionId.
-   * Feature status is updated IN PLACE so auth no longer sees a stale Declined row
-   * after a later Approved (or data.updated) webhook.
+   * Clears the old decision (unique on kyc_verification_id) before attaching a new one,
+   * and updates feature status IN PLACE so Declined → Approved is persisted.
    */
   private KycVerification updateExistingVerification(
       final KycVerification verification, final KycWebhookPayload payload) {
@@ -102,6 +102,12 @@ public class KycVerificationServiceImpl implements KycVerificationService {
         payload.getWorkflowVersion(),
         serializeMetadata(payload.getMetadata()));
 
+    // Force-delete existing decision first (unique constraint uk_kyc_decision_verification)
+    if (verification.getDecision() != null) {
+      verification.setDecision(null);
+      kycVerificationRepository.saveAndFlush(verification);
+    }
+
     applyDecisionAndFeatureStatus(verification, payload, true);
 
     return kycVerificationRepository.saveAndFlush(verification);
@@ -109,7 +115,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
   /**
    * @param updateInPlace when true, mutate existing KycFeatureStatus instead of replacing it
-   *     (avoids EclipseLink OneToOne + orphanRemoval keeping the old Declined flags).
    */
   private void applyDecisionAndFeatureStatus(
       final KycVerification verification,
@@ -206,7 +211,6 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
-    // Feature flags = Approved by provider (not mere presence)
     final boolean faceMatchesApproved =
         decisionDto.getFaceMatches() != null
             && decisionDto.getFaceMatches().stream()
@@ -232,7 +236,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             hasDecision,
             decisionDto.getStatus());
 
-    // ── Feature status: update in place on re-delivery, create on first insert ──
+    // Feature status: update in place on re-delivery (avoids stale Declined flags)
     if (updateInPlace && verification.getFeatureStatus() != null) {
       verification
           .getFeatureStatus()
@@ -255,7 +259,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       verification.setFeatureStatus(featureStatus);
     }
 
-    // Decision: replace aggregate (orphanRemoval clears previous children)
+    // Decision: only set after any previous decision was cleared + flushed in updateExistingVerification
     verification.setDecision(decision);
     verification.setKycStatus(kycStatus);
   }
