@@ -31,18 +31,22 @@
             <column name="pending_otp" type="varchar(10)"/>
             <column name="otp_expiry" type="timestamp"/>
             <column name="created_by" type="bigint"/>
-            <column name="created_on_utc" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+            <!-- MariaDB / MySQL compatible -->
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
             <column name="last_modified_by" type="bigint"/>
-            <column name="last_modified_on_utc" type="timestamp with time zone"/>
+            <!-- MariaDB / MySQL compatible -->
+            <column name="last_modified_on_utc" type="TIMESTAMP"/>
         </createTable>
 
         <addForeignKeyConstraint baseTableName="m_sinpe_enrollment"
                                  baseColumnNames="client_id"
                                  constraintName="fk_sinpe_enrollment_client"
                                  referencedTableName="m_client"
-                                 referencedColumnNames="id"/>
+                                 referencedColumnNames="id"
+                                 onDelete="RESTRICT"
+                                 onUpdate="CASCADE"/>
 
         <createIndex indexName="idx_sinpe_enrollment_client_mobile" tableName="m_sinpe_enrollment" unique="true">
             <column name="client_id"/>
