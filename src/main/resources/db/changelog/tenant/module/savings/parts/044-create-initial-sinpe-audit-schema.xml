@@ -6,6 +6,12 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <changeSet id="create-m_sinpe_audit_log-table" author="system">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_sinpe_audit_log"/>
+            </not>
+        </preConditions>
+
         <createTable tableName="m_sinpe_audit_log">
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -24,7 +30,8 @@
                 <constraints nullable="false"/>
             </column>
             <column name="result_status" type="varchar(50)"/>
-            <column name="created_on_utc" type="timestamp with time zone" defaultValueComputed="CURRENT_TIMESTAMP">
+            <!-- MariaDB / MySQL compatible – no "WITH TIME ZONE" -->
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -34,14 +41,18 @@
                                  baseColumnNames="savings_account_id"
                                  constraintName="fk_sinpe_audit_savings_account"
                                  referencedTableName="m_savings_account"
-                                 referencedColumnNames="id"/>
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"
+                                 onUpdate="CASCADE"/>
 
         <addForeignKeyConstraint baseTableName="m_sinpe_audit_log"
                                  baseColumnNames="savings_transaction_id"
                                  constraintName="fk_sinpe_audit_savings_transaction"
                                  referencedTableName="m_savings_account_transaction"
-                                 referencedColumnNames="id"/>
-                                 
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"
+                                 onUpdate="CASCADE"/>
+                                  
         <!-- Indexes for performance -->
         <createIndex indexName="idx_sinpe_audit_codigo_referencia" tableName="m_sinpe_audit_log">
             <column name="codigo_referencia"/>
