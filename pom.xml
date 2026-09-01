@@ -19,9 +19,9 @@
     <fineract.version>1.15.0-SNAPSHOT</fineract.version>    
     <eclipselink.version>4.0.9</eclipselink.version>
     <truth.version>1.4.5</truth.version>
-    <lombok.version>1.18.46</lombok.version>
-    <spotless.version>3.10.0</spotless.version>
-    <swagger.version>2.2.54</swagger.version>
+    <lombok.version>1.18.48</lombok.version>
+    <spotless.version>3.10.1</spotless.version>
+    <swagger.version>2.2.55</swagger.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <mockito.version>5.17.0</mockito.version>
     <mapstruct.version>1.6.3</mapstruct.version>
