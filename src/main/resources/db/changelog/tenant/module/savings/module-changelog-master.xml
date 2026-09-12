@@ -63,4 +63,5 @@
   <include file="parts/051-extend-sinpe-enrollment-link-state.xml" relativeToChangelogFile="true"/>
   <include file="parts/052-add-payment-types-sinpe-interno.xml" relativeToChangelogFile="true"/>  
   <include file="parts/053-add-enrollment-status-permission.xml" relativeToChangelogFile="true"/>
+  <include file="parts/054-create-prospect-registration-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
