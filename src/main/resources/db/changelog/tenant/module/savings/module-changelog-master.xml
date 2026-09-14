@@ -64,4 +64,5 @@
   <include file="parts/052-add-payment-types-sinpe-interno.xml" relativeToChangelogFile="true"/>  
   <include file="parts/053-add-enrollment-status-permission.xml" relativeToChangelogFile="true"/>
   <include file="parts/054-create-prospect-registration-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/055-create-base-teller-deposit-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

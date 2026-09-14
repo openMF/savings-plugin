@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-055-bt-deposit-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_base_teller_deposit"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_base_teller_deposit">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="request_fingerprint" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="receipt_number" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failure_message" type="varchar(1000)"/>
+            <column name="client_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="savings_account_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="savings_transaction_id" type="bigint"/>
+            <column name="funding_type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="varchar(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_type_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operator_id" type="bigint"/>
+            <column name="office_id" type="bigint"/>
+            <column name="teller_id" type="bigint"/>
+            <column name="cashier_id" type="bigint"/>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_base_teller_deposit"
+                             columnNames="idempotency_key"
+                             constraintName="uk_bt_deposit_idempotency"/>
+        <addUniqueConstraint tableName="m_base_teller_deposit"
+                             columnNames="receipt_number"
+                             constraintName="uk_bt_deposit_receipt"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit"
+                                 baseColumnNames="client_id"
+                                 constraintName="fk_bt_deposit_client"
+                                 referencedTableName="m_client"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit"
+                                 baseColumnNames="savings_account_id"
+                                 constraintName="fk_bt_deposit_savings_account"
+                                 referencedTableName="m_savings_account"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit"
+                                 baseColumnNames="payment_type_id"
+                                 constraintName="fk_bt_deposit_payment_type"
+                                 referencedTableName="m_payment_type"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit"
+                                 baseColumnNames="operator_id"
+                                 constraintName="fk_bt_deposit_operator"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit"
+                                 baseColumnNames="office_id"
+                                 constraintName="fk_bt_deposit_office"
+                                 referencedTableName="m_office"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <createIndex indexName="idx_bt_deposit_client" tableName="m_base_teller_deposit">
+            <column name="client_id"/>
+        </createIndex>
+        <createIndex indexName="idx_bt_deposit_account" tableName="m_base_teller_deposit">
+            <column name="savings_account_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-055-bt-deposit-2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_base_teller_deposit_cash_detail"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_base_teller_deposit_cash_detail">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deposit_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denomination_identifier" type="varchar(100)"/>
+            <column name="denomination_value" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit_cash_detail"
+                                 baseColumnNames="deposit_id"
+                                 constraintName="fk_bt_deposit_cash_detail"
+                                 referencedTableName="m_base_teller_deposit"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <createIndex indexName="idx_bt_deposit_cash_detail"
+                     tableName="m_base_teller_deposit_cash_detail">
+            <column name="deposit_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-055-bt-deposit-3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_base_teller_deposit_check_detail"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_base_teller_deposit_check_detail">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deposit_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_bank" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_number" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clearing_status" type="varchar(30)" defaultValue="SUBJECT_TO_COLLECTION">
+                <constraints nullable="false"/>
+            </column>
+            <column name="check_account_number" type="varchar(100)"/>
+            <column name="check_routing_code" type="varchar(100)"/>
+            <column name="clearing_authorized_by" type="bigint"/>
+            <column name="clearing_authorized_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit_check_detail"
+                                 baseColumnNames="deposit_id"
+                                 constraintName="fk_bt_deposit_check_detail"
+                                 referencedTableName="m_base_teller_deposit"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_deposit_check_detail"
+                                 baseColumnNames="clearing_authorized_by"
+                                 constraintName="fk_bt_deposit_check_authorizer"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <createIndex indexName="idx_bt_deposit_check_detail"
+                     tableName="m_base_teller_deposit_check_detail">
+            <column name="deposit_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-055-bt-deposit-4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_permission
+                WHERE code = 'CREATE_BASE_TELLER_DEPOSIT'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="CREATE_BASE_TELLER_DEPOSIT"/>
+            <column name="entity_name" value="BASE_TELLER_DEPOSIT"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="READ_BASE_TELLER_DEPOSIT"/>
+            <column name="entity_name" value="BASE_TELLER_DEPOSIT"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="AUTHORIZE_BASE_TELLER_CHECK_CLEARING"/>
+            <column name="entity_name" value="BASE_TELLER_CHECK_CLEARING"/>
+            <column name="action_name" value="AUTHORIZE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>
