@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-056-bt-savings-opening-1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_base_teller_savings_opening"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_base_teller_savings_opening">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="request_fingerprint" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="receipt_number" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failure_message" type="varchar(1000)"/>
+            <column name="client_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="savings_product_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="savings_account_id" type="bigint"/>
+            <column name="initial_deposit_transaction_id" type="bigint"/>
+            <column name="funding_type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="varchar(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_type_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="operator_id" type="bigint"/>
+            <column name="office_id" type="bigint"/>
+            <column name="teller_id" type="bigint"/>
+            <column name="cashier_id" type="bigint"/>
+            <column name="check_type" type="varchar(50)"/>
+            <column name="check_bank" type="varchar(100)"/>
+            <column name="check_number" type="varchar(100)"/>
+            <column name="check_account_number" type="varchar(100)"/>
+            <column name="check_routing_code" type="varchar(100)"/>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_base_teller_savings_opening"
+                             columnNames="idempotency_key"
+                             constraintName="uk_bt_savings_opening_idempotency"/>
+        <addUniqueConstraint tableName="m_base_teller_savings_opening"
+                             columnNames="receipt_number"
+                             constraintName="uk_bt_savings_opening_receipt"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening"
+                                 baseColumnNames="client_id"
+                                 constraintName="fk_bt_opening_client"
+                                 referencedTableName="m_client"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening"
+                                 baseColumnNames="savings_account_id"
+                                 constraintName="fk_bt_opening_savings_account"
+                                 referencedTableName="m_savings_account"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening"
+                                 baseColumnNames="payment_type_id"
+                                 constraintName="fk_bt_opening_payment_type"
+                                 referencedTableName="m_payment_type"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening"
+                                 baseColumnNames="operator_id"
+                                 constraintName="fk_bt_opening_operator"
+                                 referencedTableName="m_appuser"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening"
+                                 baseColumnNames="office_id"
+                                 constraintName="fk_bt_opening_office"
+                                 referencedTableName="m_office"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+        <createIndex indexName="idx_bt_opening_client" tableName="m_base_teller_savings_opening">
+            <column name="client_id"/>
+        </createIndex>
+        <createIndex indexName="idx_bt_opening_account" tableName="m_base_teller_savings_opening">
+            <column name="savings_account_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-056-bt-savings-opening-2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_base_teller_savings_opening_cash_detail"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_base_teller_savings_opening_cash_detail">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="opening_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denomination_identifier" type="varchar(100)"/>
+            <column name="denomination_value" type="decimal(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_base_teller_savings_opening_cash_detail"
+                                 baseColumnNames="opening_id"
+                                 constraintName="fk_bt_cash_detail_opening"
+                                 referencedTableName="m_base_teller_savings_opening"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+        <createIndex indexName="idx_bt_cash_detail_opening"
+                     tableName="m_base_teller_savings_opening_cash_detail">
+            <column name="opening_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-056-bt-savings-opening-3">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM m_permission
+                WHERE code = 'CREATE_BASE_TELLER_SAVINGS_OPENING'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="CREATE_BASE_TELLER_SAVINGS_OPENING"/>
+            <column name="entity_name" value="BASE_TELLER_SAVINGS_OPENING"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="READ_BASE_TELLER_SAVINGS_OPENING"/>
+            <column name="entity_name" value="BASE_TELLER_SAVINGS_OPENING"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

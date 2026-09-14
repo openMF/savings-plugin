@@ -16,6 +16,7 @@ import org.apache.fineract.baseteller.data.BaseTellerDepositFundingData;
 import org.apache.fineract.baseteller.data.BaseTellerDepositRequest;
 import org.apache.fineract.baseteller.data.BaseTellerFundingType;
 import org.apache.fineract.baseteller.validation.BaseTellerDepositValidator;
+import org.apache.fineract.baseteller.validation.BaseTellerSavingsOpeningValidator;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -61,6 +62,7 @@ class BaseTellerWritePlatformServiceImplTest {
             jdbcTemplate,
             namedParameterJdbcTemplate,
             context,
+            new BaseTellerSavingsOpeningValidator(),
             new BaseTellerDepositValidator(),
             readPlatformService,
             clientRepository,
