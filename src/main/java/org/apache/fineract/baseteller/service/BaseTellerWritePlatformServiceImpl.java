@@ -24,7 +24,11 @@ import org.apache.fineract.baseteller.data.BaseTellerFundingData;
 import org.apache.fineract.baseteller.data.BaseTellerFundingType;
 import org.apache.fineract.baseteller.data.BaseTellerOpeningReceiptData;
 import org.apache.fineract.baseteller.data.BaseTellerOpeningStatus;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckPaymentRequest;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckReceiptData;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckStatus;
 import org.apache.fineract.baseteller.data.BaseTellerSavingsOpeningRequest;
+import org.apache.fineract.baseteller.validation.BaseTellerReturnedCheckPaymentValidator;
 import org.apache.fineract.baseteller.validation.BaseTellerDepositValidator;
 import org.apache.fineract.baseteller.validation.BaseTellerSavingsOpeningValidator;
 import org.apache.fineract.commands.domain.CommandWrapper;
@@ -56,7 +60,9 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
 
   private static final String OPENING_RESOURCE = "BASE_TELLER_SAVINGS_OPENING";
   private static final String DEPOSIT_RESOURCE = "BASE_TELLER_DEPOSIT";
+  private static final String RETURNED_CHECK_RESOURCE = "BASE_TELLER_RETURNED_CHECK_PAYMENT";
   private static final String CHECK_CLEARING_PERMISSION = "AUTHORIZE_BASE_TELLER_CHECK_CLEARING";
+  private static final int CASHIER_TXN_CASH_IN = 103;
   private static final Gson GSON = new Gson();
 
   private final JdbcTemplate jdbcTemplate;
@@ -64,6 +70,7 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
   private final PlatformSecurityContext context;
   private final BaseTellerSavingsOpeningValidator openingValidator;
   private final BaseTellerDepositValidator depositValidator;
+  private final BaseTellerReturnedCheckPaymentValidator returnedCheckPaymentValidator;
   private final BaseTellerReadPlatformService readPlatformService;
   private final ClientRepositoryWrapper clientRepository;
   private final SavingsAccountReadPlatformService savingsAccountReadPlatformService;
@@ -195,6 +202,81 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
       markDepositFailed(request.idempotencyKey(), failure.getMessage());
       return readPlatformService.retrieveDepositReceipt(receiptNumber);
     }
+  }
+
+  @Override
+  @Transactional
+  public BaseTellerReturnedCheckReceiptData settleReturnedCheck(
+      final Long returnedCheckId, final BaseTellerReturnedCheckPaymentRequest request) {
+    final AppUser user = context.authenticatedUser();
+    user.validateHasCreatePermission(RETURNED_CHECK_RESOURCE);
+    returnedCheckPaymentValidator.validate(request);
+    final String fingerprint = requestFingerprint(request);
+    final ExistingReturnedCheckSettlement existing =
+        existingReturnedCheckSettlement(request.idempotencyKey());
+    if (existing != null) {
+      if (!fingerprint.equals(existing.requestFingerprint())) {
+        throw new GeneralPlatformDomainRuleException(
+            "error.msg.base.teller.returned.check.payment.idempotency.conflict",
+            "A different returned check payment already exists for this idempotencyKey.");
+      }
+      return readPlatformService.retrieveReturnedCheckReceipt(existing.receiptNumber());
+    }
+
+    final ReturnedCheckForSettlement returnedCheck = lockReturnedCheck(returnedCheckId, user);
+    if (returnedCheck.status() != BaseTellerReturnedCheckStatus.RETURNED) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.not.payable",
+          "Returned check is not payable.");
+    }
+    if (!StringUtils.equalsIgnoreCase(returnedCheck.currencyCode(), request.currencyCode())) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.currency.mismatch",
+          "Cash currency must match the returned check currency.");
+    }
+    if (request.cashReceived().compareTo(returnedCheck.amount()) < 0) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.cash.insufficient",
+          "Cash received must be greater than or equal to the returned check amount.");
+    }
+    validatePaymentType(request);
+    final CashierData cashier = resolveCashier(user);
+    if (!returnedCheck.officeId().equals(user.getOffice().getId())
+        || !returnedCheck.officeId().equals(cashier.getOfficeId())) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.office.mismatch",
+          "Returned check office must match the active cashier office.");
+    }
+
+    final BigDecimal changeAmount = request.cashReceived().subtract(returnedCheck.amount());
+    final String receiptNumber = returnedCheckReceiptNumber(request.idempotencyKey());
+    final Long settlementId =
+        insertReturnedCheckSettlement(
+            request, returnedCheck, user, cashier, receiptNumber, fingerprint, changeAmount);
+    insertReturnedCheckSettlementDenominations(settlementId, request.denominations());
+    final Long cashierTransactionId =
+        insertCashierCashIn(request, returnedCheck, user, cashier, settlementId);
+    final int updated =
+        jdbcTemplate.update(
+            "UPDATE m_base_teller_returned_check SET status = ?, cashier_transaction_id = ?,"
+                + " settled_on_utc = CURRENT_TIMESTAMP, settled_by = ?"
+                + " WHERE id = ? AND status = ?",
+            BaseTellerReturnedCheckStatus.SETTLED.name(),
+            cashierTransactionId,
+            user.getId(),
+            returnedCheck.id(),
+            BaseTellerReturnedCheckStatus.RETURNED.name());
+    if (updated != 1) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.already.settled",
+          "Returned check has already been settled.");
+    }
+    jdbcTemplate.update(
+        "UPDATE m_base_teller_returned_check_payment SET cashier_transaction_id = ?,"
+            + " completed_on_utc = CURRENT_TIMESTAMP WHERE id = ?",
+        cashierTransactionId,
+        settlementId);
+    return readPlatformService.retrieveReturnedCheckReceipt(receiptNumber);
   }
 
   private SavingsAccountData approveIfNeeded(
@@ -487,6 +569,115 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
         StringUtils.abbreviate(message, 1000));
   }
 
+  private ReturnedCheckForSettlement lockReturnedCheck(
+      final Long returnedCheckId, final AppUser user) {
+    final List<ReturnedCheckForSettlement> checks =
+        namedParameterJdbcTemplate.query(
+            "SELECT rc.id, rc.amount, rc.currency_code, rc.status, rc.office_id"
+                + " FROM m_base_teller_returned_check rc"
+                + " JOIN m_office off ON off.id = rc.office_id"
+                + " WHERE rc.id = :id AND off.hierarchy LIKE :officeHierarchy FOR UPDATE",
+            Map.of("id", returnedCheckId, "officeHierarchy", user.getOffice().getHierarchy() + "%"),
+            (rs, row) ->
+                new ReturnedCheckForSettlement(
+                    rs.getLong("id"),
+                    rs.getBigDecimal("amount"),
+                    rs.getString("currency_code"),
+                    BaseTellerReturnedCheckStatus.valueOf(rs.getString("status")),
+                    rs.getLong("office_id")));
+    if (checks.isEmpty()) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.not.found", "Returned check not found.");
+    }
+    return checks.get(0);
+  }
+
+  private void validatePaymentType(final BaseTellerReturnedCheckPaymentRequest request) {
+    final PaymentTypeData paymentType = paymentTypeReadService.retrieveOne(request.paymentTypeId());
+    if (!Boolean.TRUE.equals(paymentType.getIsCashPayment())) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.cash.payment.type.invalid",
+          "Returned check payment requires a cash payment type.");
+    }
+  }
+
+  private Long insertReturnedCheckSettlement(
+      final BaseTellerReturnedCheckPaymentRequest request,
+      final ReturnedCheckForSettlement returnedCheck,
+      final AppUser user,
+      final CashierData cashier,
+      final String receiptNumber,
+      final String fingerprint,
+      final BigDecimal changeAmount) {
+    jdbcTemplate.update(
+        "INSERT INTO m_base_teller_returned_check_payment"
+            + " (idempotency_key, request_fingerprint, receipt_number, returned_check_id,"
+            + " cash_received, change_amount, currency_code, payment_type_id, status,"
+            + " operator_id, office_id, teller_id, cashier_id, note)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        request.idempotencyKey(),
+        fingerprint,
+        receiptNumber,
+        returnedCheck.id(),
+        request.cashReceived(),
+        changeAmount,
+        request.currencyCode(),
+        request.paymentTypeId(),
+        BaseTellerReturnedCheckStatus.SETTLED.name(),
+        user.getId(),
+        user.getOffice().getId(),
+        cashier.getTellerId(),
+        cashier.getId(),
+        request.note());
+    return existingReturnedCheckSettlement(request.idempotencyKey()).id();
+  }
+
+  private void insertReturnedCheckSettlementDenominations(
+      final Long settlementId, final List<BaseTellerDenominationData> denominations) {
+    for (BaseTellerDenominationData denomination : denominations) {
+      jdbcTemplate.update(
+          "INSERT INTO m_base_teller_returned_check_payment_cash_detail"
+              + " (settlement_id, denomination_identifier, denomination_value, quantity)"
+              + " VALUES (?, ?, ?, ?)",
+          settlementId,
+          denomination.denominationId(),
+          denomination.value(),
+          denomination.quantity());
+    }
+  }
+
+  private Long insertCashierCashIn(
+      final BaseTellerReturnedCheckPaymentRequest request,
+      final ReturnedCheckForSettlement returnedCheck,
+      final AppUser user,
+      final CashierData cashier,
+      final Long settlementId) {
+    jdbcTemplate.update(
+        "INSERT INTO m_cashier_transactions"
+            + " (cashier_id, txn_type, txn_date, txn_amount, txn_note, entity_type,"
+            + " entity_id, currency_code)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        cashier.getId(),
+        CASHIER_TXN_CASH_IN,
+        StringUtils.defaultIfBlank(
+            request.transactionDate(), DateUtils.getBusinessLocalDate().toString()),
+        returnedCheck.amount(),
+        StringUtils.defaultIfBlank(request.note(), "Returned check payment"),
+        RETURNED_CHECK_RESOURCE,
+        settlementId,
+        request.currencyCode());
+    return namedParameterJdbcTemplate.queryForObject(
+        "SELECT MAX(id) FROM m_cashier_transactions"
+            + " WHERE cashier_id = :cashierId AND txn_type = :txnType"
+            + " AND entity_type = :entityType AND entity_id = :entityId",
+        Map.of(
+            "cashierId", cashier.getId(),
+            "txnType", CASHIER_TXN_CASH_IN,
+            "entityType", RETURNED_CHECK_RESOURCE,
+            "entityId", settlementId),
+        Long.class);
+  }
+
   private CommandProcessingResult execute(
       final CommandWrapperBuilder builder, final String json, final String idempotencyKey) {
     final CommandWrapper command = builder.withJson(json).build(idempotencyKey);
@@ -672,6 +863,21 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
     return operations.isEmpty() ? null : operations.get(0);
   }
 
+  private ExistingReturnedCheckSettlement existingReturnedCheckSettlement(
+      final String idempotencyKey) {
+    final List<ExistingReturnedCheckSettlement> operations =
+        namedParameterJdbcTemplate.query(
+            "SELECT id, request_fingerprint, receipt_number"
+                + " FROM m_base_teller_returned_check_payment WHERE idempotency_key = :key",
+            Map.of("key", idempotencyKey),
+            (rs, row) ->
+                new ExistingReturnedCheckSettlement(
+                    rs.getLong("id"),
+                    rs.getString("request_fingerprint"),
+                    rs.getString("receipt_number")));
+    return operations.isEmpty() ? null : operations.get(0);
+  }
+
   private static String depositReceiptNumber(final String idempotencyKey) {
     final String sanitized = idempotencyKey.replaceAll("[^A-Za-z0-9-]", "-");
     return "BTD-" + StringUtils.abbreviate(sanitized, 96);
@@ -680,6 +886,11 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
   private static String openingReceiptNumber(final String idempotencyKey) {
     final String sanitized = idempotencyKey.replaceAll("[^A-Za-z0-9-]", "-");
     return "BTSA-" + StringUtils.abbreviate(sanitized, 95);
+  }
+
+  private static String returnedCheckReceiptNumber(final String idempotencyKey) {
+    final String sanitized = idempotencyKey.replaceAll("[^A-Za-z0-9-]", "-");
+    return "BTRC-" + StringUtils.abbreviate(sanitized, 95);
   }
 
   private static String transactionDate(final BaseTellerDepositRequest request) {
@@ -730,6 +941,10 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
     return requestFingerprint((Object) request);
   }
 
+  private static String requestFingerprint(final BaseTellerReturnedCheckPaymentRequest request) {
+    return requestFingerprint((Object) request);
+  }
+
   private static String requestFingerprint(final Object request) {
     try {
       final MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -753,4 +968,14 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
 
   private record ExistingDepositOperation(
       Long id, String requestFingerprint, String receiptNumber) {}
+
+  private record ExistingReturnedCheckSettlement(
+      Long id, String requestFingerprint, String receiptNumber) {}
+
+  private record ReturnedCheckForSettlement(
+      Long id,
+      BigDecimal amount,
+      String currencyCode,
+      BaseTellerReturnedCheckStatus status,
+      Long officeId) {}
 }
