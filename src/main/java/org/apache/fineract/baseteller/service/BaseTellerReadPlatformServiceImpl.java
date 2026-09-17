@@ -3,6 +3,7 @@ package org.apache.fineract.baseteller.service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
@@ -23,8 +24,13 @@ import org.apache.fineract.baseteller.data.BaseTellerDepositStatus;
 import org.apache.fineract.baseteller.data.BaseTellerFundingType;
 import org.apache.fineract.baseteller.data.BaseTellerOpeningReceiptData;
 import org.apache.fineract.baseteller.data.BaseTellerOpeningStatus;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckDetailData;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckReceiptData;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckSearchData;
+import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckStatus;
 import org.apache.fineract.baseteller.data.BaseTellerSavingsProductData;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -146,6 +152,128 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
     return receipts.get(0);
   }
 
+  @Override
+  public Page<BaseTellerReturnedCheckSearchData> searchReturnedChecks(
+      final String returnedOnDate,
+      final String customerName,
+      final Long tellerId,
+      final String currencyCode,
+      final String checkNumber,
+      final Long clientId,
+      final Long officeId,
+      final String status,
+      final Integer offset,
+      final Integer limit) {
+    final AppUser user = context.authenticatedUser();
+    user.validateHasReadPermission("BASE_TELLER_RETURNED_CHECK_PAYMENT");
+    final Map<String, Object> params = new HashMap<>();
+    params.put("officeHierarchy", user.getOffice().getHierarchy() + "%");
+    final StringBuilder where =
+        new StringBuilder(" WHERE off.hierarchy LIKE :officeHierarchy");
+    if (StringUtils.isNotBlank(returnedOnDate)) {
+      where.append(" AND rc.returned_on_date = :returnedOnDate");
+      params.put("returnedOnDate", returnedOnDate);
+    }
+    if (StringUtils.isNotBlank(customerName)) {
+      where.append(" AND LOWER(COALESCE(c.display_name, '')) LIKE :customerName");
+      params.put("customerName", "%" + customerName.toLowerCase(Locale.ROOT) + "%");
+    }
+    if (tellerId != null) {
+      where.append(" AND rc.teller_id = :tellerId");
+      params.put("tellerId", tellerId);
+    }
+    if (StringUtils.isNotBlank(currencyCode)) {
+      where.append(" AND LOWER(rc.currency_code) = :currencyCode");
+      params.put("currencyCode", currencyCode.toLowerCase(Locale.ROOT));
+    }
+    if (StringUtils.isNotBlank(checkNumber)) {
+      where.append(" AND LOWER(rc.check_number) = :checkNumber");
+      params.put("checkNumber", checkNumber.toLowerCase(Locale.ROOT));
+    }
+    if (clientId != null) {
+      where.append(" AND rc.client_id = :clientId");
+      params.put("clientId", clientId);
+    }
+    if (officeId != null) {
+      where.append(" AND rc.office_id = :officeId");
+      params.put("officeId", officeId);
+    }
+    if (StringUtils.isBlank(status)) {
+      where.append(" AND rc.status = :status");
+      params.put("status", BaseTellerReturnedCheckStatus.RETURNED.name());
+    } else {
+      where.append(" AND rc.status = :status");
+      params.put("status", status.toUpperCase(Locale.ROOT));
+    }
+
+    final int resolvedLimit =
+        Math.min(limit == null || limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT);
+    final int resolvedOffset = offset == null || offset < 0 ? 0 : offset;
+    params.put("limit", resolvedLimit);
+    params.put("offset", resolvedOffset);
+    final Integer total =
+        namedParameterJdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM m_base_teller_returned_check rc"
+                + " JOIN m_client c ON c.id = rc.client_id"
+                + " JOIN m_office off ON off.id = rc.office_id"
+                + where,
+            params,
+            Integer.class);
+    final List<BaseTellerReturnedCheckSearchData> items =
+        namedParameterJdbcTemplate.query(
+            returnedCheckSearchSql()
+                + where
+                + " ORDER BY rc.returned_on_date, rc.id LIMIT :limit OFFSET :offset",
+            params,
+            new ReturnedCheckSearchMapper());
+    return new Page<>(items, total == null ? 0 : total);
+  }
+
+  @Override
+  public BaseTellerReturnedCheckDetailData retrieveReturnedCheck(final Long returnedCheckId) {
+    final AppUser user = context.authenticatedUser();
+    user.validateHasReadPermission("BASE_TELLER_RETURNED_CHECK_PAYMENT");
+    final Map<String, Object> params =
+        Map.of(
+            "returnedCheckId", returnedCheckId,
+            "officeHierarchy", user.getOffice().getHierarchy() + "%");
+    final List<BaseTellerReturnedCheckDetailData> checks =
+        namedParameterJdbcTemplate.query(
+            returnedCheckDetailSql()
+                + " WHERE rc.id = :returnedCheckId AND off.hierarchy LIKE :officeHierarchy",
+            params,
+            new ReturnedCheckDetailMapper());
+    if (checks.isEmpty()) {
+      throw new PlatformDataIntegrityException(
+          "error.msg.base.teller.returned.check.not.found", "Returned check not found.");
+    }
+    return checks.get(0);
+  }
+
+  @Override
+  public BaseTellerReturnedCheckReceiptData retrieveReturnedCheckReceipt(
+      final String receiptNumber) {
+    final AppUser user = context.authenticatedUser();
+    user.validateHasReadPermission("BASE_TELLER_RETURNED_CHECK_PAYMENT");
+    final Map<String, Object> params =
+        Map.of(
+            "receiptNumber", receiptNumber,
+            "officeHierarchy", user.getOffice().getHierarchy() + "%");
+    final List<BaseTellerReturnedCheckReceiptData> receipts =
+        namedParameterJdbcTemplate.query(
+            returnedCheckReceiptSql()
+                + " WHERE s.receipt_number = :receiptNumber"
+                + " AND off.hierarchy LIKE :officeHierarchy",
+            params,
+            new ReturnedCheckReceiptMapper(this::returnedCheckSettlementDenominations));
+    if (receipts.isEmpty()) {
+      throw new PlatformDataIntegrityException(
+          "error.msg.base.teller.returned.check.receipt.not.found",
+          "Returned check payment receipt not found.");
+    }
+    return receipts.get(0);
+  }
+
   private List<BaseTellerAccountSummaryData> savingsAccounts(final Map<String, Object> params) {
     return namedParameterJdbcTemplate.query(
         "SELECT sa.id AS account_id, sa.account_no, sa.product_id, sp.name AS product_name,"
@@ -232,6 +360,20 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
                 offsetDateTime(rs, "clearing_authorized_on_utc")));
   }
 
+  private List<BaseTellerDenominationData> returnedCheckSettlementDenominations(
+      final Long settlementId) {
+    return namedParameterJdbcTemplate.query(
+        "SELECT denomination_identifier, denomination_value, quantity"
+            + " FROM m_base_teller_returned_check_payment_cash_detail"
+            + " WHERE settlement_id = :settlementId ORDER BY id",
+        Map.of("settlementId", settlementId),
+        (rs, row) ->
+            new BaseTellerDenominationData(
+                rs.getString("denomination_identifier"),
+                rs.getBigDecimal("denomination_value"),
+                rs.getLong("quantity")));
+  }
+
   private static String depositReceiptSql() {
     return "SELECT d.id AS deposit_id, d.receipt_number, d.status, d.failure_message,"
         + " d.client_id, c.display_name AS customer_name, d.savings_account_id, sa.account_no,"
@@ -268,6 +410,48 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         + " LEFT JOIN m_office off ON off.id = o.office_id";
   }
 
+  private static String returnedCheckSearchSql() {
+    return "SELECT rc.id, rc.deposit_check_detail_id, rc.check_number, rc.client_id,"
+        + " c.display_name AS customer_name, rc.savings_account_id, sa.account_no,"
+        + " rc.amount, rc.currency_code, rc.returned_on_date, rc.status,"
+        + " rc.teller_id, rc.cashier_id, rc.office_id, off.name AS office_name"
+        + " FROM m_base_teller_returned_check rc"
+        + " JOIN m_client c ON c.id = rc.client_id"
+        + " LEFT JOIN m_savings_account sa ON sa.id = rc.savings_account_id"
+        + " JOIN m_office off ON off.id = rc.office_id";
+  }
+
+  private static String returnedCheckDetailSql() {
+    return "SELECT rc.id, rc.deposit_id, rc.deposit_check_detail_id,"
+        + " d.receipt_number AS original_receipt_number, rc.check_type, rc.check_bank,"
+        + " rc.check_number, rc.client_id, c.display_name AS customer_name,"
+        + " rc.savings_account_id, sa.account_no, rc.amount, rc.currency_code,"
+        + " rc.returned_on_date, rc.return_reason, rc.status, rc.teller_id, rc.cashier_id,"
+        + " rc.office_id, off.name AS office_name, s.id AS settlement_id,"
+        + " s.receipt_number AS settlement_receipt_number, rc.settled_on_utc"
+        + " FROM m_base_teller_returned_check rc"
+        + " JOIN m_base_teller_deposit d ON d.id = rc.deposit_id"
+        + " JOIN m_client c ON c.id = rc.client_id"
+        + " LEFT JOIN m_savings_account sa ON sa.id = rc.savings_account_id"
+        + " JOIN m_office off ON off.id = rc.office_id"
+        + " LEFT JOIN m_base_teller_returned_check_payment s ON s.returned_check_id = rc.id";
+  }
+
+  private static String returnedCheckReceiptSql() {
+    return "SELECT s.id AS settlement_id, s.receipt_number, rc.status,"
+        + " s.failure_message, rc.id AS returned_check_id, rc.deposit_check_detail_id,"
+        + " rc.check_number, rc.client_id, c.display_name AS customer_name,"
+        + " rc.amount AS check_amount, s.cash_received, s.change_amount, rc.currency_code,"
+        + " s.teller_id, s.cashier_id, s.cashier_transaction_id, s.operator_id,"
+        + " au.username AS operator_name, s.office_id, off.name AS office_name,"
+        + " s.created_on_utc, s.completed_on_utc"
+        + " FROM m_base_teller_returned_check_payment s"
+        + " JOIN m_base_teller_returned_check rc ON rc.id = s.returned_check_id"
+        + " JOIN m_client c ON c.id = rc.client_id"
+        + " LEFT JOIN m_appuser au ON au.id = s.operator_id"
+        + " JOIN m_office off ON off.id = s.office_id";
+  }
+
   private static Long nullableLong(final ResultSet rs, final String column) throws SQLException {
     final long value = rs.getLong(column);
     return rs.wasNull() ? null : value;
@@ -279,6 +463,11 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
     return timestamp == null
         ? null
         : OffsetDateTime.of(timestamp.toLocalDateTime(), ZoneOffset.UTC);
+  }
+
+  private static LocalDate localDate(final ResultSet rs, final String column) throws SQLException {
+    final java.sql.Date date = rs.getDate(column);
+    return date == null ? null : date.toLocalDate();
   }
 
   private static final class CustomerMapper implements RowMapper<BaseTellerCustomerData> {
@@ -412,6 +601,106 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
                   rs.getString("check_account_number"),
                   rs.getString("check_routing_code"))
               : null);
+    }
+  }
+
+  private static final class ReturnedCheckSearchMapper
+      implements RowMapper<BaseTellerReturnedCheckSearchData> {
+
+    @Override
+    public BaseTellerReturnedCheckSearchData mapRow(final ResultSet rs, final int rowNum)
+        throws SQLException {
+      return new BaseTellerReturnedCheckSearchData(
+          rs.getLong("id"),
+          rs.getLong("deposit_check_detail_id"),
+          rs.getString("check_number"),
+          rs.getLong("client_id"),
+          rs.getString("customer_name"),
+          nullableLong(rs, "savings_account_id"),
+          rs.getString("account_no"),
+          rs.getBigDecimal("amount"),
+          rs.getString("currency_code"),
+          localDate(rs, "returned_on_date"),
+          BaseTellerReturnedCheckStatus.valueOf(rs.getString("status")),
+          nullableLong(rs, "teller_id"),
+          nullableLong(rs, "cashier_id"),
+          nullableLong(rs, "office_id"),
+          rs.getString("office_name"));
+    }
+  }
+
+  private static final class ReturnedCheckDetailMapper
+      implements RowMapper<BaseTellerReturnedCheckDetailData> {
+
+    @Override
+    public BaseTellerReturnedCheckDetailData mapRow(final ResultSet rs, final int rowNum)
+        throws SQLException {
+      return new BaseTellerReturnedCheckDetailData(
+          rs.getLong("id"),
+          rs.getLong("deposit_id"),
+          rs.getLong("deposit_check_detail_id"),
+          rs.getString("original_receipt_number"),
+          rs.getString("check_type"),
+          rs.getString("check_bank"),
+          rs.getString("check_number"),
+          rs.getLong("client_id"),
+          rs.getString("customer_name"),
+          nullableLong(rs, "savings_account_id"),
+          rs.getString("account_no"),
+          rs.getBigDecimal("amount"),
+          rs.getString("currency_code"),
+          localDate(rs, "returned_on_date"),
+          rs.getString("return_reason"),
+          BaseTellerReturnedCheckStatus.valueOf(rs.getString("status")),
+          nullableLong(rs, "teller_id"),
+          nullableLong(rs, "cashier_id"),
+          nullableLong(rs, "office_id"),
+          rs.getString("office_name"),
+          nullableLong(rs, "settlement_id"),
+          rs.getString("settlement_receipt_number"),
+          offsetDateTime(rs, "settled_on_utc"));
+    }
+  }
+
+  private static final class ReturnedCheckReceiptMapper
+      implements RowMapper<BaseTellerReturnedCheckReceiptData> {
+
+    private final java.util.function.Function<Long, List<BaseTellerDenominationData>>
+        denominationLookup;
+
+    private ReturnedCheckReceiptMapper(
+        final java.util.function.Function<Long, List<BaseTellerDenominationData>>
+            denominationLookup) {
+      this.denominationLookup = denominationLookup;
+    }
+
+    @Override
+    public BaseTellerReturnedCheckReceiptData mapRow(final ResultSet rs, final int rowNum)
+        throws SQLException {
+      final Long settlementId = rs.getLong("settlement_id");
+      return new BaseTellerReturnedCheckReceiptData(
+          rs.getString("receipt_number"),
+          BaseTellerReturnedCheckStatus.valueOf(rs.getString("status")),
+          rs.getString("failure_message"),
+          rs.getLong("returned_check_id"),
+          rs.getLong("deposit_check_detail_id"),
+          rs.getString("check_number"),
+          rs.getLong("client_id"),
+          rs.getString("customer_name"),
+          rs.getBigDecimal("check_amount"),
+          rs.getBigDecimal("cash_received"),
+          rs.getBigDecimal("change_amount"),
+          rs.getString("currency_code"),
+          nullableLong(rs, "teller_id"),
+          nullableLong(rs, "cashier_id"),
+          nullableLong(rs, "cashier_transaction_id"),
+          nullableLong(rs, "operator_id"),
+          rs.getString("operator_name"),
+          nullableLong(rs, "office_id"),
+          rs.getString("office_name"),
+          offsetDateTime(rs, "created_on_utc"),
+          offsetDateTime(rs, "completed_on_utc"),
+          denominationLookup.apply(settlementId));
     }
   }
 }

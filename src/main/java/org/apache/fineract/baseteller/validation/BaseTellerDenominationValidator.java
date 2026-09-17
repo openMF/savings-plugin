@@ -20,10 +20,10 @@ public final class BaseTellerDenominationValidator {
         throw invalid(
             "cash.denomination.value.invalid", "Denomination value must be greater than zero.");
       }
-      if (denomination.quantity() == null || denomination.quantity() <= 0) {
+      if (denomination.quantity() == null || denomination.quantity() < 0) {
         throw invalid(
             "cash.denomination.quantity.invalid",
-            "Denomination quantity must be greater than zero.");
+            "Denomination quantity must be zero or greater.");
       }
       total = total.add(denomination.value().multiply(BigDecimal.valueOf(denomination.quantity())));
     }

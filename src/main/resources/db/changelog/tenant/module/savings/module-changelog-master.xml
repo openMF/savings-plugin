@@ -66,4 +66,5 @@
   <include file="parts/054-create-prospect-registration-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/055-create-base-teller-deposit-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/056-create-base-teller-savings-opening-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/057-create-base-teller-returned-check-payment-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
