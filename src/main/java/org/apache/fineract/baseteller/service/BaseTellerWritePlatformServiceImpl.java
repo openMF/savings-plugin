@@ -6,6 +6,9 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRu
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.teller.data.CashierData;
+import org.apache.fineract.organisation.teller.data.TellerData;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
@@ -605,24 +609,39 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
       user.validateHasPermissionTo(CHECK_CLEARING_PERMISSION);
     }
   }
-
+  
   private CashierData resolveCashier(final AppUser user) {
     if (user.getStaffId() == null || user.getOffice() == null) {
       throw new GeneralPlatformDomainRuleException(
           "error.msg.base.teller.cashier.context.required",
           "Authenticated user must be linked to staff and office for base teller operations.");
     }
-    final List<CashierData> cashiers =
-        tellerManagementReadPlatformService.getCashierData(
-            user.getOffice().getId(), null, user.getStaffId(), DateUtils.getBusinessLocalDate())
-            .stream()
-            .toList();
-    if (cashiers.isEmpty()) {
+
+    final Long officeId = user.getOffice().getId();
+    final Long staffId = user.getStaffId();
+    final LocalDate today = DateUtils.getBusinessLocalDate();
+
+    // Current Fineract API: no getCashierData(office, teller, staff, date).
+    // Resolve via tellers for the office, then cashiers for each teller, filtered by staff.
+    final Collection<TellerData> tellers = tellerManagementReadPlatformService.getTellers(officeId);
+    final List<CashierData> matchingCashiers = new ArrayList<>();
+
+    for (final TellerData teller : tellers) {
+      final Collection<CashierData> cashiers =
+          tellerManagementReadPlatformService.getCashiersForTeller(teller.getId(), today, today);
+      for (final CashierData cashier : cashiers) {
+        if (staffId.equals(cashier.getStaffId())) {
+          matchingCashiers.add(cashier);
+        }
+      }
+    }
+
+    if (matchingCashiers.isEmpty()) {
       throw new GeneralPlatformDomainRuleException(
           "error.msg.base.teller.cashier.not.allocated",
           "Authenticated user is not allocated to an active cashier for this office.");
     }
-    return cashiers.get(0);
+    return matchingCashiers.get(0);
   }
 
   private ExistingDepositOperation existingDepositOperation(final String idempotencyKey) {

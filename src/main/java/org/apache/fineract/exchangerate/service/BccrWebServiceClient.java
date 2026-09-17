@@ -178,7 +178,7 @@ public class BccrWebServiceClient {
       baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
     }
 
-    return UriComponentsBuilder.fromHttpUrl(baseUrl + OBTENER_INDICADORES_METHOD)
+    return UriComponentsBuilder.fromUriString(baseUrl + OBTENER_INDICADORES_METHOD)
         .queryParam("Indicador", indicatorCode)
         .queryParam("FechaInicio", fromDate.format(BCCR_DATE_FORMAT))
         .queryParam("FechaFinal", toDate.format(BCCR_DATE_FORMAT))
