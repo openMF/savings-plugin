@@ -6,6 +6,9 @@
  */
 package org.apache.fineract.testing.support;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +26,7 @@ import org.testcontainers.utility.MountableFile;
 public abstract class SavingsIntegrationTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SavingsIntegrationTestBase.class);
+  private static final Path PLUGIN_JAR = Path.of("target/savings-plugin-1.16.0-SNAPSHOT.jar");
 
   private static final Network network = Network.newNetwork();
 
@@ -39,6 +43,16 @@ public abstract class SavingsIntegrationTestBase {
   protected static final GenericContainer<?> fineract;
 
   static {
+    try {
+      if (!Files.isRegularFile(PLUGIN_JAR) || Files.size(PLUGIN_JAR) == 0) {
+        throw new IllegalStateException(
+            "Savings plugin JAR is missing or empty: " + PLUGIN_JAR.toAbsolutePath());
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Failed to inspect savings plugin JAR: " + PLUGIN_JAR.toAbsolutePath(), e);
+    }
+
     postgres.start();
 
     // 2. Pre-Initialize the Master Tenant Database
@@ -99,7 +113,7 @@ public abstract class SavingsIntegrationTestBase {
 
             // Mount the compiled Plugin JAR into the auto-scanned /app/plugins directory
             .withCopyFileToContainer(
-                MountableFile.forHostPath("target/savings-plugin-1.15.0-SNAPSHOT.jar"),
+                MountableFile.forHostPath(PLUGIN_JAR),
                 "/app/plugins/savings-plugin.jar")
 
             // Prepend the plugin JAR to the JIB container's classpath.
