@@ -172,7 +172,7 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         new StringBuilder(" WHERE off.hierarchy LIKE :officeHierarchy");
     if (StringUtils.isNotBlank(returnedOnDate)) {
       where.append(" AND rc.returned_on_date = :returnedOnDate");
-      params.put("returnedOnDate", returnedOnDate);
+      params.put("returnedOnDate", LocalDate.parse(returnedOnDate));
     }
     if (StringUtils.isNotBlank(customerName)) {
       where.append(" AND LOWER(COALESCE(c.display_name, '')) LIKE :customerName");

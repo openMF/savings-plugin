@@ -5,6 +5,7 @@
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <changeSet author="fineract" id="ss-057-bt-returned-check-1">
+        <validCheckSum>9:9e0efde96134086492a4841b3bc09cb3</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_base_teller_returned_check"/>
@@ -78,6 +79,7 @@
     </changeSet>
 
     <changeSet author="fineract" id="ss-057-bt-returned-check-2">
+        <validCheckSum>9:7ab0e3d481fec0e6848e348989681aaf</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_base_teller_returned_check_payment"/>
@@ -138,6 +140,7 @@
     </changeSet>
 
     <changeSet author="fineract" id="ss-057-bt-returned-check-3">
+        <validCheckSum>9:0c65ddb68f19c932a96ddd78f2d112bb</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="m_base_teller_returned_check_payment_cash_detail"/>
