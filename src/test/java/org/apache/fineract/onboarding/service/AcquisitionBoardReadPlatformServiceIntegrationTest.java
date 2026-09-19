@@ -18,6 +18,7 @@ import org.apache.fineract.onboarding.data.AcquisitionBoardData;
 import org.apache.fineract.onboarding.data.AcquisitionStageData;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
+import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,6 +33,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers(disabledWithoutDocker = true)
 class AcquisitionBoardReadPlatformServiceIntegrationTest {
+
+  private static final Long TEST_APP_USER_ID = 7L;
 
   @Container
   private static final PostgreSQLContainer<?> POSTGRES =
@@ -67,9 +70,17 @@ class AcquisitionBoardReadPlatformServiceIntegrationTest {
             + " source_reference VARCHAR(255), reason VARCHAR(500))");
     jdbc.execute(
         "CREATE TABLE m_savings_account_transaction (id BIGINT PRIMARY KEY,"
-            + " savings_account_id BIGINT NOT NULL, transaction_type_enum INTEGER NOT NULL,"
+            + " savings_account_id BIGINT NOT NULL, office_id BIGINT NOT NULL,"
+            + " transaction_type_enum INTEGER NOT NULL,"
             + " transaction_date DATE NOT NULL, amount DECIMAL(19,6) NOT NULL,"
-            + " is_reversed BOOLEAN NOT NULL)");
+            + " is_reversed BOOLEAN NOT NULL, created_date TIMESTAMP NOT NULL,"
+            + " submitted_on_date DATE NOT NULL, created_by BIGINT NOT NULL,"
+            + " last_modified_by BIGINT NOT NULL, created_on_utc TIMESTAMP WITH TIME ZONE NOT NULL,"
+            + " last_modified_on_utc TIMESTAMP WITH TIME ZONE NOT NULL,"
+            + " FOREIGN KEY (savings_account_id) REFERENCES m_savings_account(id),"
+            + " FOREIGN KEY (office_id) REFERENCES m_office(id),"
+            + " FOREIGN KEY (created_by) REFERENCES m_appuser(id),"
+            + " FOREIGN KEY (last_modified_by) REFERENCES m_appuser(id))");
   }
 
   @BeforeEach
@@ -81,7 +92,7 @@ class AcquisitionBoardReadPlatformServiceIntegrationTest {
     jdbc.update("INSERT INTO m_office VALUES (?, ?)", 2L, ".1.");
     jdbc.update("INSERT INTO m_office VALUES (?, ?)", 3L, ".1.2.");
     jdbc.update("INSERT INTO m_office VALUES (?, ?)", 9L, ".9.");
-    jdbc.update("INSERT INTO m_appuser VALUES (?, ?)", 7L, "commercial.user");
+    jdbc.update("INSERT INTO m_appuser VALUES (?, ?)", TEST_APP_USER_ID, "commercial.user");
     jdbc.update("INSERT INTO m_appuser VALUES (?, ?)", 8L, "compliance.user");
     jdbc.update("INSERT INTO m_client VALUES (?, ?, ?)", 10L, 2L, null);
     jdbc.update("INSERT INTO m_client VALUES (?, ?, ?)", 11L, 3L, null);
@@ -136,9 +147,12 @@ class AcquisitionBoardReadPlatformServiceIntegrationTest {
     insertProspect(30L, 10L, "COMPLETED", "2026-09-01 08:00:00", 7L);
     insertEvent(40L, 30L, 1L, "COMPLIANCE", "COMPLETED", "2026-09-02 09:30:00", 8L);
     updateAccountLifecycle(20L, 300, "2026-09-03", 7L, "2026-09-04", 7L);
-    insertTransaction(50L, 20L, 1, "2026-09-05", "125.50", false);
-    insertTransaction(51L, 20L, 2, "2026-09-06", "25.00", false);
-    insertTransaction(52L, 20L, 1, "2026-09-01", "999.00", true);
+    insertTransaction(
+        50L, 20L, SavingsAccountTransactionType.DEPOSIT, "2026-09-05", "125.50", false);
+    insertTransaction(
+        51L, 20L, SavingsAccountTransactionType.WITHDRAWAL, "2026-09-06", "25.00", false);
+    insertTransaction(
+        52L, 20L, SavingsAccountTransactionType.DEPOSIT, "2026-09-01", "999.00", true);
 
     final AcquisitionBoardData board = service.retrieve(10L, 20L);
 
@@ -262,18 +276,31 @@ class AcquisitionBoardReadPlatformServiceIntegrationTest {
   private void insertTransaction(
       final Long id,
       final Long accountId,
-      final int type,
+      final SavingsAccountTransactionType type,
       final String date,
       final String amount,
       final boolean reversed) {
     jdbc.update(
-        "INSERT INTO m_savings_account_transaction VALUES (?, ?, ?, CAST(? AS DATE), ?, ?)",
+        "INSERT INTO m_savings_account_transaction"
+            + " (id, savings_account_id, office_id, transaction_type_enum, is_reversed,"
+            + " transaction_date, amount, created_date, submitted_on_date, created_by,"
+            + " last_modified_by, created_on_utc, last_modified_on_utc)"
+            + " SELECT ?, sa.id, c.office_id, ?, ?, CAST(? AS DATE),"
+            + " CAST(? AS DECIMAL(19,6)), CAST(? AS TIMESTAMP), CAST(? AS DATE), ?, ?,"
+            + " CURRENT_TIMESTAMP, CURRENT_TIMESTAMP"
+            + " FROM m_savings_account sa"
+            + " JOIN m_client c ON c.id = sa.client_id"
+            + " WHERE sa.id = ?",
         id,
-        accountId,
-        type,
+        type.getValue(),
+        reversed,
         date,
         amount,
-        reversed);
+        date + " 00:00:00",
+        date,
+        TEST_APP_USER_ID,
+        TEST_APP_USER_ID,
+        accountId);
   }
 
   private AcquisitionStageData stage(final AcquisitionBoardData board, final String code) {
