@@ -14,7 +14,9 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import org.apache.fineract.creditapplication.data.CreditApplicationData;
 import org.apache.fineract.creditapplication.data.CreditApplicationSearchRequest;
+import org.apache.fineract.creditapplication.data.CreditOriginationBoardData;
 import org.apache.fineract.creditapplication.service.CreditApplicationReadPlatformService;
+import org.apache.fineract.creditapplication.service.CreditOriginationBoardReadPlatformService;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -28,16 +30,39 @@ class CreditApplicationApiResourceTest {
     final AppUser user = mock(AppUser.class);
     final CreditApplicationReadPlatformService service =
         mock(CreditApplicationReadPlatformService.class);
+    final CreditOriginationBoardReadPlatformService boardService =
+        mock(CreditOriginationBoardReadPlatformService.class);
     final CreditApplicationSearchRequest request = new CreditApplicationSearchRequest();
     final Page<CreditApplicationData> page = new Page<>(List.of(), 0);
     when(context.authenticatedUser()).thenReturn(user);
     when(service.search(request)).thenReturn(page);
     final CreditApplicationApiResource resource =
-        new CreditApplicationApiResource(context, service);
+        new CreditApplicationApiResource(context, service, boardService);
 
     assertSame(page, resource.search(request));
 
     verify(user).validateHasReadPermission("LOAN");
     verify(service).search(request);
+  }
+
+  @Test
+  void originationBoardRequiresLoanReadPermissionAndDelegates() {
+    final PlatformSecurityContext context = mock(PlatformSecurityContext.class);
+    final AppUser user = mock(AppUser.class);
+    final CreditApplicationReadPlatformService searchService =
+        mock(CreditApplicationReadPlatformService.class);
+    final CreditOriginationBoardReadPlatformService boardService =
+        mock(CreditOriginationBoardReadPlatformService.class);
+    final CreditOriginationBoardData board =
+        new CreditOriginationBoardData(7L, 8L, 7L, null, "ONBOARDING", List.of());
+    when(context.authenticatedUser()).thenReturn(user);
+    when(boardService.retrieve(7L)).thenReturn(board);
+    final CreditApplicationApiResource resource =
+        new CreditApplicationApiResource(context, searchService, boardService);
+
+    assertSame(board, resource.retrieveOriginationBoard(7L));
+
+    verify(user).validateHasReadPermission("LOAN");
+    verify(boardService).retrieve(7L);
   }
 }
