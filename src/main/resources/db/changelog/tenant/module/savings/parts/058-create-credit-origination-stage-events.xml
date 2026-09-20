@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-058-1">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not><tableExists tableName="m_credit_origination_stage_event"/></not>
+                <tableExists tableName="m_loan"/>
+                <tableExists tableName="m_client"/>
+                <tableExists tableName="m_appuser"/>
+            </and>
+        </preConditions>
+        <createTable tableName="m_credit_origination_stage_event">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_credit_origination_stage_event"/>
+            </column>
+            <column name="loan_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_credit_stage_event_loan" referencedTableName="m_loan" referencedColumnNames="id"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_credit_stage_event_client" referencedTableName="m_client" referencedColumnNames="id"/>
+            </column>
+            <column name="stage_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="new_status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurred_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recorded_on_utc" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="actor_id" type="BIGINT">
+                <constraints foreignKeyName="fk_credit_stage_event_actor" referencedTableName="m_appuser" referencedColumnNames="id"/>
+            </column>
+            <column name="source" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_reference" type="VARCHAR(255)"/>
+            <column name="event_key" type="VARCHAR(150)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_credit_stage_event_key"/>
+            </column>
+            <column name="reason" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="m_credit_origination_stage_event" indexName="idx_credit_stage_event_loan_stage">
+            <column name="loan_id"/>
+            <column name="client_id"/>
+            <column name="stage_code"/>
+            <column name="id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

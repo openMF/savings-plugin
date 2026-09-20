@@ -11,12 +11,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.creditapplication.data.CreditApplicationData;
 import org.apache.fineract.creditapplication.data.CreditApplicationSearchRequest;
+import org.apache.fineract.creditapplication.data.CreditOriginationBoardData;
 import org.apache.fineract.creditapplication.service.CreditApplicationReadPlatformService;
+import org.apache.fineract.creditapplication.service.CreditOriginationBoardReadPlatformService;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.springframework.stereotype.Component;
@@ -34,6 +37,7 @@ public class CreditApplicationApiResource {
 
   private final PlatformSecurityContext context;
   private final CreditApplicationReadPlatformService readPlatformService;
+  private final CreditOriginationBoardReadPlatformService originationBoardReadPlatformService;
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -46,5 +50,20 @@ public class CreditApplicationApiResource {
       @BeanParam final CreditApplicationSearchRequest request) {
     context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
     return readPlatformService.search(request);
+  }
+
+  @GET
+  @Path("/{creditApplicationId}/origination-board")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Retrieve a credit application's origination board",
+      description =
+          "Returns all nine source-qualified origination phases. The Fineract loan is the"
+              + " authoritative credit application and must be visible in the authenticated"
+              + " user's office hierarchy.")
+  public CreditOriginationBoardData retrieveOriginationBoard(
+      @PathParam("creditApplicationId") final Long creditApplicationId) {
+    context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    return originationBoardReadPlatformService.retrieve(creditApplicationId);
   }
 }
