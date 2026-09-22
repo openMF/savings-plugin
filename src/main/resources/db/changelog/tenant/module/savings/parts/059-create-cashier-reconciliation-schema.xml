@@ -37,7 +37,7 @@
         <addUniqueConstraint tableName="m_cashier_reconciliation" columnNames="cashier_id,business_date,currency_code" constraintName="uk_cashier_recon_day_currency"/>
         <createIndex tableName="m_cashier_reconciliation" indexName="idx_cashier_recon_office_date"><column name="office_id"/><column name="business_date"/></createIndex>
         <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cashier_recon_office"/>
-        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="teller_id" referencedTableName="m_teller" referencedColumnNames="id" constraintName="fk_cashier_recon_teller"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_cashier_recon_teller"/>
         <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cashier_recon_cashier"/>
         <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cashier_recon_creator"/>
         <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="authorized_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cashier_recon_authorizer"/>
@@ -89,7 +89,7 @@
         </createTable>
         <createIndex tableName="m_cash_operation_transaction" indexName="idx_cash_operation_history"><column name="office_id"/><column name="business_date"/><column name="transaction_type"/><column name="status"/></createIndex>
         <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cash_operation_office"/>
-        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="teller_id" referencedTableName="m_teller" referencedColumnNames="id" constraintName="fk_cash_operation_teller"/>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_cash_operation_teller"/>
         <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cash_operation_cashier"/>
         <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cash_operation_actor"/>
         <createTable tableName="m_cash_operation_denomination">
