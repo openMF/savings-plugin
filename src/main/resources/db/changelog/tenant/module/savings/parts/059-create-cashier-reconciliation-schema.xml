@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-059-cashier-reconciliation-1">
+        <createTable tableName="m_cashier_reconciliation">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cashier_recon_idempotency"/></column>
+            <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="receipt_number" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cashier_recon_receipt"/></column>
+            <column name="business_date" type="date"><constraints nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="teller_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="opening_balance" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="cash_inflows" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="cash_outflows" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="previous_settlements" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="expected_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="cash_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="check_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="actual_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="difference_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="difference_type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="created_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="authorized_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="authorized_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="cashier_transaction_id" type="bigint"/>
+            <column name="accounting_transaction_id" type="varchar(100)"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_cashier_reconciliation" columnNames="cashier_id,business_date,currency_code" constraintName="uk_cashier_recon_day_currency"/>
+        <createIndex tableName="m_cashier_reconciliation" indexName="idx_cashier_recon_office_date"><column name="office_id"/><column name="business_date"/></createIndex>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cashier_recon_office"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="teller_id" referencedTableName="m_teller" referencedColumnNames="id" constraintName="fk_cashier_recon_teller"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cashier_recon_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cashier_recon_creator"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="authorized_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cashier_recon_authorizer"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="completed_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cashier_recon_completer"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-059-cashier-reconciliation-2">
+        <createTable tableName="m_cashier_reconciliation_denomination">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="reconciliation_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="denomination_identifier" type="varchar(100)"/>
+            <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+            <column name="line_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation_denomination" baseColumnNames="reconciliation_id" referencedTableName="m_cashier_reconciliation" referencedColumnNames="id" constraintName="fk_cashier_recon_denomination" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_cashier_reconciliation_denomination" columnNames="reconciliation_id,denomination_value" constraintName="uk_cashier_recon_denomination"/>
+        <createTable tableName="m_cashier_reconciliation_check">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="reconciliation_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="deposit_check_detail_id" type="bigint"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cashier_recon_check"/></column>
+            <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation_check" baseColumnNames="reconciliation_id" referencedTableName="m_cashier_reconciliation" referencedColumnNames="id" constraintName="fk_cashier_recon_check_parent" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_reconciliation_check" baseColumnNames="deposit_check_detail_id" referencedTableName="m_base_teller_deposit_check_detail" referencedColumnNames="id" constraintName="fk_cashier_recon_check_detail"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-059-cash-operation-1">
+        <createTable tableName="m_cash_operation_transaction">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_operation_idempotency"/></column>
+            <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="receipt_number" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_operation_receipt"/></column>
+            <column name="transaction_type" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="business_date" type="date"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="cash_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="check_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="teller_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="actor_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="cashier_transaction_id" type="bigint"/>
+            <column name="description" type="varchar(500)"/>
+            <column name="status" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="m_cash_operation_transaction" indexName="idx_cash_operation_history"><column name="office_id"/><column name="business_date"/><column name="transaction_type"/><column name="status"/></createIndex>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cash_operation_office"/>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="teller_id" referencedTableName="m_teller" referencedColumnNames="id" constraintName="fk_cash_operation_teller"/>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cash_operation_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_transaction" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cash_operation_actor"/>
+        <createTable tableName="m_cash_operation_denomination">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="operation_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="denomination_identifier" type="varchar(100)"/>
+            <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+            <column name="line_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_denomination" baseColumnNames="operation_id" referencedTableName="m_cash_operation_transaction" referencedColumnNames="id" constraintName="fk_cash_operation_denomination" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_cash_operation_denomination" columnNames="operation_id,denomination_value" constraintName="uk_cash_operation_denomination"/>
+        <createTable tableName="m_cash_operation_check">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="operation_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="deposit_check_detail_id" type="bigint"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_operation_check"/></column>
+            <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_check" baseColumnNames="operation_id" referencedTableName="m_cash_operation_transaction" referencedColumnNames="id" constraintName="fk_cash_operation_check_parent" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="m_cash_operation_check" baseColumnNames="deposit_check_detail_id" referencedTableName="m_base_teller_deposit_check_detail" referencedColumnNames="id" constraintName="fk_cash_operation_check_detail"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-059-cash-management-permissions">
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_CASHIER_CLOSING"/><column name="entity_name" value="CASHIER_CLOSING"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_CASHIER_CLOSING"/><column name="entity_name" value="CASHIER_CLOSING"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="AUTHORIZE_CASHIER_CLOSING"/><column name="entity_name" value="CASHIER_CLOSING"/><column name="action_name" value="AUTHORIZE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_GLOBAL_SETTLEMENT"/><column name="entity_name" value="GLOBAL_SETTLEMENT"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_CASH_DEPOSIT"/><column name="entity_name" value="CASH_DEPOSIT"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_CASH_OPERATION_HISTORY"/><column name="entity_name" value="CASH_OPERATION_HISTORY"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_CASH_HOLDINGS"/><column name="entity_name" value="CASH_HOLDINGS"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    </changeSet>
+</databaseChangeLog>
