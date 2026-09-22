@@ -23,7 +23,7 @@
 
     <properties>
       <java.version>25</java.version>
-      <fineract.version>0.0.1556-391c415</fineract.version>
+      <fineract.version>0.0.1570-20e40cb</fineract.version>
       <eclipselink.version>5.0.1</eclipselink.version>
       <truth.version>1.4.5</truth.version>
       <spotless.version>3.10.2</spotless.version>
