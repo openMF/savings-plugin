@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-061-cash-allocation-transaction">
+        <createTable tableName="m_cash_allocation">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_allocation_idempotency"/></column>
+            <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="receipt_number" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_allocation_receipt"/></column>
+            <column name="operation_type" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="business_date" type="date"><constraints nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="office_name" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="initiated_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="initiated_by_username" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="source_cashier_id" type="bigint"/>
+            <column name="source_name" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="destination_cashier_id" type="bigint"/>
+            <column name="destination_name" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="destination_key" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="amount" type="decimal(19,6)"><constraints nullable="false" checkConstraint="amount &gt; 0"/></column>
+            <column name="source_balance_before" type="decimal(19,6)"/>
+            <column name="source_balance_after" type="decimal(19,6)"/>
+            <column name="destination_balance_before" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="destination_balance_after" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="source_cashier_transaction_id" type="bigint"/>
+            <column name="destination_cashier_transaction_id" type="bigint"/>
+            <column name="accounting_transaction_id" type="varchar(100)"/>
+            <column name="note" type="varchar(500)"/>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_cash_allocation"
+                             columnNames="office_id,business_date,currency_code,destination_key"
+                             constraintName="uk_cash_allocation_drawer_day"/>
+        <createIndex tableName="m_cash_allocation" indexName="idx_cash_allocation_history">
+            <column name="office_id"/>
+            <column name="business_date"/>
+            <column name="operation_type"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="m_cash_allocation" indexName="idx_cash_allocation_head_source">
+            <column name="destination_cashier_id"/>
+            <column name="business_date"/>
+            <column name="currency_code"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cash_allocation_office"/>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation" baseColumnNames="initiated_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cash_allocation_user"/>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation" baseColumnNames="source_cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cash_allocation_source_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation" baseColumnNames="destination_cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cash_allocation_destination_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation" baseColumnNames="currency_code" referencedTableName="m_currency" referencedColumnNames="code" constraintName="fk_cash_allocation_currency"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-061-cash-allocation-denominations">
+        <createTable tableName="m_cash_allocation_denomination">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="allocation_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="denomination_type" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false" checkConstraint="denomination_value &gt; 0"/></column>
+            <column name="quantity" type="bigint"><constraints nullable="false" checkConstraint="quantity &gt;= 0"/></column>
+            <column name="line_total" type="decimal(19,6)"><constraints nullable="false" checkConstraint="line_total &gt;= 0"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_cash_allocation_denomination" baseColumnNames="allocation_id" referencedTableName="m_cash_allocation" referencedColumnNames="id" constraintName="fk_cash_allocation_denomination" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_cash_allocation_denomination"
+                             columnNames="allocation_id,denomination_identifier"
+                             constraintName="uk_cash_allocation_denomination"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-061-cash-allocation-permissions">
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'portfolio', 'READ_BASE_TELLER_CASH_ALLOCATION', 'BASE_TELLER_CASH_ALLOCATION', 'READ', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='READ_BASE_TELLER_CASH_ALLOCATION');
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'portfolio', 'CREATE_BASE_TELLER_CASH_ALLOCATION', 'BASE_TELLER_CASH_ALLOCATION', 'CREATE', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='CREATE_BASE_TELLER_CASH_ALLOCATION');
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'portfolio', 'REPRINT_BASE_TELLER_CASH_ALLOCATION', 'BASE_TELLER_CASH_ALLOCATION', 'REPRINT', false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='REPRINT_BASE_TELLER_CASH_ALLOCATION');
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id FROM m_role r, m_permission p
+            WHERE r.name='Super user'
+              AND p.code IN ('READ_BASE_TELLER_CASH_ALLOCATION',
+                             'CREATE_BASE_TELLER_CASH_ALLOCATION',
+                             'REPRINT_BASE_TELLER_CASH_ALLOCATION')
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission rp
+                  WHERE rp.role_id=r.id AND rp.permission_id=p.id
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

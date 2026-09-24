@@ -183,9 +183,47 @@ public abstract class SavingsIntegrationTestBase {
 
   /** Queries a single scalar value from the Postgres test container using {@code psql -tA}. */
   protected static String querySingleValueInPostgres(String sql) {
-    Container.ExecResult result = execPsql(sql, true);
+    Container.ExecResult result = execPsql(postgres.getDatabaseName(), sql, true);
     if (result.getExitCode() != 0) {
       throw new RuntimeException("Failed to query test database: " + result.getStderr());
+    }
+    return result
+        .getStdout()
+        .lines()
+        .map(String::trim)
+        .filter(line -> !line.isEmpty())
+        .findFirst()
+        .orElse("");
+  }
+
+  /** Executes SQL in the actual database used by Fineract's default tenant. */
+  protected static void executeSqlInDefaultTenant(String sqlTemplate, Object... parameters) {
+    String[] rendered = new String[parameters.length];
+    for (int index = 0; index < parameters.length; index++) {
+      rendered[index] = sqlLiteral(parameters[index]);
+    }
+    Container.ExecResult result =
+        execPsql(
+            "fineract_default",
+            """
+                BEGIN;
+                %s
+                COMMIT;
+                """
+                .formatted(sqlTemplate.formatted((Object[]) rendered)),
+            false);
+    if (result.getExitCode() != 0) {
+      throw new RuntimeException(
+          "Failed to execute SQL in the default tenant database: " + result.getStderr());
+    }
+  }
+
+  /** Queries a scalar value from the actual database used by Fineract's default tenant. */
+  protected static String querySingleValueInDefaultTenant(String sql) {
+    Container.ExecResult result = execPsql("fineract_default", sql, true);
+    if (result.getExitCode() != 0) {
+      throw new RuntimeException(
+          "Failed to query the default tenant database: " + result.getStderr());
     }
     return result
         .getStdout()
@@ -213,6 +251,11 @@ public abstract class SavingsIntegrationTestBase {
   }
 
   private static Container.ExecResult execPsql(String sql, boolean tuplesOnly) {
+    return execPsql(postgres.getDatabaseName(), sql, tuplesOnly);
+  }
+
+  private static Container.ExecResult execPsql(
+      String databaseName, String sql, boolean tuplesOnly) {
     List<String> command = new ArrayList<>();
     command.add("psql");
     command.add("-v");
@@ -220,7 +263,7 @@ public abstract class SavingsIntegrationTestBase {
     command.add("-U");
     command.add(postgres.getUsername());
     command.add("-d");
-    command.add(postgres.getDatabaseName());
+    command.add(databaseName);
     if (tuplesOnly) {
       command.add("-t");
       command.add("-A");

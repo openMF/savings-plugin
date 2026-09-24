@@ -70,4 +70,5 @@
   <include file="parts/058-create-credit-origination-stage-events.xml" relativeToChangelogFile="true"/>
   <include file="parts/059-create-cashier-reconciliation-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/060-create-service-payment-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/061-create-cash-allocation-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
