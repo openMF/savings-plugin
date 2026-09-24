@@ -168,28 +168,26 @@ public class CreditOriginationBoardReadPlatformServiceImpl
             + " ORDER BY e.occurred_on_utc DESC, e.id DESC",
         Map.of("loanId", loanId, "clientId", clientId),
         rs -> {
-          while (rs.next()) {
-            final CreditOriginationStageCode code = parseStage(rs.getString("stage_code"));
-            if (code != null && !evidence.containsKey(code)) {
-              final String status = normalize(rs.getString("new_status"));
-              evidence.put(
-                  code,
-                  new StageEvidence(
-                      COMPLETED.equals(status),
-                      COMPLETED.equals(status) ? offsetDateTime(rs, "occurred_on_utc") : null,
-                      status,
-                      new CreditOriginationStageDetailsData(
-                          rs.getString("source"),
-                          status,
-                          nullableLong(rs, "actor_id"),
-                          rs.getString("username"),
-                          rs.getString("source_reference"),
-                          rs.getString("reason"),
-                          null,
-                          null,
-                          null,
-                          null)));
-            }
+          final CreditOriginationStageCode code = parseStage(rs.getString("stage_code"));
+          if (code != null && !evidence.containsKey(code)) {
+            final String status = normalize(rs.getString("new_status"));
+            evidence.put(
+                code,
+                new StageEvidence(
+                    COMPLETED.equals(status),
+                    COMPLETED.equals(status) ? offsetDateTime(rs, "occurred_on_utc") : null,
+                    status,
+                    new CreditOriginationStageDetailsData(
+                        rs.getString("source"),
+                        status,
+                        nullableLong(rs, "actor_id"),
+                        rs.getString("username"),
+                        rs.getString("source_reference"),
+                        rs.getString("reason"),
+                        null,
+                        null,
+                        null,
+                        null)));
           }
         });
     return evidence;

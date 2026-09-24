@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-060-service-payment-catalog">
+        <createTable tableName="m_service_payment_service">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="code" type="varchar(50)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_service_payment_service_code"/></column>
+            <column name="name" type="varchar(150)"><constraints nullable="false"/></column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="commission_type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="commission_value" type="decimal(19,6)" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="commission_vat_rate" type="decimal(19,6)" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="cash_gl_account_id" type="bigint"/>
+            <column name="settlement_gl_account_id" type="bigint"/>
+            <column name="commission_gl_account_id" type="bigint"/>
+            <column name="vat_gl_account_id" type="bigint"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_service_payment_service" baseColumnNames="currency_code" referencedTableName="m_currency" referencedColumnNames="code" constraintName="fk_service_payment_service_currency"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment_service" baseColumnNames="cash_gl_account_id" referencedTableName="acc_gl_account" referencedColumnNames="id" constraintName="fk_service_payment_cash_gl"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment_service" baseColumnNames="settlement_gl_account_id" referencedTableName="acc_gl_account" referencedColumnNames="id" constraintName="fk_service_payment_settlement_gl"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment_service" baseColumnNames="commission_gl_account_id" referencedTableName="acc_gl_account" referencedColumnNames="id" constraintName="fk_service_payment_commission_gl"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment_service" baseColumnNames="vat_gl_account_id" referencedTableName="acc_gl_account" referencedColumnNames="id" constraintName="fk_service_payment_vat_gl"/>
+
+        <createTable tableName="m_service_payment_denomination">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="identifier" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="value" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="denomination_type" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="m_service_payment_denomination" columnNames="currency_code,identifier" constraintName="uk_service_payment_denomination_identifier"/>
+        <addUniqueConstraint tableName="m_service_payment_denomination" columnNames="currency_code,value" constraintName="uk_service_payment_denomination_value"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment_denomination" baseColumnNames="currency_code" referencedTableName="m_currency" referencedColumnNames="code" constraintName="fk_service_payment_denom_currency"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-060-service-payment-transaction">
+        <createTable tableName="m_service_payment">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_service_payment_idempotency"/></column>
+            <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="receipt_number" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_service_payment_receipt"/></column>
+            <column name="business_date" type="date"><constraints nullable="false"/></column>
+            <column name="service_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="service_code" type="varchar(50)"><constraints nullable="false"/></column>
+            <column name="service_name" type="varchar(150)"><constraints nullable="false"/></column>
+            <column name="service_reference" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="payer_type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="client_id" type="bigint"/>
+            <column name="client_account_no" type="varchar(100)"/>
+            <column name="payer_name" type="varchar(250)"><constraints nullable="false"/></column>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="base_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="commission_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="commission_vat_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="total_to_pay" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="amount_received" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="change_amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="payment_type_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="teller_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="operator_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="cashier_transaction_id" type="bigint"/>
+            <column name="accounting_transaction_id" type="varchar(100)"/>
+            <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="service_id" referencedTableName="m_service_payment_service" referencedColumnNames="id" constraintName="fk_service_payment_service"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_service_payment_client"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="payment_type_id" referencedTableName="m_payment_type" referencedColumnNames="id" constraintName="fk_service_payment_payment_type"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_service_payment_office"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_service_payment_teller"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_service_payment_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_service_payment" baseColumnNames="operator_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_service_payment_operator"/>
+        <createIndex tableName="m_service_payment" indexName="idx_service_payment_history"><column name="office_id"/><column name="business_date"/><column name="service_id"/></createIndex>
+
+        <createTable tableName="m_service_payment_cash_detail">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="service_payment_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+            <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+            <column name="line_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_service_payment_cash_detail" baseColumnNames="service_payment_id" referencedTableName="m_service_payment" referencedColumnNames="id" constraintName="fk_service_payment_cash_detail" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_service_payment_cash_detail" columnNames="service_payment_id,denomination_identifier" constraintName="uk_service_payment_cash_detail"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-060-service-payment-permissions">
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_BASE_TELLER_SERVICE_PAYMENT"/><column name="entity_name" value="BASE_TELLER_SERVICE_PAYMENT"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_BASE_TELLER_SERVICE_PAYMENT"/><column name="entity_name" value="BASE_TELLER_SERVICE_PAYMENT"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    </changeSet>
+</databaseChangeLog>
