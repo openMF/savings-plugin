@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright since 2026 Mifos Initiative
+
+  This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+  If a copy of the MPL was not distributed with this file, You can obtain one at
+  http://mozilla.org/MPL/2.0/.
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.10.xsd">
+
+    <!-- Root verification: vendor_data, kind (PERSON|COMPANY), questionnaires JSON -->
+    <changeSet author="fineract" id="062-add-kyc-company-verification-support">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_client_kyc_verification"/>
+                <not>
+                    <columnExists tableName="m_client_kyc_verification" columnName="vendor_data"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="m_client_kyc_verification">
+            <column name="vendor_data" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="verification_kind" type="VARCHAR(20)" defaultValue="PERSON">
+                <constraints nullable="false"/>
+            </column>
+            <column name="questionnaires_json" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="email_verifications_json" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="m_client_kyc_verification" indexName="idx_kyc_verification_vendor_data">
+            <column name="vendor_data"/>
+        </createIndex>
+        <createIndex tableName="m_client_kyc_verification" indexName="idx_kyc_verification_kind">
+            <column name="verification_kind"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Feature flags: questionnaires + email verification for KYB -->
+    <changeSet author="fineract" id="ss-062-2-kyc-feature-status-company-flags">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_client_kyc_feature_status"/>
+                <not>
+                    <columnExists tableName="m_client_kyc_feature_status" columnName="questionnaires"/>
+                </not>
+            </and>
+        </preConditions>
+        <addColumn tableName="m_client_kyc_feature_status">
+            <column name="questionnaires" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email_verifications" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

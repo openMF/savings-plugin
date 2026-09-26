@@ -1,3 +1,9 @@
+/**
+ * Copyright since 2026 Mifos Initiative
+ *
+ * <p>This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ * of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 package org.apache.fineract.kyc.service;
 
 import org.springframework.stereotype.Service;
@@ -7,14 +13,7 @@ import org.springframework.util.StringUtils;
 public class KycStatusDerivationService {
 
   /**
-   * Derives the overall KYC status that will be returned in the self-service
-   * authentication response under {@code kycValidations.status}.
-   *
-   * <p>Priority:
-   * <ol>
-   *   <li>Explicit decision status from the provider (Approved, Declined, In Review, …)</li>
-   *   <li>Fallback based on feature flags when no decision status is present</li>
-   * </ol>
+   * Person KYC derivation (backward compatible).
    */
   public String deriveStatus(
       final boolean faceMatchesApproved,
@@ -22,9 +21,37 @@ public class KycStatusDerivationService {
       final boolean amlScreeningsApproved,
       final boolean hasDecision,
       final String decisionStatus) {
+    return deriveStatus(
+        faceMatchesApproved,
+        idVerificationsApproved,
+        amlScreeningsApproved,
+        true,
+        true,
+        false,
+        hasDecision,
+        decisionStatus);
+  }
+
+  /**
+   * Derives overall KYC/KYB status.
+   *
+   * <p>When {@code isCompanyVerification} is true, questionnaire (and email when present in the
+   * workflow) flags are required in addition to legal-representative face / id / aml flags.
+   *
+   * <p>If a feature list was empty for the session, pass {@code true} for that flag so it does not
+   * block approval (caller decides based on Didit {@code features[]} array).
+   */
+  public String deriveStatus(
+      final boolean faceMatchesApproved,
+      final boolean idVerificationsApproved,
+      final boolean amlScreeningsApproved,
+      final boolean questionnairesApproved,
+      final boolean emailVerificationsApproved,
+      final boolean isCompanyVerification,
+      final boolean hasDecision,
+      final String decisionStatus) {
 
     if (StringUtils.hasText(decisionStatus)) {
-      // Normalise well-known Didit values
       if ("Approved".equalsIgnoreCase(decisionStatus)) {
         return "Approved";
       }
@@ -39,12 +66,22 @@ public class KycStatusDerivationService {
       if ("Pending".equalsIgnoreCase(decisionStatus)) {
         return "Pending";
       }
-      // Pass through any other provider value (e.g. "Awaiting User", "Resubmitted")
       return decisionStatus;
     }
 
-    // No decision status → derive from feature flags
-    if (faceMatchesApproved && idVerificationsApproved && amlScreeningsApproved) {
+    final boolean featuresOk;
+    if (isCompanyVerification) {
+      featuresOk =
+          questionnairesApproved
+              && emailVerificationsApproved
+              && faceMatchesApproved
+              && idVerificationsApproved
+              && amlScreeningsApproved;
+    } else {
+      featuresOk = faceMatchesApproved && idVerificationsApproved && amlScreeningsApproved;
+    }
+
+    if (featuresOk) {
       return "Approved";
     }
     if (hasDecision) {

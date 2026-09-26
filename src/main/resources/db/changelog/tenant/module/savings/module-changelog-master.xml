@@ -71,4 +71,5 @@
   <include file="parts/059-create-cashier-reconciliation-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/060-create-service-payment-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/061-create-cash-allocation-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/062-add-kyc-company-verification-support.xml" relativeToChangelogFile="true"/>  
 </databaseChangeLog>

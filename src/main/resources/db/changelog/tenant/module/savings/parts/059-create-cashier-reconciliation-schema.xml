@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <changeSet author="fineract" id="ss-059-cashier-reconciliation-1">
+    <changeSet author="fineract" id="060-ss-add-kyc-company-verification-support">
         <createTable tableName="m_cashier_reconciliation">
             <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
             <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cashier_recon_idempotency"/></column>
