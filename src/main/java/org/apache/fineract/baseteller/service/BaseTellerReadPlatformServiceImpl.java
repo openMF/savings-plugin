@@ -13,8 +13,8 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.baseteller.data.BaseTellerAccountSummaryData;
-import org.apache.fineract.baseteller.data.BaseTellerCheckData;
 import org.apache.fineract.baseteller.data.BaseTellerCheckClearingStatus;
+import org.apache.fineract.baseteller.data.BaseTellerCheckData;
 import org.apache.fineract.baseteller.data.BaseTellerCustomerData;
 import org.apache.fineract.baseteller.data.BaseTellerCustomerPositionData;
 import org.apache.fineract.baseteller.data.BaseTellerDenominationData;
@@ -423,14 +423,15 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
 
   private static String returnedCheckDetailSql() {
     return "SELECT rc.id, rc.deposit_id, rc.deposit_check_detail_id,"
-        + " d.receipt_number AS original_receipt_number, rc.check_type, rc.check_bank,"
+        + " COALESCE(d.receipt_number,cp.receipt_number) AS original_receipt_number, rc.check_type, rc.check_bank,"
         + " rc.check_number, rc.client_id, c.display_name AS customer_name,"
         + " rc.savings_account_id, sa.account_no, rc.amount, rc.currency_code,"
         + " rc.returned_on_date, rc.return_reason, rc.status, rc.teller_id, rc.cashier_id,"
         + " rc.office_id, off.name AS office_name, s.id AS settlement_id,"
         + " s.receipt_number AS settlement_receipt_number, rc.settled_on_utc"
         + " FROM m_base_teller_returned_check rc"
-        + " JOIN m_base_teller_deposit d ON d.id = rc.deposit_id"
+        + " LEFT JOIN m_base_teller_deposit d ON d.id = rc.deposit_id"
+        + " LEFT JOIN m_base_teller_credit_payment cp ON cp.id = rc.credit_payment_id"
         + " JOIN m_client c ON c.id = rc.client_id"
         + " LEFT JOIN m_savings_account sa ON sa.id = rc.savings_account_id"
         + " JOIN m_office off ON off.id = rc.office_id"
@@ -612,7 +613,7 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         throws SQLException {
       return new BaseTellerReturnedCheckSearchData(
           rs.getLong("id"),
-          rs.getLong("deposit_check_detail_id"),
+          nullableLong(rs, "deposit_check_detail_id"),
           rs.getString("check_number"),
           rs.getLong("client_id"),
           rs.getString("customer_name"),
@@ -637,8 +638,8 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         throws SQLException {
       return new BaseTellerReturnedCheckDetailData(
           rs.getLong("id"),
-          rs.getLong("deposit_id"),
-          rs.getLong("deposit_check_detail_id"),
+          nullableLong(rs, "deposit_id"),
+          nullableLong(rs, "deposit_check_detail_id"),
           rs.getString("original_receipt_number"),
           rs.getString("check_type"),
           rs.getString("check_bank"),

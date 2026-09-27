@@ -28,8 +28,8 @@ import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckPaymentRequest
 import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckReceiptData;
 import org.apache.fineract.baseteller.data.BaseTellerReturnedCheckStatus;
 import org.apache.fineract.baseteller.data.BaseTellerSavingsOpeningRequest;
-import org.apache.fineract.baseteller.validation.BaseTellerReturnedCheckPaymentValidator;
 import org.apache.fineract.baseteller.validation.BaseTellerDepositValidator;
+import org.apache.fineract.baseteller.validation.BaseTellerReturnedCheckPaymentValidator;
 import org.apache.fineract.baseteller.validation.BaseTellerSavingsOpeningValidator;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
@@ -228,6 +228,11 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
       throw new GeneralPlatformDomainRuleException(
           "error.msg.base.teller.returned.check.not.payable",
           "Returned check is not payable.");
+    }
+    if (!"SAVINGS".equals(returnedCheck.originType())) {
+      throw new GeneralPlatformDomainRuleException(
+          "error.msg.base.teller.returned.check.loan.settlement.unsupported",
+          "A returned pending loan-payment check did not reduce the loan and cannot be settled as a savings returned check.");
     }
     if (!StringUtils.equalsIgnoreCase(returnedCheck.currencyCode(), request.currencyCode())) {
       throw new GeneralPlatformDomainRuleException(
@@ -573,7 +578,7 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
       final Long returnedCheckId, final AppUser user) {
     final List<ReturnedCheckForSettlement> checks =
         namedParameterJdbcTemplate.query(
-            "SELECT rc.id, rc.amount, rc.currency_code, rc.status, rc.office_id"
+            "SELECT rc.id, rc.amount, rc.currency_code, rc.status, rc.office_id, rc.origin_type"
                 + " FROM m_base_teller_returned_check rc"
                 + " JOIN m_office off ON off.id = rc.office_id"
                 + " WHERE rc.id = :id AND off.hierarchy LIKE :officeHierarchy FOR UPDATE",
@@ -584,7 +589,8 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
                     rs.getBigDecimal("amount"),
                     rs.getString("currency_code"),
                     BaseTellerReturnedCheckStatus.valueOf(rs.getString("status")),
-                    rs.getLong("office_id")));
+                    rs.getLong("office_id"),
+                    rs.getString("origin_type")));
     if (checks.isEmpty()) {
       throw new GeneralPlatformDomainRuleException(
           "error.msg.base.teller.returned.check.not.found", "Returned check not found.");
@@ -977,5 +983,6 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
       BigDecimal amount,
       String currencyCode,
       BaseTellerReturnedCheckStatus status,
-      Long officeId) {}
+      Long officeId,
+      String originType) {}
 }

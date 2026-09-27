@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-063-credit-payment-bank">
+        <createTable tableName="m_base_teller_bank">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="code" type="varchar(50)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_bt_bank_code"/></column>
+            <column name="name" type="varchar(150)"><constraints nullable="false"/></column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-063-credit-payment">
+        <createTable tableName="m_base_teller_credit_payment">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="idempotency_key" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="receipt_number" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(30)"><constraints nullable="false" checkConstraint="status IN ('IN_PROGRESS','PENDING_COLLECTION','COMPLETED','CLEARED','RETURNED','FAILED')"/></column>
+            <column name="payment_method" type="varchar(10)"><constraints nullable="false" checkConstraint="payment_method IN ('CASH','CHECK')"/></column>
+            <column name="client_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="loan_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="amount" type="decimal(19,6)"><constraints nullable="false" checkConstraint="amount &gt; 0"/></column>
+            <column name="tender_amount" type="decimal(19,6)"/>
+            <column name="change_amount" type="decimal(19,6)"/>
+            <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="payment_type_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="loan_transaction_id" type="bigint"/>
+            <column name="cashier_transaction_id" type="bigint"/>
+            <column name="principal_portion" type="decimal(19,6)"/>
+            <column name="interest_portion" type="decimal(19,6)"/>
+            <column name="fee_portion" type="decimal(19,6)"/>
+            <column name="penalty_portion" type="decimal(19,6)"/>
+            <column name="overpayment_portion" type="decimal(19,6)"/>
+            <column name="business_date" type="date"><constraints nullable="false"/></column>
+            <column name="operator_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="teller_id" type="bigint"/>
+            <column name="cashier_id" type="bigint"/>
+            <column name="client_name_snapshot" type="varchar(250)"><constraints nullable="false"/></column>
+            <column name="loan_account_no_snapshot" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="operator_name_snapshot" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="note" type="varchar(500)"/>
+            <column name="failure_message" type="varchar(1000)"/>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment" columnNames="idempotency_key" constraintName="uk_bt_credit_payment_idempotency"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment" columnNames="receipt_number" constraintName="uk_bt_credit_payment_receipt"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_bt_credit_payment_client"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_bt_credit_payment_loan"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="payment_type_id" referencedTableName="m_payment_type" referencedColumnNames="id" constraintName="fk_bt_credit_payment_type"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="operator_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_bt_credit_payment_user"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_bt_credit_payment_office"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_bt_credit_payment_teller"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_bt_credit_payment_cashier"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="loan_transaction_id" referencedTableName="m_loan_transaction" referencedColumnNames="id" constraintName="fk_bt_credit_payment_loan_txn"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment" baseColumnNames="cashier_transaction_id" referencedTableName="m_cashier_transactions" referencedColumnNames="id" constraintName="fk_bt_credit_payment_cashier_txn"/>
+        <createIndex tableName="m_base_teller_credit_payment" indexName="idx_bt_credit_payment_loan"><column name="loan_id"/></createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-063-credit-payment-cash">
+        <createTable tableName="m_base_teller_credit_payment_cash_detail">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="credit_payment_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false" checkConstraint="denomination_value &gt; 0"/></column>
+            <column name="quantity" type="bigint"><constraints nullable="false" checkConstraint="quantity &gt;= 0"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_cash_detail" baseColumnNames="credit_payment_id" referencedTableName="m_base_teller_credit_payment" referencedColumnNames="id" constraintName="fk_bt_credit_cash_payment" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment_cash_detail" columnNames="credit_payment_id,denomination_identifier" constraintName="uk_bt_credit_cash_denom"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-063-credit-payment-check">
+        <createTable tableName="m_base_teller_credit_payment_check">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="credit_payment_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="loan_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="bank_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="bank_name_snapshot" type="varchar(150)"><constraints nullable="false"/></column>
+            <column name="check_type" type="varchar(50)"><constraints nullable="false"/></column>
+            <column name="check_number" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="check_account_number" type="varchar(100)"/>
+            <column name="routing_code" type="varchar(100)"/>
+            <column name="classification" type="varchar(30)"><constraints nullable="false" checkConstraint="classification IN ('SUBJECT_TO_COLLECTION','CLEARED_FUNDS')"/></column>
+            <column name="status" type="varchar(30)"><constraints nullable="false" checkConstraint="status IN ('IN_PROGRESS','PENDING_COLLECTION','CLEARED','RETURNED')"/></column>
+            <column name="accepted_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="accepted_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="clear_idempotency_key" type="varchar(100)"/>
+            <column name="clear_request_fingerprint" type="varchar(64)"/>
+            <column name="cleared_by" type="bigint"/>
+            <column name="cleared_on_utc" type="TIMESTAMP"/>
+            <column name="return_idempotency_key" type="varchar(100)"/>
+            <column name="return_request_fingerprint" type="varchar(64)"/>
+            <column name="returned_by" type="bigint"/>
+            <column name="returned_on_utc" type="TIMESTAMP"/>
+            <column name="return_reason" type="varchar(500)"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="credit_payment_id" referencedTableName="m_base_teller_credit_payment" referencedColumnNames="id" constraintName="fk_bt_credit_check_payment" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_bt_credit_check_loan"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="bank_id" referencedTableName="m_base_teller_bank" referencedColumnNames="id" constraintName="fk_bt_credit_check_bank"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="accepted_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_bt_credit_check_accepted_by"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="cleared_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_bt_credit_check_cleared_by"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_credit_payment_check" baseColumnNames="returned_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_bt_credit_check_returned_by"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment_check" columnNames="credit_payment_id" constraintName="uk_bt_credit_check_payment"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment_check" columnNames="bank_id,check_number,loan_id" constraintName="uk_bt_credit_check_identity"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment_check" columnNames="clear_idempotency_key" constraintName="uk_bt_credit_check_clear_key"/>
+        <addUniqueConstraint tableName="m_base_teller_credit_payment_check" columnNames="return_idempotency_key" constraintName="uk_bt_credit_check_return_key"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-063-returned-check-origin">
+        <dropNotNullConstraint tableName="m_base_teller_returned_check" columnName="deposit_id" columnDataType="bigint"/>
+        <dropNotNullConstraint tableName="m_base_teller_returned_check" columnName="deposit_check_detail_id" columnDataType="bigint"/>
+        <addColumn tableName="m_base_teller_returned_check">
+            <column name="origin_type" type="varchar(20)" defaultValue="SAVINGS"><constraints nullable="false"/></column>
+            <column name="credit_payment_id" type="bigint"/>
+            <column name="credit_payment_check_id" type="bigint"/>
+            <column name="loan_id" type="bigint"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="m_base_teller_returned_check" baseColumnNames="credit_payment_id" referencedTableName="m_base_teller_credit_payment" referencedColumnNames="id" constraintName="fk_bt_returned_credit_payment"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_returned_check" baseColumnNames="credit_payment_check_id" referencedTableName="m_base_teller_credit_payment_check" referencedColumnNames="id" constraintName="fk_bt_returned_credit_check"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_returned_check" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_bt_returned_credit_loan"/>
+        <addUniqueConstraint tableName="m_base_teller_returned_check" columnNames="credit_payment_check_id" constraintName="uk_bt_returned_credit_check"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-063-credit-payment-permissions">
+        <sql>
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','CREATE_BASE_TELLER_CREDIT_PAYMENT','BASE_TELLER_CREDIT_PAYMENT','CREATE',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='CREATE_BASE_TELLER_CREDIT_PAYMENT');
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','READ_BASE_TELLER_CREDIT_PAYMENT','BASE_TELLER_CREDIT_PAYMENT','READ',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='READ_BASE_TELLER_CREDIT_PAYMENT');
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','RETURN_BASE_TELLER_CREDIT_PAYMENT_CHECK','BASE_TELLER_CREDIT_PAYMENT_CHECK','RETURN',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='RETURN_BASE_TELLER_CREDIT_PAYMENT_CHECK');
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','REPRINT_BASE_TELLER_CREDIT_PAYMENT','BASE_TELLER_CREDIT_PAYMENT','REPRINT',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='REPRINT_BASE_TELLER_CREDIT_PAYMENT');
+            INSERT INTO m_role_permission (role_id,permission_id)
+            SELECT r.id,p.id FROM m_role r,m_permission p
+            WHERE r.name='Super user' AND p.code IN
+              ('CREATE_BASE_TELLER_CREDIT_PAYMENT','READ_BASE_TELLER_CREDIT_PAYMENT',
+               'RETURN_BASE_TELLER_CREDIT_PAYMENT_CHECK','REPRINT_BASE_TELLER_CREDIT_PAYMENT')
+              AND NOT EXISTS (SELECT 1 FROM m_role_permission rp
+                              WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

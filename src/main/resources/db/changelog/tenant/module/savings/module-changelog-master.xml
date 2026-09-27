@@ -72,4 +72,5 @@
   <include file="parts/060-create-service-payment-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/061-create-cash-allocation-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/062-add-kyc-company-verification-support.xml" relativeToChangelogFile="true"/>  
+  <include file="parts/063-create-base-teller-credit-payment-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
