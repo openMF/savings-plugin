@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-064-base-teller-catalog-update-state">
+        <createTable tableName="m_base_teller_catalog_update">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="category" type="varchar(20)"><constraints nullable="false" checkConstraint="category IN ('GENERAL','ACCOUNTING','USERS')"/></column>
+            <column name="last_successful_sync_at" type="TIMESTAMP"/>
+            <column name="last_attempt_at" type="TIMESTAMP"/>
+            <column name="status" type="varchar(20)"><constraints nullable="false" checkConstraint="status IN ('CURRENT','UPDATE_REQUIRED','UPDATING','FAILED')"/></column>
+            <column name="performed_by" type="bigint"/>
+            <column name="failure_code" type="varchar(100)"/>
+            <column name="current_attempt_token" type="varchar(36)"/>
+            <column name="created_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="updated_on_utc" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="m_base_teller_catalog_update"
+                             columnNames="office_id,category"
+                             constraintName="uk_bt_catalog_update_office_category"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_catalog_update" baseColumnNames="office_id"
+                                 referencedTableName="m_office" referencedColumnNames="id"
+                                 constraintName="fk_bt_catalog_update_office"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_catalog_update" baseColumnNames="performed_by"
+                                 referencedTableName="m_appuser" referencedColumnNames="id"
+                                 constraintName="fk_bt_catalog_update_user"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-064-base-teller-catalog-update-audit">
+        <createTable tableName="m_base_teller_catalog_update_audit">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="attempt_token" type="varchar(36)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_bt_catalog_update_attempt_token"/></column>
+            <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="category" type="varchar(20)"><constraints nullable="false" checkConstraint="category IN ('GENERAL','ACCOUNTING','USERS')"/></column>
+            <column name="performed_by" type="bigint"><constraints nullable="false"/></column>
+            <column name="attempted_on_utc" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="completed_on_utc" type="TIMESTAMP"/>
+            <column name="outcome" type="varchar(20)"><constraints nullable="false" checkConstraint="outcome IN ('UPDATING','SUCCESS','FAILED','REJECTED')"/></column>
+            <column name="previous_successful_sync_at" type="TIMESTAMP"/>
+            <column name="failure_code" type="varchar(100)"/>
+        </createTable>
+        <createIndex tableName="m_base_teller_catalog_update_audit" indexName="idx_bt_catalog_update_audit_scope">
+            <column name="office_id"/>
+            <column name="category"/>
+            <column name="attempted_on_utc"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="m_base_teller_catalog_update_audit" baseColumnNames="office_id"
+                                 referencedTableName="m_office" referencedColumnNames="id"
+                                 constraintName="fk_bt_catalog_update_audit_office"/>
+        <addForeignKeyConstraint baseTableName="m_base_teller_catalog_update_audit" baseColumnNames="performed_by"
+                                 referencedTableName="m_appuser" referencedColumnNames="id"
+                                 constraintName="fk_bt_catalog_update_audit_user"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-064-base-teller-catalog-update-permissions">
+        <sql>
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','READ_BASE_TELLER_CATALOG_UPDATE','BASE_TELLER_CATALOG_UPDATE','READ',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='READ_BASE_TELLER_CATALOG_UPDATE');
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','UPDATE_BASE_TELLER_CATALOG_UPDATE','BASE_TELLER_CATALOG_UPDATE','UPDATE',false
+            WHERE NOT EXISTS (SELECT 1 FROM m_permission WHERE code='UPDATE_BASE_TELLER_CATALOG_UPDATE');
+            INSERT INTO m_role_permission (role_id,permission_id)
+            SELECT r.id,p.id FROM m_role r,m_permission p
+            WHERE r.name='Super user'
+              AND p.code IN ('READ_BASE_TELLER_CATALOG_UPDATE','UPDATE_BASE_TELLER_CATALOG_UPDATE')
+              AND NOT EXISTS (SELECT 1 FROM m_role_permission rp
+                              WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+        </sql>
+    </changeSet>
+</databaseChangeLog>
