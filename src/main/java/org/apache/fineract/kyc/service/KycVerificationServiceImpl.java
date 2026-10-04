@@ -68,6 +68,11 @@ public class KycVerificationServiceImpl implements KycVerificationService {
       }
     }
 
+    final boolean isCompany = payload.isCompanyVerification();
+    final String questionnairesJson = serializeQuestionnaires(payload);
+    final String emailVerificationsJson = serializeEmailVerifications(payload);
+    final String vendorData = resolveVendorData(payload);
+
     final KycVerification verification =
         KycVerification.create(
             clientId,
@@ -79,6 +84,10 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             payload.getTimestamp(),
             payload.getCreatedAt(),
             serializeMetadata(payload.getMetadata()),
+            vendorData,
+            isCompany ? "COMPANY" : "PERSON",
+            questionnairesJson,
+            emailVerificationsJson,
             SYSTEM_USER_ID);
 
     applyDecisionAndFeatureStatus(verification, payload, false);
@@ -94,13 +103,18 @@ public class KycVerificationServiceImpl implements KycVerificationService {
   private KycVerification updateExistingVerification(
       final KycVerification verification, final KycWebhookPayload payload) {
 
+    final boolean isCompany = payload.isCompanyVerification();
     verification.updateFromWebhook(
         payload.getStatus(),
         payload.getTimestamp(),
         payload.getWebhookType(),
         payload.getWorkflowId(),
         payload.getWorkflowVersion(),
-        serializeMetadata(payload.getMetadata()));
+        serializeMetadata(payload.getMetadata()),
+        resolveVendorData(payload),
+        isCompany ? "COMPANY" : "PERSON",
+        serializeQuestionnaires(payload),
+        serializeEmailVerifications(payload));
 
     // Force-delete existing decision first (unique constraint uk_kyc_decision_verification)
     if (verification.getDecision() != null) {
@@ -226,6 +240,22 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             && decisionDto.getAmlScreenings().stream()
                 .anyMatch(aml -> isApprovedStatus(aml.getStatus()));
 
+    final boolean hasQuestionnaires =
+        decisionDto.getQuestionnaires() != null && !decisionDto.getQuestionnaires().isEmpty();
+    final boolean questionnairesApproved =
+        !hasQuestionnaires
+            || decisionDto.getQuestionnaires().stream()
+                .anyMatch(q -> isApprovedStatus(q.getStatus()));
+
+    final boolean hasEmailVerifications =
+        decisionDto.getEmailVerifications() != null
+            && !decisionDto.getEmailVerifications().isEmpty();
+    final boolean emailVerificationsApproved =
+        !hasEmailVerifications
+            || decisionDto.getEmailVerifications().stream()
+                .anyMatch(e -> isApprovedStatus(e.getStatus()));
+
+    final boolean isCompanyVerification = payload.isCompanyVerification();
     final boolean hasDecision = StringUtils.hasText(decisionDto.getStatus());
 
     final String kycStatus =
@@ -233,6 +263,9 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             faceMatchesApproved,
             idVerificationsApproved,
             amlScreeningsApproved,
+            questionnairesApproved,
+            emailVerificationsApproved,
+            isCompanyVerification,
             hasDecision,
             decisionDto.getStatus());
 
@@ -245,6 +278,8 @@ public class KycVerificationServiceImpl implements KycVerificationService {
               idVerificationsApproved,
               amlScreeningsApproved,
               hasDecision,
+              questionnairesApproved && hasQuestionnaires,
+              emailVerificationsApproved && hasEmailVerifications,
               kycStatus,
               SYSTEM_USER_ID);
     } else {
@@ -254,6 +289,8 @@ public class KycVerificationServiceImpl implements KycVerificationService {
               idVerificationsApproved,
               amlScreeningsApproved,
               hasDecision,
+              questionnairesApproved && hasQuestionnaires,
+              emailVerificationsApproved && hasEmailVerifications,
               kycStatus,
               SYSTEM_USER_ID);
       verification.setFeatureStatus(featureStatus);
@@ -321,6 +358,37 @@ public class KycVerificationServiceImpl implements KycVerificationService {
     } catch (Exception e) {
       return metadata.toString();
     }
+  }
+
+  private String serializeQuestionnaires(final KycWebhookPayload payload) {
+    if (payload.getDecision() == null
+        || payload.getDecision().getQuestionnaires() == null
+        || payload.getDecision().getQuestionnaires().isEmpty()) {
+      return null;
+    }
+    return serializeToJson(payload.getDecision().getQuestionnaires());
+  }
+
+  private String serializeEmailVerifications(final KycWebhookPayload payload) {
+    if (payload.getDecision() == null
+        || payload.getDecision().getEmailVerifications() == null
+        || payload.getDecision().getEmailVerifications().isEmpty()) {
+      return null;
+    }
+    return serializeToJson(payload.getDecision().getEmailVerifications());
+  }
+
+  /**
+   * Prefer top-level vendor_data; fall back to decision.vendor_data when present.
+   */
+  private String resolveVendorData(final KycWebhookPayload payload) {
+    if (StringUtils.hasText(payload.getVendorData())) {
+      return payload.getVendorData();
+    }
+    if (payload.getDecision() != null && StringUtils.hasText(payload.getDecision().getVendorData())) {
+      return payload.getDecision().getVendorData();
+    }
+    return null;
   }
 
   private String serializeParsedAddress(final Object parsedAddress) {

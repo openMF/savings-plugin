@@ -6,6 +6,7 @@
  */
 package org.apache.fineract.kyc.data;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
@@ -102,7 +103,14 @@ public class KycWebhookPayload {
     @JsonProperty("poa_verifications")
     private List<PoaVerification> poaVerifications;
 
-    /** KYB / company questionnaires (Didit QUESTIONNAIRE feature). */
+    /**
+     * KYB / company questionnaires (Didit QUESTIONNAIRE feature).
+     *
+     * <p>Didit uses {@code questionnaire_responses} in status.updated / decision payloads.
+     * Some older or simplified payloads may use {@code questionnaires}. Both are accepted.
+     */
+    @JsonProperty("questionnaire_responses")
+    @JsonAlias({"questionnaires"})
     private List<Questionnaire> questionnaires;
 
     /** Email OTP verification steps (Didit EMAIL_VERIFICATION feature). */

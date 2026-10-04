@@ -52,6 +52,22 @@ public class KycVerification {
   @Column(name = "metadata_text", columnDefinition = "TEXT")
   private String metadata;
 
+  /** Didit vendor_data (often company registration / tax id for KYB). */
+  @Column(name = "vendor_data", length = 255)
+  private String vendorData;
+
+  /** PERSON (default) or COMPANY when QUESTIONNAIRE / KYB flow is present. */
+  @Column(name = "verification_kind", nullable = false, length = 20)
+  private String verificationKind = "PERSON";
+
+  /** Serialized Didit questionnaire_responses for KYB. */
+  @Column(name = "questionnaires_json", columnDefinition = "TEXT")
+  private String questionnairesJson;
+
+  /** Serialized Didit email_verifications for KYB. */
+  @Column(name = "email_verifications_json", columnDefinition = "TEXT")
+  private String emailVerificationsJson;
+
   @Column(name = "created_by", nullable = false)
   private Long createdBy;
 
@@ -94,6 +110,38 @@ public class KycVerification {
       final Long kycCreatedAt,
       final String metadata,
       final Long createdBy) {
+    return create(
+        clientId,
+        sessionId,
+        workflowId,
+        workflowVersion,
+        webhookType,
+        kycStatus,
+        kycTimestamp,
+        kycCreatedAt,
+        metadata,
+        null,
+        "PERSON",
+        null,
+        null,
+        createdBy);
+  }
+
+  public static KycVerification create(
+      final Long clientId,
+      final String sessionId,
+      final String workflowId,
+      final Integer workflowVersion,
+      final String webhookType,
+      final String kycStatus,
+      final Long kycTimestamp,
+      final Long kycCreatedAt,
+      final String metadata,
+      final String vendorData,
+      final String verificationKind,
+      final String questionnairesJson,
+      final String emailVerificationsJson,
+      final Long createdBy) {
 
     final KycVerification v = new KycVerification();
     v.clientId = clientId;
@@ -105,6 +153,11 @@ public class KycVerification {
     v.kycTimestamp = kycTimestamp;
     v.kycCreatedAt = kycCreatedAt;
     v.metadata = metadata;
+    v.vendorData = vendorData;
+    v.verificationKind =
+        verificationKind != null && !verificationKind.isBlank() ? verificationKind : "PERSON";
+    v.questionnairesJson = questionnairesJson;
+    v.emailVerificationsJson = emailVerificationsJson;
     v.createdBy = createdBy;
     v.lastModifiedBy = createdBy;
     final OffsetDateTime now = OffsetDateTime.now();
@@ -125,6 +178,21 @@ public class KycVerification {
       final String workflowId,
       final Integer workflowVersion,
       final String metadata) {
+    updateFromWebhook(
+        kycStatus, kycTimestamp, webhookType, workflowId, workflowVersion, metadata, null, null, null, null);
+  }
+
+  public void updateFromWebhook(
+      final String kycStatus,
+      final Long kycTimestamp,
+      final String webhookType,
+      final String workflowId,
+      final Integer workflowVersion,
+      final String metadata,
+      final String vendorData,
+      final String verificationKind,
+      final String questionnairesJson,
+      final String emailVerificationsJson) {
 
     if (kycStatus != null) {
       this.kycStatus = kycStatus;
@@ -143,6 +211,18 @@ public class KycVerification {
     }
     if (metadata != null) {
       this.metadata = metadata;
+    }
+    if (vendorData != null) {
+      this.vendorData = vendorData;
+    }
+    if (verificationKind != null && !verificationKind.isBlank()) {
+      this.verificationKind = verificationKind;
+    }
+    if (questionnairesJson != null) {
+      this.questionnairesJson = questionnairesJson;
+    }
+    if (emailVerificationsJson != null) {
+      this.emailVerificationsJson = emailVerificationsJson;
     }
     this.lastModifiedOnUtc = OffsetDateTime.now();
   }
@@ -200,6 +280,38 @@ public class KycVerification {
 
   public String getMetadata() {
     return metadata;
+  }
+
+  public String getVendorData() {
+    return vendorData;
+  }
+
+  public void setVendorData(final String vendorData) {
+    this.vendorData = vendorData;
+  }
+
+  public String getVerificationKind() {
+    return verificationKind;
+  }
+
+  public void setVerificationKind(final String verificationKind) {
+    this.verificationKind = verificationKind;
+  }
+
+  public String getQuestionnairesJson() {
+    return questionnairesJson;
+  }
+
+  public void setQuestionnairesJson(final String questionnairesJson) {
+    this.questionnairesJson = questionnairesJson;
+  }
+
+  public String getEmailVerificationsJson() {
+    return emailVerificationsJson;
+  }
+
+  public void setEmailVerificationsJson(final String emailVerificationsJson) {
+    this.emailVerificationsJson = emailVerificationsJson;
   }
 
   public Long getCreatedBy() {

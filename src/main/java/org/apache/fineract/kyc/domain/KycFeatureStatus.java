@@ -44,6 +44,12 @@ public class KycFeatureStatus {
   @Column(name = "decision", nullable = false)
   private Boolean decision;
 
+  @Column(name = "questionnaires", nullable = false)
+  private Boolean questionnaires = Boolean.FALSE;
+
+  @Column(name = "email_verifications", nullable = false)
+  private Boolean emailVerifications = Boolean.FALSE;
+
   @Column(name = "kyc_status", nullable = false, length = 50)
   private String kycStatus;
 
@@ -70,6 +76,26 @@ public class KycFeatureStatus {
       final Boolean decision,
       final String kycStatus,
       final Long createdBy) {
+    return create(
+        faceMatches,
+        idVerifications,
+        amlScreenings,
+        decision,
+        Boolean.FALSE,
+        Boolean.FALSE,
+        kycStatus,
+        createdBy);
+  }
+
+  public static KycFeatureStatus create(
+      final Boolean faceMatches,
+      final Boolean idVerifications,
+      final Boolean amlScreenings,
+      final Boolean decision,
+      final Boolean questionnaires,
+      final Boolean emailVerifications,
+      final String kycStatus,
+      final Long createdBy) {
 
     final KycFeatureStatus fs = new KycFeatureStatus();
     // Default to FALSE / "In Review" if null is passed
@@ -77,6 +103,8 @@ public class KycFeatureStatus {
     fs.idVerifications = idVerifications != null ? idVerifications : Boolean.FALSE;
     fs.amlScreenings = amlScreenings != null ? amlScreenings : Boolean.FALSE;
     fs.decision = decision != null ? decision : Boolean.FALSE;
+    fs.questionnaires = questionnaires != null ? questionnaires : Boolean.FALSE;
+    fs.emailVerifications = emailVerifications != null ? emailVerifications : Boolean.FALSE;
     fs.kycStatus = kycStatus != null ? kycStatus : "In Review";
     fs.createdBy = createdBy;
     fs.lastModifiedBy = createdBy;
@@ -98,6 +126,26 @@ public class KycFeatureStatus {
       final Boolean decision,
       final String kycStatus,
       final Long modifiedBy) {
+    update(
+        faceMatches,
+        idVerifications,
+        amlScreenings,
+        decision,
+        null,
+        null,
+        kycStatus,
+        modifiedBy);
+  }
+
+  public void update(
+      final Boolean faceMatches,
+      final Boolean idVerifications,
+      final Boolean amlScreenings,
+      final Boolean decision,
+      final Boolean questionnaires,
+      final Boolean emailVerifications,
+      final String kycStatus,
+      final Long modifiedBy) {
 
     if (faceMatches != null) {
       this.faceMatches = faceMatches;
@@ -110,6 +158,12 @@ public class KycFeatureStatus {
     }
     if (decision != null) {
       this.decision = decision;
+    }
+    if (questionnaires != null) {
+      this.questionnaires = questionnaires;
+    }
+    if (emailVerifications != null) {
+      this.emailVerifications = emailVerifications;
     }
     if (kycStatus != null) {
       this.kycStatus = kycStatus;
@@ -156,6 +210,14 @@ public class KycFeatureStatus {
 
   public Boolean getDecision() {
     return decision;
+  }
+
+  public Boolean getQuestionnaires() {
+    return questionnaires;
+  }
+
+  public Boolean getEmailVerifications() {
+    return emailVerifications;
   }
 
   public String getKycStatus() {
