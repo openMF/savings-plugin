@@ -257,6 +257,7 @@ public class KycVerificationServiceImpl implements KycVerificationService {
 
     final boolean isCompanyVerification = payload.isCompanyVerification();
     final boolean hasDecision = StringUtils.hasText(decisionDto.getStatus());
+    final boolean decisionApproved = isApprovedStatus(decisionDto.getStatus());
 
     final String kycStatus =
         kycStatusDerivationService.deriveStatus(
@@ -269,36 +270,53 @@ public class KycVerificationServiceImpl implements KycVerificationService {
             hasDecision,
             decisionDto.getStatus());
 
+    // When overall decision/status is Approved, auth must surface all checks as true.
+    // Didit may send Approved at session level even when individual feature arrays are sparse.
+    final boolean overallApproved = decisionApproved || "Approved".equalsIgnoreCase(kycStatus);
+    final boolean faceFlag = overallApproved || faceMatchesApproved;
+    final boolean idFlag = overallApproved || idVerificationsApproved;
+    final boolean amlFlag = overallApproved || amlScreeningsApproved;
+    final boolean decisionFlag = overallApproved || decisionApproved || hasDecision;
+    final boolean questionnaireFlag =
+        overallApproved
+            ? (hasQuestionnaires || isCompanyVerification)
+            : (questionnairesApproved && hasQuestionnaires);
+    final boolean emailFlag =
+        overallApproved
+            ? hasEmailVerifications
+            : (emailVerificationsApproved && hasEmailVerifications);
+    final String statusToStore = overallApproved ? "Approved" : kycStatus;
+
     // Feature status: update in place on re-delivery (avoids stale Declined flags)
     if (updateInPlace && verification.getFeatureStatus() != null) {
       verification
           .getFeatureStatus()
           .update(
-              faceMatchesApproved,
-              idVerificationsApproved,
-              amlScreeningsApproved,
-              hasDecision,
-              questionnairesApproved && hasQuestionnaires,
-              emailVerificationsApproved && hasEmailVerifications,
-              kycStatus,
+              faceFlag,
+              idFlag,
+              amlFlag,
+              decisionFlag,
+              questionnaireFlag,
+              emailFlag,
+              statusToStore,
               SYSTEM_USER_ID);
     } else {
       final KycFeatureStatus featureStatus =
           KycFeatureStatus.create(
-              faceMatchesApproved,
-              idVerificationsApproved,
-              amlScreeningsApproved,
-              hasDecision,
-              questionnairesApproved && hasQuestionnaires,
-              emailVerificationsApproved && hasEmailVerifications,
-              kycStatus,
+              faceFlag,
+              idFlag,
+              amlFlag,
+              decisionFlag,
+              questionnaireFlag,
+              emailFlag,
+              statusToStore,
               SYSTEM_USER_ID);
       verification.setFeatureStatus(featureStatus);
     }
 
     // Decision: only set after any previous decision was cleared + flushed in updateExistingVerification
     verification.setDecision(decision);
-    verification.setKycStatus(kycStatus);
+    verification.setKycStatus(statusToStore);
   }
 
   private static boolean isApprovedStatus(final String status) {
