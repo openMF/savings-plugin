@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-065-base-teller-cash-inventory-permission">
+        <sql>
+            INSERT INTO m_permission (grouping, code, entity_name, action_name, can_maker_checker)
+            SELECT 'portfolio', 'READ_BASE_TELLER_CASH_INVENTORY', 'BASE_TELLER_CASH_INVENTORY', 'READ', false
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_permission WHERE code='READ_BASE_TELLER_CASH_INVENTORY'
+            );
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT r.id, p.id FROM m_role r, m_permission p
+            WHERE r.name='Super user'
+              AND p.code='READ_BASE_TELLER_CASH_INVENTORY'
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission rp
+                  WHERE rp.role_id=r.id AND rp.permission_id=p.id
+              );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

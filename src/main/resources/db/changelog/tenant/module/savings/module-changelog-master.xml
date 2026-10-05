@@ -74,4 +74,5 @@
   <include file="parts/062-add-kyc-company-verification-support.xml" relativeToChangelogFile="true"/>  
   <include file="parts/063-create-base-teller-credit-payment-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/064-create-base-teller-catalog-update-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/065-add-base-teller-cash-inventory-permission.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
