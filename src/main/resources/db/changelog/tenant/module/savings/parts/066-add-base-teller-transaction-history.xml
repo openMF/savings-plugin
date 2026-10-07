@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="ss-066-base-teller-transaction-history-permission">
+        <sql>
+            INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+            SELECT 'portfolio','READ_BASE_TELLER_TRANSACTION_HISTORY','BASE_TELLER_TRANSACTION_HISTORY','READ',false
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_permission WHERE code='READ_BASE_TELLER_TRANSACTION_HISTORY'
+            );
+
+            INSERT INTO m_role_permission (role_id,permission_id)
+            SELECT r.id,p.id FROM m_role r,m_permission p
+            WHERE r.name='Super user'
+              AND p.code='READ_BASE_TELLER_TRANSACTION_HISTORY'
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission rp
+                  WHERE rp.role_id=r.id AND rp.permission_id=p.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-066-base-teller-transaction-history-indexes">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_base_teller_deposit"/>
+                <not><indexExists indexName="idx_bt_deposit_history"/></not>
+            </and>
+        </preConditions>
+        <createIndex tableName="m_base_teller_deposit" indexName="idx_bt_deposit_history">
+            <column name="office_id"/>
+            <column name="completed_on_utc"/>
+            <column name="cashier_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-066-base-teller-opening-history-index">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_base_teller_savings_opening"/>
+                <not><indexExists indexName="idx_bt_opening_history"/></not>
+            </and>
+        </preConditions>
+        <createIndex tableName="m_base_teller_savings_opening" indexName="idx_bt_opening_history">
+            <column name="office_id"/>
+            <column name="completed_on_utc"/>
+            <column name="cashier_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="ss-066-base-teller-credit-history-index">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_base_teller_credit_payment"/>
+                <not><indexExists indexName="idx_bt_credit_payment_history"/></not>
+            </and>
+        </preConditions>
+        <createIndex tableName="m_base_teller_credit_payment" indexName="idx_bt_credit_payment_history">
+            <column name="office_id"/>
+            <column name="business_date"/>
+            <column name="cashier_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
