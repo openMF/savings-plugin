@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+ <changeSet author="fineract" id="ss-067-cash-exchange">
+  <createTable tableName="m_cash_exchange">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true"/></column>
+   <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+   <column name="receipt_number" type="varchar(100)"><constraints nullable="false" unique="true"/></column>
+   <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="teller_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="teller_name" type="varchar(200)"><constraints nullable="false"/></column>
+   <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+   <column name="received_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="delivered_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="created_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="created_by_username" type="varchar(100)"><constraints nullable="false"/></column>
+   <column name="created_on_utc" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_exchange" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_cash_exchange_office_id"/>
+  <addForeignKeyConstraint baseTableName="m_cash_exchange" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_cash_exchange_teller_id"/>
+  <addForeignKeyConstraint baseTableName="m_cash_exchange" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_cash_exchange_cashier_id"/>
+  <addForeignKeyConstraint baseTableName="m_cash_exchange" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_cash_exchange_created_by"/>
+  <createIndex tableName="m_cash_exchange" indexName="idx_cash_exchange_drawer"><column name="cashier_id"/><column name="business_date"/><column name="currency_code"/></createIndex>
+  <createIndex tableName="m_cash_exchange" indexName="idx_cash_exchange_history"><column name="office_id"/><column name="created_on_utc"/></createIndex>
+  <createTable tableName="m_cash_exchange_detail">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="exchange_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="direction" type="varchar(10)"><constraints nullable="false"/></column>
+   <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+   <column name="denomination_type" type="varchar(10)"><constraints nullable="false"/></column>
+   <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+   <column name="line_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_exchange_detail" baseColumnNames="exchange_id" referencedTableName="m_cash_exchange" referencedColumnNames="id" constraintName="fk_cash_exchange_detail"/>
+  <addUniqueConstraint tableName="m_cash_exchange_detail" columnNames="exchange_id,direction,denomination_identifier" constraintName="uk_cash_exchange_detail"/>
+  <sql>
+    ALTER TABLE m_cash_exchange ADD CONSTRAINT ck_cash_exchange_balanced CHECK (received_total &gt; 0 AND received_total = delivered_total);
+    ALTER TABLE m_cash_exchange ADD CONSTRAINT ck_cash_exchange_completed CHECK (status = 'COMPLETED');
+    ALTER TABLE m_cash_exchange_detail ADD CONSTRAINT ck_cash_exchange_direction CHECK (direction IN ('RECEIVED','DELIVERED'));
+    ALTER TABLE m_cash_exchange_detail ADD CONSTRAINT ck_cash_exchange_line CHECK (quantity &gt; 0 AND denomination_value &gt; 0 AND line_total = denomination_value * quantity);
+  </sql>
+  <createTable tableName="m_cash_exchange_mutex"><column name="id" type="bigint"><constraints nullable="false" primaryKey="true"/></column></createTable>
+  <insert tableName="m_cash_exchange_mutex"><column name="id" valueNumeric="1"/></insert>
+ </changeSet>
+ <changeSet author="fineract" id="ss-067-cash-exchange-permissions">
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_BASE_TELLER_CASH_EXCHANGE"/><column name="entity_name" value="BASE_TELLER_CASH_EXCHANGE"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_BASE_TELLER_CASH_EXCHANGE"/><column name="entity_name" value="BASE_TELLER_CASH_EXCHANGE"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="REPRINT_BASE_TELLER_CASH_EXCHANGE"/><column name="entity_name" value="BASE_TELLER_CASH_EXCHANGE"/><column name="action_name" value="REPRINT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+ </changeSet>
+</databaseChangeLog>

@@ -76,4 +76,5 @@
   <include file="parts/064-create-base-teller-catalog-update-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/065-add-base-teller-cash-inventory-permission.xml" relativeToChangelogFile="true"/>
   <include file="parts/066-add-base-teller-transaction-history.xml" relativeToChangelogFile="true"/>
+  <include file="parts/067-create-cash-exchange-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

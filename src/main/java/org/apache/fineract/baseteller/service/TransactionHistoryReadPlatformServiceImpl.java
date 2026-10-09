@@ -69,6 +69,7 @@ public class TransactionHistoryReadPlatformServiceImpl
   private final ServicePaymentReadPlatformService servicePaymentReadPlatformService;
   private final CreditPaymentReadPlatformService creditPaymentReadPlatformService;
   private final CashManagementReadPlatformService cashManagementReadPlatformService;
+  private final CashExchangePlatformService cashExchangePlatformService;
 
   @Override
   public TransactionHistoryContextData context() {
@@ -137,6 +138,16 @@ public class TransactionHistoryReadPlatformServiceImpl
   public TransactionHistoryDenominationsData denominations(final String historyId) {
     final HistoryKey key = historyKey(historyId);
     detail(historyId);
+    if ("CASH_EXCHANGE".equals(key.sourceType())) {
+      return new TransactionHistoryDenominationsData(
+          historyId,
+          false,
+          List.of(),
+          false,
+          List.of(),
+          exchangeLines(key.sourceId(), "RECEIVED"),
+          exchangeLines(key.sourceId(), "DELIVERED"));
+    }
     final DenominationSource source = denominationSource(key.sourceType());
     if (source == null) {
       return new TransactionHistoryDenominationsData(historyId, false, List.of(), false, List.of());
@@ -187,6 +198,7 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CREDIT_PAYMENT" -> creditPaymentReadPlatformService.receipt(detail.reference());
           case "CASH_ALLOCATION" -> cashAllocationReadPlatformService.reprint(key.sourceId());
           case "CASHIER_CLOSING" -> cashManagementReadPlatformService.closing(key.sourceId());
+          case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
           default -> throw invalid("receipt.unsupported", "The original transaction source does not support a receipt.");
         };
     return new TransactionHistoryReceiptData(historyId, key.sourceType(), key.sourceId(), receipt);
@@ -673,6 +685,23 @@ public class TransactionHistoryReadPlatformServiceImpl
     };
   }
 
+  private List<TransactionHistoryDenominationLineData> exchangeLines(Long id, String direction) {
+    return jdbcTemplate.query(
+        "SELECT"
+            + " e.currency_code,d.denomination_identifier,d.denomination_value,d.quantity,d.line_total,d.denomination_type"
+            + " FROM m_cash_exchange_detail d JOIN m_cash_exchange e ON e.id=d.exchange_id WHERE"
+            + " e.id=:id AND d.direction=:direction ORDER BY d.denomination_identifier",
+        Map.of("id", id, "direction", direction),
+        (rs, row) ->
+            new TransactionHistoryDenominationLineData(
+                rs.getString(1),
+                rs.getString(2),
+                rs.getBigDecimal(3),
+                rs.getLong(4),
+                rs.getBigDecimal(5),
+                rs.getString(6)));
+  }
+
   private static String historyId(final String sourceType, final Long sourceId) {
     return sourceType + ":" + sourceId;
   }
@@ -792,6 +821,13 @@ public class TransactionHistoryReadPlatformServiceImpl
             a.source_cashier_id,a.destination_cashier_id,a.amount,NULL,NULL,NULL,NULL,a.amount,
             NULL,NULL,NULL,true
           FROM m_cash_allocation a
+          UNION ALL
+          SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
+            'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
+            e.currency_code,CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),
+            NULL,e.office_id,e.teller_id,e.cashier_id,e.cashier_id,e.cashier_id,
+            CAST(0 AS decimal(19,6)),e.received_total,NULL,NULL,NULL,e.received_total,NULL,NULL,NULL,true
+          FROM m_cash_exchange e
           UNION ALL
           SELECT 'CASHIER_CLOSING',r.id,r.completed_on_utc,r.business_date,'CLOSE_CASHIER','MIXED',
             'CASHIER_RECONCILIATION',r.status,r.receipt_number,r.receipt_number,UPPER(r.currency_code),
