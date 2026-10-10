@@ -65,6 +65,16 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final String currencyCode,
       final boolean showLastCutOff) {
     final AppUser user = authenticatedUser();
+    return inventoryForUser(custodianKey, transactionType, currencyCode, showLastCutOff, user);
+  }
+
+  /** Shared custody calculation; callers enforce their operation permission. */
+  List<CashInventoryData> inventoryForUser(
+      String custodianKey,
+      String transactionType,
+      String currencyCode,
+      boolean showLastCutOff,
+      AppUser user) {
     final LocalDate businessDate = DateUtils.getBusinessLocalDate();
     final Scope fullScope = scope(user, businessDate);
     final CashInventoryType requestedType = inventoryType(transactionType);
@@ -124,9 +134,12 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
                         + " AND (c.start_date IS NULL OR c.start_date<=:date)"
                         + " AND (c.end_date IS NULL OR c.end_date>=:date)",
                     Map.of(
-                        "staffId", user.getStaffId(),
-                        "hierarchy", user.getOffice().getHierarchy() + "%",
-                        "date", date),
+                        "staffId",
+                        user.getStaffId(),
+                        "hierarchy",
+                        user.getOffice().getHierarchy() + "%",
+                        "date",
+                        date),
                     Boolean.class));
     final boolean assignedCashier =
         hasAssignedCashier && !user.hasAnyPermission("READ_GLOBAL_SETTLEMENT");
@@ -216,22 +229,23 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
     if (!scope.tellerIds().isEmpty()) {
       final Map<String, Object> params = filterParams(scope.tellerIds(), date, currency);
       jdbcTemplate.query(
-          "SELECT cashier_id,UPPER(currency_code) currency_code,"
-              + "COALESCE(SUM(CASE WHEN txn_type=:allocation THEN txn_amount ELSE 0 END),0) initial_balance,"
-              + "COALESCE(SUM(CASE WHEN txn_type=:cashIn THEN txn_amount ELSE 0 END),0) inflows,"
-              + "COALESCE(SUM(CASE WHEN txn_type=:cashOut OR (txn_type=:settlement AND"
-              + " (EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id)"
-              + " OR EXISTS (SELECT 1 FROM m_cash_operation_transaction op"
-              + " WHERE op.cashier_transaction_id=ct.id))) THEN txn_amount ELSE 0 END),0) outflows,"
-              + "COALESCE(SUM(CASE WHEN txn_type=:settlement AND"
-              + " NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id)"
-              + " AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction op"
-              + " WHERE op.cashier_transaction_id=ct.id) THEN txn_amount ELSE 0 END),0) cutoffs,"
-              + "MAX(CASE WHEN txn_type=:settlement AND"
-              + " NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id)"
-              + " AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction op"
-              + " WHERE op.cashier_transaction_id=ct.id) THEN created_date END) last_cutoff_at"
-              + " FROM m_cashier_transactions ct WHERE cashier_id IN (:cashierIds) AND txn_date=:date"
+          "SELECT cashier_id,UPPER(currency_code) currency_code,COALESCE(SUM(CASE WHEN"
+              + " txn_type=:allocation THEN txn_amount ELSE 0 END),0)"
+              + " initial_balance,COALESCE(SUM(CASE WHEN txn_type=:cashIn THEN txn_amount ELSE 0"
+              + " END),0) inflows,COALESCE(SUM(CASE WHEN txn_type=:cashOut OR (txn_type=:settlement"
+              + " AND (EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
+              + " a.source_cashier_transaction_id=ct.id) OR EXISTS (SELECT 1 FROM"
+              + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id))) THEN"
+              + " txn_amount ELSE 0 END),0) outflows,COALESCE(SUM(CASE WHEN txn_type=:settlement"
+              + " AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
+              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+              + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) THEN"
+              + " txn_amount ELSE 0 END),0) cutoffs,MAX(CASE WHEN txn_type=:settlement AND NOT"
+              + " EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
+              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+              + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) THEN"
+              + " created_date END) last_cutoff_at FROM m_cashier_transactions ct WHERE cashier_id"
+              + " IN (:cashierIds) AND txn_date=:date"
               + currencyClause(currency)
               + " GROUP BY cashier_id,UPPER(currency_code)",
           transactionParams(params),
@@ -292,11 +306,11 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
     }
     final Map<String, Object> params = officeFilterParams(scope.officeIds(), date, currency);
     jdbcTemplate.query(
-        "SELECT office_id,UPPER(currency_code) currency_code,"
-            + "SUM(CASE WHEN operation_type='SAFE_VAULT_OPENING' THEN amount ELSE 0 END) initial_balance,"
-            + "SUM(CASE WHEN operation_type='HEAD_CASHIER_ALLOCATION' THEN amount ELSE 0 END) outflows"
-            + " FROM m_cash_allocation WHERE office_id IN (:officeIds) AND business_date=:date"
-            + " AND status='COMPLETED'"
+        "SELECT office_id,UPPER(currency_code) currency_code,SUM(CASE WHEN"
+            + " operation_type='SAFE_VAULT_OPENING' THEN amount ELSE 0 END)"
+            + " initial_balance,SUM(CASE WHEN operation_type='HEAD_CASHIER_ALLOCATION' THEN amount"
+            + " ELSE 0 END) outflows FROM m_cash_allocation WHERE office_id IN (:officeIds) AND"
+            + " business_date=:date AND status='COMPLETED'"
             + currencyClause(currency)
             + " GROUP BY office_id,UPPER(currency_code)",
         params,
@@ -311,9 +325,10 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
           amount.outflows = amount.outflows.add(rs.getBigDecimal("outflows"));
         });
     jdbcTemplate.query(
-        "SELECT office_id,UPPER(currency_code) currency_code,SUM(cash_total) amount"
-            + " FROM m_cashier_reconciliation WHERE office_id IN (:officeIds)"
-            + " AND business_date=:date AND status='COMPLETED'"
+        "SELECT office_id,UPPER(currency_code)"
+            + " currency_code,SUM(COALESCE(settled_cash_total,cash_total)) amount FROM"
+            + " m_cashier_reconciliation WHERE office_id IN (:officeIds) AND business_date=:date"
+            + " AND status='COMPLETED'"
             + currencyClause(currency)
             + " GROUP BY office_id,UPPER(currency_code)",
         params,
@@ -367,21 +382,22 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final String currency,
       final Map<InventoryKey, Amounts> values) {
     jdbcTemplate.query(
-        "SELECT cashier_id,UPPER(currency_code) currency_code,"
-            + "SUM(CASE WHEN accepted_date<:date THEN amount ELSE 0 END) initial_balance,"
-            + "SUM(CASE WHEN accepted_date=:date THEN amount ELSE 0 END) inflows FROM ("
-            + "SELECT d.cashier_id,d.currency_code,cd.amount,CAST(d.created_on_utc AS date) accepted_date"
-            + " FROM m_base_teller_deposit_check_detail cd JOIN m_base_teller_deposit d ON d.id=cd.deposit_id"
-            + " WHERE d.cashier_id IN (:cashierIds) AND d.status IN ('PENDING_COLLECTION','COMPLETED')"
+        "SELECT cashier_id,UPPER(currency_code) currency_code,SUM(CASE WHEN accepted_date<:date"
+            + " THEN amount ELSE 0 END) initial_balance,SUM(CASE WHEN accepted_date=:date THEN"
+            + " amount ELSE 0 END) inflows FROM (SELECT"
+            + " d.cashier_id,d.currency_code,cd.amount,CAST(d.created_on_utc AS date) accepted_date"
+            + " FROM m_base_teller_deposit_check_detail cd JOIN m_base_teller_deposit d ON"
+            + " d.id=cd.deposit_id WHERE d.cashier_id IN (:cashierIds) AND d.status IN"
+            + " ('PENDING_COLLECTION','COMPLETED')"
             + currencyClauseFor("d", currency)
-            + " UNION ALL SELECT o.cashier_id,o.currency_code,o.amount,CAST(o.created_on_utc AS date)"
-            + " FROM m_base_teller_savings_opening o WHERE o.cashier_id IN (:cashierIds)"
-            + " AND o.funding_type='CHECK' AND o.status='COMPLETED'"
+            + " UNION ALL SELECT o.cashier_id,o.currency_code,o.amount,CAST(o.created_on_utc AS"
+            + " date) FROM m_base_teller_savings_opening o WHERE o.cashier_id IN (:cashierIds) AND"
+            + " o.funding_type='CHECK' AND o.status='COMPLETED'"
             + currencyClauseFor("o", currency)
-            + " UNION ALL SELECT p.cashier_id,p.currency_code,p.amount,CAST(c.accepted_on_utc AS date)"
-            + " FROM m_base_teller_credit_payment_check c"
-            + " JOIN m_base_teller_credit_payment p ON p.id=c.credit_payment_id"
-            + " WHERE p.cashier_id IN (:cashierIds) AND c.status IN ('PENDING_COLLECTION','CLEARED','RETURNED')"
+            + " UNION ALL SELECT p.cashier_id,p.currency_code,p.amount,CAST(c.accepted_on_utc AS"
+            + " date) FROM m_base_teller_credit_payment_check c JOIN m_base_teller_credit_payment p"
+            + " ON p.id=c.credit_payment_id WHERE p.cashier_id IN (:cashierIds) AND c.status IN"
+            + " ('PENDING_COLLECTION','CLEARED','RETURNED')"
             + currencyClauseFor("p", currency)
             + ") accepted WHERE accepted_date<=:date GROUP BY cashier_id,UPPER(currency_code)",
         params,
@@ -403,32 +419,41 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final String currency,
       final Map<InventoryKey, Amounts> values) {
     final String removals =
-        "SELECT d.cashier_id,d.currency_code,oc.amount,o.business_date removed_date,'OUTFLOW' category,o.completed_on_utc removed_at"
-            + " FROM m_cash_operation_check oc JOIN m_cash_operation_transaction o ON o.id=oc.operation_id"
-            + " JOIN m_base_teller_deposit_check_detail cd ON cd.id=oc.deposit_check_detail_id"
-            + " JOIN m_base_teller_deposit d ON d.id=cd.deposit_id"
-            + " WHERE d.cashier_id IN (:cashierIds) AND o.status='COMPLETED'"
+        "SELECT d.cashier_id,d.currency_code,oc.amount,o.business_date removed_date,'OUTFLOW'"
+            + " category,o.completed_on_utc removed_at FROM m_cash_operation_check oc JOIN"
+            + " m_cash_operation_transaction o ON o.id=oc.operation_id JOIN"
+            + " m_base_teller_deposit_check_detail cd ON cd.id=oc.deposit_check_detail_id JOIN"
+            + " m_base_teller_deposit d ON d.id=cd.deposit_id WHERE d.cashier_id IN (:cashierIds)"
+            + " AND o.status='COMPLETED'"
             + currencyClauseFor("d", currency)
-            + " UNION ALL SELECT d.cashier_id,d.currency_code,rc.amount,r.business_date,'CUTOFF',r.completed_on_utc"
-            + " FROM m_cashier_reconciliation_check rc JOIN m_cashier_reconciliation r ON r.id=rc.reconciliation_id"
-            + " JOIN m_base_teller_deposit_check_detail cd ON cd.id=rc.deposit_check_detail_id"
-            + " JOIN m_base_teller_deposit d ON d.id=cd.deposit_id"
+            + " UNION ALL SELECT"
+            + " d.cashier_id,d.currency_code,rc.amount,r.business_date,'CUTOFF',r.completed_on_utc"
+            + " FROM m_cashier_reconciliation_check rc JOIN m_cashier_reconciliation r ON"
+            + " r.id=rc.reconciliation_id JOIN m_base_teller_deposit_check_detail cd ON"
+            + " cd.id=rc.deposit_check_detail_id JOIN m_base_teller_deposit d ON d.id=cd.deposit_id"
             + " WHERE d.cashier_id IN (:cashierIds) AND r.status='COMPLETED'"
             + currencyClauseFor("d", currency)
-            + " UNION ALL SELECT rc.cashier_id,rc.currency_code,rc.amount,rc.returned_on_date,'OUTFLOW',NULL"
-            + " FROM m_base_teller_returned_check rc WHERE rc.cashier_id IN (:cashierIds)"
-            + " AND rc.deposit_check_detail_id IS NOT NULL AND rc.status IN ('RETURNED','SETTLED')"
+            + " UNION ALL SELECT"
+            + " rc.cashier_id,rc.currency_code,rc.amount,rc.returned_on_date,'OUTFLOW',NULL FROM"
+            + " m_base_teller_returned_check rc WHERE rc.cashier_id IN (:cashierIds) AND"
+            + " rc.deposit_check_detail_id IS NOT NULL AND rc.status IN ('RETURNED','SETTLED')"
             + currencyClauseFor("rc", currency)
-            + " UNION ALL SELECT p.cashier_id,p.currency_code,p.amount,CAST(c.returned_on_utc AS date),'OUTFLOW',c.returned_on_utc"
-            + " FROM m_base_teller_credit_payment_check c JOIN m_base_teller_credit_payment p ON p.id=c.credit_payment_id"
-            + " WHERE p.cashier_id IN (:cashierIds) AND c.status='RETURNED'"
-            + currencyClauseFor("p", currency);
+            + " UNION ALL SELECT p.cashier_id,p.currency_code,p.amount,CAST(c.returned_on_utc AS"
+            + " date),'OUTFLOW',c.returned_on_utc FROM m_base_teller_credit_payment_check c JOIN"
+            + " m_base_teller_credit_payment p ON p.id=c.credit_payment_id WHERE p.cashier_id IN"
+            + " (:cashierIds) AND c.status='RETURNED'"
+            + currencyClauseFor("p", currency)
+            + " UNION ALL SELECT"
+            + " r.cashier_id,x.currency_code,x.amount,r.business_date,'CUTOFF',r.completed_on_utc"
+            + " FROM m_end_of_day_closing_check x JOIN m_cashier_reconciliation r ON"
+            + " r.id=x.reconciliation_id WHERE r.cashier_id IN (:cashierIds) AND"
+            + " r.status='COMPLETED' AND x.source_type IN ('OPENING','CREDIT')"
+            + currencyClauseFor("x", currency);
     jdbcTemplate.query(
-        "SELECT cashier_id,UPPER(currency_code) currency_code,category,"
-            + "SUM(CASE WHEN removed_date<:date THEN amount ELSE 0 END) prior_amount,"
-            + "SUM(CASE WHEN removed_date=:date THEN amount ELSE 0 END) current_amount,"
-            + "MAX(CASE WHEN removed_date=:date AND category='CUTOFF' THEN removed_at END) last_cutoff_at"
-            + " FROM ("
+        "SELECT cashier_id,UPPER(currency_code) currency_code,category,SUM(CASE WHEN"
+            + " removed_date<:date THEN amount ELSE 0 END) prior_amount,SUM(CASE WHEN"
+            + " removed_date=:date THEN amount ELSE 0 END) current_amount,MAX(CASE WHEN"
+            + " removed_date=:date AND category='CUTOFF' THEN removed_at END) last_cutoff_at FROM ("
             + removals
             + ") removed WHERE removed_date<=:date"
             + " GROUP BY cashier_id,UPPER(currency_code),category",
@@ -461,11 +486,14 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
     }
     final Map<String, Object> params = officeFilterParams(scope.officeIds(), date, currency);
     jdbcTemplate.query(
-        "SELECT r.office_id,UPPER(r.currency_code) currency_code,"
-            + "SUM(CASE WHEN r.business_date<:date THEN rc.amount ELSE 0 END) initial_balance,"
-            + "SUM(CASE WHEN r.business_date=:date THEN rc.amount ELSE 0 END) inflows"
-            + " FROM m_cashier_reconciliation_check rc JOIN m_cashier_reconciliation r ON r.id=rc.reconciliation_id"
-            + " WHERE r.office_id IN (:officeIds) AND r.business_date<=:date AND r.status='COMPLETED'"
+        "SELECT r.office_id,UPPER(r.currency_code) currency_code,SUM(CASE WHEN"
+            + " r.business_date<:date THEN rc.amount ELSE 0 END) initial_balance,SUM(CASE WHEN"
+            + " r.business_date=:date THEN rc.amount ELSE 0 END) inflows FROM (SELECT"
+            + " reconciliation_id,amount FROM m_cashier_reconciliation_check UNION ALL SELECT"
+            + " reconciliation_id,amount FROM m_end_of_day_closing_check WHERE source_type IN"
+            + " ('OPENING','CREDIT')) rc JOIN m_cashier_reconciliation r ON"
+            + " r.id=rc.reconciliation_id WHERE r.office_id IN (:officeIds) AND"
+            + " r.business_date<=:date AND r.status='COMPLETED'"
             + currencyClauseFor("r", currency)
             + " GROUP BY r.office_id,UPPER(r.currency_code)",
         params,
@@ -480,11 +508,11 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
           amount.inflows = amount.inflows.add(rs.getBigDecimal("inflows"));
         });
     jdbcTemplate.query(
-        "SELECT o.office_id,UPPER(o.currency_code) currency_code,"
-            + "SUM(CASE WHEN o.business_date<:date THEN oc.amount ELSE 0 END) initial_balance,"
-            + "SUM(CASE WHEN o.business_date=:date THEN oc.amount ELSE 0 END) inflows"
-            + " FROM m_cash_operation_check oc JOIN m_cash_operation_transaction o ON o.id=oc.operation_id"
-            + " WHERE o.office_id IN (:officeIds) AND o.business_date<=:date"
+        "SELECT o.office_id,UPPER(o.currency_code) currency_code,SUM(CASE WHEN"
+            + " o.business_date<:date THEN oc.amount ELSE 0 END) initial_balance,SUM(CASE WHEN"
+            + " o.business_date=:date THEN oc.amount ELSE 0 END) inflows FROM"
+            + " m_cash_operation_check oc JOIN m_cash_operation_transaction o ON"
+            + " o.id=oc.operation_id WHERE o.office_id IN (:officeIds) AND o.business_date<=:date"
             + " AND o.transaction_type='DEPOSIT_IN_TRANSIT' AND o.status='COMPLETED'"
             + currencyClauseFor("o", currency)
             + " GROUP BY o.office_id,UPPER(o.currency_code)",
@@ -513,22 +541,22 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
             + " FROM m_cashier_transactions ct WHERE ct.cashier_id IN (:cashierIds)"
             + " AND ct.txn_date=:date AND ct.txn_type=:settlement"
             + currencyClauseFor("ct", currency)
-            + " AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a"
-            + " WHERE a.source_cashier_transaction_id=ct.id)"
-            + " AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction op"
-            + " WHERE op.cashier_transaction_id=ct.id)"
-            + " AND NOT EXISTS (SELECT 1 FROM m_cashier_transactions newer"
-            + " WHERE newer.cashier_id=ct.cashier_id AND newer.txn_date=ct.txn_date"
-            + " AND newer.txn_type=ct.txn_type AND UPPER(newer.currency_code)=UPPER(ct.currency_code)"
+            + " AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
+            + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+            + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) AND NOT"
+            + " EXISTS (SELECT 1 FROM m_cashier_transactions newer WHERE"
+            + " newer.cashier_id=ct.cashier_id AND newer.txn_date=ct.txn_date AND"
+            + " newer.txn_type=ct.txn_type AND UPPER(newer.currency_code)=UPPER(ct.currency_code)"
             + " AND newer.id>ct.id)",
         params,
         rs -> {
           amount(
-                  values,
-                  tellerKey(rs.getLong("cashier_id")),
-                  CashInventoryType.CASH,
-                  rs.getString("currency_code"))
-              .lastCutOffAmount = rs.getBigDecimal("txn_amount");
+                      values,
+                      tellerKey(rs.getLong("cashier_id")),
+                      CashInventoryType.CASH,
+                      rs.getString("currency_code"))
+                  .lastCutOffAmount =
+              rs.getBigDecimal("txn_amount");
         });
   }
 
@@ -560,7 +588,8 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
         inflows,
         outflows,
         cutOffs,
-        CashInventoryBalance.calculate(initial, inflows, outflows, cutOffs, currency.decimalPlaces()),
+        CashInventoryBalance.calculate(
+            initial, inflows, outflows, cutOffs, currency.decimalPlaces()),
         showLastCutOff ? amount.lastCutOffAt : null,
         showLastCutOff ? scaleNullable(amount.lastCutOffAmount, currency.decimalPlaces()) : null,
         asOf);
@@ -669,7 +698,8 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final CashInventoryType type,
       final String currency) {
     return values.computeIfAbsent(
-        new InventoryKey(custodian, type, currency.toUpperCase(Locale.ROOT)), ignored -> new Amounts());
+        new InventoryKey(custodian, type, currency.toUpperCase(Locale.ROOT)),
+        ignored -> new Amounts());
   }
 
   private static BigDecimal scale(final BigDecimal value, final int decimalPlaces) {
