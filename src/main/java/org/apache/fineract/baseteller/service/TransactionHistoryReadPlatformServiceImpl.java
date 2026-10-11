@@ -50,7 +50,15 @@ public class TransactionHistoryReadPlatformServiceImpl
   private static final int MAX_LIMIT = 500;
   private static final int MAX_REFERENCE_LENGTH = 200;
   private static final Set<String> SORT_FIELDS =
-      Set.of("transactionDate", "operation", "inflow", "outflow", "currencyCode", "concept", "status", "reference");
+      Set.of(
+          "transactionDate",
+          "operation",
+          "inflow",
+          "outflow",
+          "currencyCode",
+          "concept",
+          "status",
+          "reference");
   private static final Map<String, String> SORT_COLUMNS =
       Map.of(
           "transactionDate", "h.transaction_date",
@@ -113,18 +121,15 @@ public class TransactionHistoryReadPlatformServiceImpl
     params.put("sourceId", key.sourceId());
     final String sql =
         historyCte()
-            + " SELECT h.*,oc.decimal_places,c.display_name client_name,CAST(c.external_id AS varchar) identification,"
-            + " t.name teller_name,s.display_name cashier_name,o.name office_name,"
-            + " COALESCE(au.username,CAST(h.cashier_id AS varchar)) cashier_code FROM history h"
-            + " JOIN m_office o ON o.id=h.office_id"
-            + " LEFT JOIN m_organisation_currency oc ON UPPER(oc.code)=h.currency_code"
-            + " LEFT JOIN m_client c ON c.id=h.client_id"
-            + " LEFT JOIN m_tellers t ON t.id=h.teller_id"
-            + " LEFT JOIN m_cashiers ca ON ca.id=h.cashier_id"
-            + " LEFT JOIN m_staff s ON s.id=ca.staff_id"
-            + " LEFT JOIN m_appuser au ON au.staff_id=s.id"
-            + " WHERE h.source_type=:sourceType AND h.source_id=:sourceId"
-            + " AND o.hierarchy LIKE :hierarchy"
+            + " SELECT h.*,oc.decimal_places,c.display_name client_name,CAST(c.external_id AS"
+            + " varchar) identification, t.name teller_name,s.display_name cashier_name,o.name"
+            + " office_name, COALESCE(au.username,CAST(h.cashier_id AS varchar)) cashier_code FROM"
+            + " history h JOIN m_office o ON o.id=h.office_id LEFT JOIN m_organisation_currency oc"
+            + " ON UPPER(oc.code)=h.currency_code LEFT JOIN m_client c ON c.id=h.client_id LEFT"
+            + " JOIN m_tellers t ON t.id=h.teller_id LEFT JOIN m_cashiers ca ON ca.id=h.cashier_id"
+            + " LEFT JOIN m_staff s ON s.id=ca.staff_id LEFT JOIN m_appuser au ON au.staff_id=s.id"
+            + " WHERE h.source_type=:sourceType AND h.source_id=:sourceId AND o.hierarchy LIKE"
+            + " :hierarchy"
             + authorizedClause(scope, params);
     final List<TransactionHistoryDetailData> rows =
         jdbcTemplate.query(sql, params, (rs, row) -> mapDetail(rs, historyId));
@@ -184,7 +189,8 @@ public class TransactionHistoryReadPlatformServiceImpl
     final HistoryKey key = historyKey(historyId);
     final TransactionHistoryDetailData detail = detail(historyId);
     if (!detail.receiptSupported()) {
-      throw invalid("receipt.unsupported", "The original transaction source does not support a receipt.");
+      throw invalid(
+          "receipt.unsupported", "The original transaction source does not support a receipt.");
     }
     final Object receipt =
         switch (key.sourceType()) {
@@ -199,7 +205,10 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CASH_ALLOCATION" -> cashAllocationReadPlatformService.reprint(key.sourceId());
           case "CASHIER_CLOSING" -> cashManagementReadPlatformService.closing(key.sourceId());
           case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
-          default -> throw invalid("receipt.unsupported", "The original transaction source does not support a receipt.");
+          default ->
+              throw invalid(
+                  "receipt.unsupported",
+                  "The original transaction source does not support a receipt.");
         };
     return new TransactionHistoryReceiptData(historyId, key.sourceType(), key.sourceId(), receipt);
   }
@@ -209,7 +218,9 @@ public class TransactionHistoryReadPlatformServiceImpl
     final String where = filteredWhere(query, params);
     final Long count =
         jdbcTemplate.queryForObject(
-            historyCte() + " SELECT COUNT(*) FROM history h JOIN m_office o ON o.id=h.office_id" + where,
+            historyCte()
+                + " SELECT COUNT(*) FROM history h JOIN m_office o ON o.id=h.office_id"
+                + where,
             params,
             Long.class);
     final List<TransactionHistoryTotalsData> totals =
@@ -305,9 +316,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         cancelledAt == null && cancellationReason == null
             ? null
             : new TransactionHistoryCancellationData(
-                cancellationReason,
-                rs.getString("cancellation_user"),
-                offset(cancelledAt));
+                cancellationReason, rs.getString("cancellation_user"), offset(cancelledAt));
     return new TransactionHistoryDetailData(
         historyId,
         offset(rs.getTimestamp("transaction_date")),
@@ -332,7 +341,8 @@ public class TransactionHistoryReadPlatformServiceImpl
       final TransactionHistoryQuery value, final Scope scope, final boolean paged) {
     final TransactionHistoryQuery query =
         value == null
-            ? new TransactionHistoryQuery(null, null, null, null, null, null, null, null, null, null, null, null, null)
+            ? new TransactionHistoryQuery(
+                null, null, null, null, null, null, null, null, null, null, null, null, null)
             : value;
     if (query.fromDate() != null
         && query.toDate() != null
@@ -431,7 +441,8 @@ public class TransactionHistoryReadPlatformServiceImpl
       return "";
     }
     params.put("authorizedCashierId", scope.assignedCashierId());
-    return " AND (h.source_cashier_id=:authorizedCashierId OR h.destination_cashier_id=:authorizedCashierId)";
+    return " AND (h.source_cashier_id=:authorizedCashierId OR"
+               + " h.destination_cashier_id=:authorizedCashierId)";
   }
 
   private Scope scope() {
@@ -515,7 +526,9 @@ public class TransactionHistoryReadPlatformServiceImpl
                 + column,
             params,
             String.class);
-    return values.stream().map(value -> new TransactionHistoryOptionData(value, label(value))).toList();
+    return values.stream()
+        .map(value -> new TransactionHistoryOptionData(value, label(value)))
+        .toList();
   }
 
   private void validateCurrency(final String currency) {
@@ -570,7 +583,8 @@ public class TransactionHistoryReadPlatformServiceImpl
     index = 0;
     for (Map.Entry<String, String> entry : requested.entrySet()) {
       if (!Boolean.TRUE.equals(result.get("option_" + index))) {
-        throw invalid(entry.getKey() + ".unsupported", "Unsupported or unauthorized history filter value.");
+        throw invalid(
+            entry.getKey() + ".unsupported", "Unsupported or unauthorized history filter value.");
       }
       index++;
     }
@@ -743,7 +757,8 @@ public class TransactionHistoryReadPlatformServiceImpl
 
   private static PlatformDataIntegrityException notFound() {
     return new PlatformDataIntegrityException(
-        "error.msg.base.teller.transaction.history.not.found", "Transaction history record not found.");
+        "error.msg.base.teller.transaction.history.not.found",
+        "Transaction history record not found.");
   }
 
   private static GeneralPlatformDomainRuleException invalid(
@@ -754,118 +769,118 @@ public class TransactionHistoryReadPlatformServiceImpl
 
   private static String historyCte() {
     return """
-        WITH history AS (
-          SELECT 'SAVINGS_DEPOSIT' source_type,d.id source_id,
-            COALESCE(d.completed_on_utc,d.created_on_utc) transaction_date,
-            CAST(COALESCE(d.completed_on_utc,d.created_on_utc) AS date) business_date,
-            'SAVINGS_DEPOSIT' operation,d.funding_type transaction_type,
-            'SAVINGS_DEPOSIT' concept,d.status,d.receipt_number reference,
-            CONCAT_WS(' ',d.receipt_number,
-              (SELECT STRING_AGG(cd.check_number,' ') FROM m_base_teller_deposit_check_detail cd WHERE cd.deposit_id=d.id)) searchable_reference,
-            UPPER(d.currency_code) currency_code,d.amount inflow,CAST(0 AS decimal(19,6)) outflow,
-            d.client_id,d.office_id,d.teller_id,d.cashier_id,d.cashier_id source_cashier_id,
-            d.cashier_id destination_cashier_id,CAST(0 AS decimal(19,6)) transfer_amount,
-            CASE WHEN d.funding_type='CASH' THEN d.amount END cash_received,
-            CASE WHEN d.funding_type='CHECK' THEN d.amount END checks_received,
-            CAST(NULL AS decimal(19,6)) change_amount,CAST(NULL AS decimal(19,6)) adjustment,
-            d.amount total_amount,CAST(NULL AS varchar) cancellation_reason,
-            CAST(NULL AS varchar) cancellation_user,CAST(NULL AS timestamp) cancellation_date,true receipt_supported
-          FROM m_base_teller_deposit d
-          UNION ALL
-          SELECT 'SAVINGS_OPENING',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),
-            CAST(COALESCE(x.completed_on_utc,x.created_on_utc) AS date),'OPEN_SAVINGS_ACCOUNT',x.funding_type,
-            'SAVINGS_ACCOUNT_OPENING',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.check_number),
-            UPPER(x.currency_code),x.amount,CAST(0 AS decimal(19,6)),x.client_id,x.office_id,x.teller_id,x.cashier_id,
-            x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),
-            CASE WHEN x.funding_type='CASH' THEN x.amount END,
-            CASE WHEN x.funding_type='CHECK' THEN x.amount END,
-            NULL,NULL,x.amount,NULL,NULL,NULL,true
-          FROM m_base_teller_savings_opening x
-          UNION ALL
-          SELECT 'RETURNED_CHECK_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),
-            CAST(COALESCE(p.completed_on_utc,p.created_on_utc) AS date),'SETTLE_RETURNED_CHECK','CASH',
-            'RETURNED_CHECK_PAYMENT',p.status,p.receipt_number,CONCAT_WS(' ',p.receipt_number,rc.check_number),
-            UPPER(p.currency_code),rc.amount,CAST(0 AS decimal(19,6)),rc.client_id,p.office_id,p.teller_id,p.cashier_id,
-            p.cashier_id,p.cashier_id,CAST(0 AS decimal(19,6)),p.cash_received,CAST(NULL AS decimal(19,6)),
-            p.change_amount,NULL,rc.amount,NULL,NULL,NULL,true
-          FROM m_base_teller_returned_check_payment p
-          JOIN m_base_teller_returned_check rc ON rc.id=p.returned_check_id
-          UNION ALL
-          SELECT 'SERVICE_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),p.business_date,
-            'PAY_SERVICE','CASH',p.service_name,p.status,p.receipt_number,
-            CONCAT_WS(' ',p.receipt_number,p.service_reference),UPPER(p.currency_code),p.total_to_pay,
-            CAST(0 AS decimal(19,6)),p.client_id,p.office_id,p.teller_id,p.cashier_id,p.cashier_id,p.cashier_id,
-            CAST(0 AS decimal(19,6)),p.amount_received,CAST(NULL AS decimal(19,6)),p.change_amount,NULL,
-            p.total_to_pay,NULL,NULL,NULL,true
-          FROM m_service_payment p
-          UNION ALL
-          SELECT 'CREDIT_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),p.business_date,
-            'PAY_CREDIT',p.payment_method,'LOAN_REPAYMENT',p.status,p.receipt_number,
-            CONCAT_WS(' ',p.receipt_number,c.check_number),UPPER(p.currency_code),p.amount,
-            CAST(0 AS decimal(19,6)),p.client_id,p.office_id,p.teller_id,p.cashier_id,p.cashier_id,p.cashier_id,
-            CAST(0 AS decimal(19,6)),CASE WHEN p.payment_method='CASH' THEN p.tender_amount END,
-            CASE WHEN p.payment_method='CHECK' THEN p.amount END,p.change_amount,NULL,p.amount,
-            CASE WHEN p.status='RETURNED' THEN c.return_reason END,
-            CASE WHEN p.status='RETURNED' THEN ru.username END,
-            CASE WHEN p.status='RETURNED' THEN c.returned_on_utc END,true
-          FROM m_base_teller_credit_payment p
-          LEFT JOIN m_base_teller_credit_payment_check c ON c.credit_payment_id=p.id
-          LEFT JOIN m_appuser ru ON ru.id=c.returned_by
-          UNION ALL
-          SELECT 'CASH_ALLOCATION',a.id,COALESCE(a.completed_on_utc,a.created_on_utc),a.business_date,
-            'ALLOCATE_CASH','INTERNAL_MOVEMENT',a.operation_type,a.status,a.receipt_number,
-            a.receipt_number,UPPER(a.currency_code),
-            CASE WHEN a.destination_cashier_id IS NOT NULL THEN a.amount ELSE CAST(0 AS decimal(19,6)) END,
-            CASE WHEN a.source_cashier_id IS NOT NULL THEN a.amount ELSE CAST(0 AS decimal(19,6)) END,
-            NULL,a.office_id,NULL,COALESCE(a.destination_cashier_id,a.source_cashier_id),
-            a.source_cashier_id,a.destination_cashier_id,a.amount,NULL,NULL,NULL,NULL,a.amount,
-            NULL,NULL,NULL,true
-          FROM m_cash_allocation a
-          UNION ALL
-          SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
-            'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
-            e.currency_code,CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),
-            NULL,e.office_id,e.teller_id,e.cashier_id,e.cashier_id,e.cashier_id,
-            CAST(0 AS decimal(19,6)),e.received_total,NULL,NULL,NULL,e.received_total,NULL,NULL,NULL,true
-          FROM m_cash_exchange e
-          UNION ALL
-          SELECT 'CASHIER_CLOSING',r.id,r.completed_on_utc,r.business_date,'CLOSE_CASHIER','MIXED',
-            'CASHIER_RECONCILIATION',r.status,r.receipt_number,r.receipt_number,UPPER(r.currency_code),
-            CAST(0 AS decimal(19,6)),r.actual_amount,NULL,r.office_id,r.teller_id,r.cashier_id,r.cashier_id,r.cashier_id,
-            CAST(0 AS decimal(19,6)),NULL,NULL,NULL,r.difference_amount,r.actual_amount,NULL,NULL,NULL,true
-          FROM m_cashier_reconciliation r
-          UNION ALL
-          SELECT 'CASH_OPERATION',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),x.business_date,
-            x.transaction_type,
-            CASE WHEN x.cash_total>0 AND x.check_total>0 THEN 'MIXED' WHEN x.check_total>0 THEN 'CHECK' ELSE 'CASH' END,
-            'CASH_OPERATION',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.description),
-            UPPER(x.currency_code),CAST(0 AS decimal(19,6)),x.amount,NULL,x.office_id,x.teller_id,x.cashier_id,
-            x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,x.amount,NULL,NULL,NULL,false
-          FROM m_cash_operation_transaction x
-          UNION ALL
-          SELECT 'CASHIER_TRANSACTION',ct.id,COALESCE(ct.created_date,CAST(ct.txn_date AS timestamp)),ct.txn_date,
-            CASE ct.txn_type WHEN 101 THEN 'CASH_ALLOCATION' WHEN 102 THEN 'CASH_SETTLEMENT'
-              WHEN 103 THEN 'CASH_IN' WHEN 104 THEN 'CASH_OUT' ELSE 'CASHIER_TRANSACTION' END,
-            'CASH','NATIVE_CASHIER_TRANSACTION','COMPLETED',COALESCE(ct.txn_note,CAST(ct.id AS varchar)),
-            CONCAT_WS(' ',ct.txn_note,ct.entity_type),UPPER(ct.currency_code),
-            CASE WHEN ct.txn_type IN (101,103) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
-            CASE WHEN ct.txn_type IN (102,104) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
-            NULL,t.office_id,c.teller_id,ct.cashier_id,ct.cashier_id,ct.cashier_id,CAST(0 AS decimal(19,6)),
-            NULL,NULL,NULL,NULL,ct.txn_amount,NULL,NULL,NULL,false
-          FROM m_cashier_transactions ct
-          JOIN m_cashiers c ON c.id=ct.cashier_id JOIN m_tellers t ON t.id=c.teller_id
-          WHERE NOT (ct.entity_type='BASE_TELLER_DEPOSIT'
-            AND EXISTS (SELECT 1 FROM m_base_teller_deposit d WHERE d.id=ct.entity_id))
-            AND NOT (ct.entity_type='BASE_TELLER_SAVINGS_OPENING'
-            AND EXISTS (SELECT 1 FROM m_base_teller_savings_opening x WHERE x.id=ct.entity_id))
-            AND NOT EXISTS (SELECT 1 FROM m_base_teller_returned_check_payment p WHERE p.cashier_transaction_id=ct.id)
-            AND NOT EXISTS (SELECT 1 FROM m_base_teller_credit_payment p WHERE p.cashier_transaction_id=ct.id)
-            AND NOT EXISTS (SELECT 1 FROM m_service_payment p WHERE p.cashier_transaction_id=ct.id)
-            AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id)
-            AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation r WHERE r.cashier_transaction_id=ct.id)
-            AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction x WHERE x.cashier_transaction_id=ct.id)
-        )
-        """;
+    WITH history AS (
+      SELECT 'SAVINGS_DEPOSIT' source_type,d.id source_id,
+        COALESCE(d.completed_on_utc,d.created_on_utc) transaction_date,
+        CAST(COALESCE(d.completed_on_utc,d.created_on_utc) AS date) business_date,
+        'SAVINGS_DEPOSIT' operation,d.funding_type transaction_type,
+        'SAVINGS_DEPOSIT' concept,d.status,d.receipt_number reference,
+        CONCAT_WS(' ',d.receipt_number,
+          (SELECT STRING_AGG(cd.check_number,' ') FROM m_base_teller_deposit_check_detail cd WHERE cd.deposit_id=d.id)) searchable_reference,
+        UPPER(d.currency_code) currency_code,d.amount inflow,CAST(0 AS decimal(19,6)) outflow,
+        d.client_id,d.office_id,d.teller_id,d.cashier_id,d.cashier_id source_cashier_id,
+        d.cashier_id destination_cashier_id,CAST(0 AS decimal(19,6)) transfer_amount,
+        CASE WHEN d.funding_type='CASH' THEN d.amount END cash_received,
+        CASE WHEN d.funding_type='CHECK' THEN d.amount END checks_received,
+        CAST(NULL AS decimal(19,6)) change_amount,CAST(NULL AS decimal(19,6)) adjustment,
+        d.amount total_amount,CAST(NULL AS varchar) cancellation_reason,
+        CAST(NULL AS varchar) cancellation_user,CAST(NULL AS timestamp) cancellation_date,true receipt_supported
+      FROM m_base_teller_deposit d
+      UNION ALL
+      SELECT 'SAVINGS_OPENING',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),
+        CAST(COALESCE(x.completed_on_utc,x.created_on_utc) AS date),'OPEN_SAVINGS_ACCOUNT',x.funding_type,
+        'SAVINGS_ACCOUNT_OPENING',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.check_number),
+        UPPER(x.currency_code),x.amount,CAST(0 AS decimal(19,6)),x.client_id,x.office_id,x.teller_id,x.cashier_id,
+        x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),
+        CASE WHEN x.funding_type='CASH' THEN x.amount END,
+        CASE WHEN x.funding_type='CHECK' THEN x.amount END,
+        NULL,NULL,x.amount,NULL,NULL,NULL,true
+      FROM m_base_teller_savings_opening x
+      UNION ALL
+      SELECT 'RETURNED_CHECK_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),
+        CAST(COALESCE(p.completed_on_utc,p.created_on_utc) AS date),'SETTLE_RETURNED_CHECK','CASH',
+        'RETURNED_CHECK_PAYMENT',p.status,p.receipt_number,CONCAT_WS(' ',p.receipt_number,rc.check_number),
+        UPPER(p.currency_code),rc.amount,CAST(0 AS decimal(19,6)),rc.client_id,p.office_id,p.teller_id,p.cashier_id,
+        p.cashier_id,p.cashier_id,CAST(0 AS decimal(19,6)),p.cash_received,CAST(NULL AS decimal(19,6)),
+        p.change_amount,NULL,rc.amount,NULL,NULL,NULL,true
+      FROM m_base_teller_returned_check_payment p
+      JOIN m_base_teller_returned_check rc ON rc.id=p.returned_check_id
+      UNION ALL
+      SELECT 'SERVICE_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),p.business_date,
+        'PAY_SERVICE','CASH',p.service_name,p.status,p.receipt_number,
+        CONCAT_WS(' ',p.receipt_number,p.service_reference),UPPER(p.currency_code),p.total_to_pay,
+        CAST(0 AS decimal(19,6)),p.client_id,p.office_id,p.teller_id,p.cashier_id,p.cashier_id,p.cashier_id,
+        CAST(0 AS decimal(19,6)),p.amount_received,CAST(NULL AS decimal(19,6)),p.change_amount,NULL,
+        p.total_to_pay,NULL,NULL,NULL,true
+      FROM m_service_payment p
+      UNION ALL
+      SELECT 'CREDIT_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),p.business_date,
+        'PAY_CREDIT',p.payment_method,'LOAN_REPAYMENT',p.status,p.receipt_number,
+        CONCAT_WS(' ',p.receipt_number,c.check_number),UPPER(p.currency_code),p.amount,
+        CAST(0 AS decimal(19,6)),p.client_id,p.office_id,p.teller_id,p.cashier_id,p.cashier_id,p.cashier_id,
+        CAST(0 AS decimal(19,6)),CASE WHEN p.payment_method='CASH' THEN p.tender_amount END,
+        CASE WHEN p.payment_method='CHECK' THEN p.amount END,p.change_amount,NULL,p.amount,
+        CASE WHEN p.status='RETURNED' THEN c.return_reason END,
+        CASE WHEN p.status='RETURNED' THEN ru.username END,
+        CASE WHEN p.status='RETURNED' THEN c.returned_on_utc END,true
+      FROM m_base_teller_credit_payment p
+      LEFT JOIN m_base_teller_credit_payment_check c ON c.credit_payment_id=p.id
+      LEFT JOIN m_appuser ru ON ru.id=c.returned_by
+      UNION ALL
+      SELECT 'CASH_ALLOCATION',a.id,COALESCE(a.completed_on_utc,a.created_on_utc),a.business_date,
+        'ALLOCATE_CASH','INTERNAL_MOVEMENT',a.operation_type,a.status,a.receipt_number,
+        a.receipt_number,UPPER(a.currency_code),
+        CASE WHEN a.destination_cashier_id IS NOT NULL THEN a.amount ELSE CAST(0 AS decimal(19,6)) END,
+        CASE WHEN a.source_cashier_id IS NOT NULL THEN a.amount ELSE CAST(0 AS decimal(19,6)) END,
+        NULL,a.office_id,NULL,COALESCE(a.destination_cashier_id,a.source_cashier_id),
+        a.source_cashier_id,a.destination_cashier_id,a.amount,NULL,NULL,NULL,NULL,a.amount,
+        NULL,NULL,NULL,true
+      FROM m_cash_allocation a
+      UNION ALL
+      SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
+        'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
+        e.currency_code,CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),
+        NULL,e.office_id,e.teller_id,e.cashier_id,e.cashier_id,e.cashier_id,
+        CAST(0 AS decimal(19,6)),e.received_total,NULL,NULL,NULL,e.received_total,NULL,NULL,NULL,true
+      FROM m_cash_exchange e
+      UNION ALL
+      SELECT 'CASHIER_CLOSING',r.id,r.completed_on_utc,r.business_date,'CLOSE_CASHIER','MIXED',
+        'CASHIER_RECONCILIATION',r.status,r.receipt_number,r.receipt_number,UPPER(r.currency_code),
+        CAST(0 AS decimal(19,6)),COALESCE(r.settled_cash_total,r.cash_total)+r.check_total,NULL,r.office_id,r.teller_id,r.cashier_id,r.cashier_id,r.cashier_id,
+        CAST(0 AS decimal(19,6)),NULL,NULL,NULL,r.difference_amount,r.actual_amount,NULL,NULL,NULL,true
+      FROM m_cashier_reconciliation r
+      UNION ALL
+      SELECT 'CASH_OPERATION',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),x.business_date,
+        x.transaction_type,
+        CASE WHEN x.cash_total>0 AND x.check_total>0 THEN 'MIXED' WHEN x.check_total>0 THEN 'CHECK' ELSE 'CASH' END,
+        'CASH_OPERATION',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.description),
+        UPPER(x.currency_code),CAST(0 AS decimal(19,6)),x.amount,NULL,x.office_id,x.teller_id,x.cashier_id,
+        x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,x.amount,NULL,NULL,NULL,false
+      FROM m_cash_operation_transaction x
+      UNION ALL
+      SELECT 'CASHIER_TRANSACTION',ct.id,COALESCE(ct.created_date,CAST(ct.txn_date AS timestamp)),ct.txn_date,
+        CASE ct.txn_type WHEN 101 THEN 'CASH_ALLOCATION' WHEN 102 THEN 'CASH_SETTLEMENT'
+          WHEN 103 THEN 'CASH_IN' WHEN 104 THEN 'CASH_OUT' ELSE 'CASHIER_TRANSACTION' END,
+        'CASH','NATIVE_CASHIER_TRANSACTION','COMPLETED',COALESCE(ct.txn_note,CAST(ct.id AS varchar)),
+        CONCAT_WS(' ',ct.txn_note,ct.entity_type),UPPER(ct.currency_code),
+        CASE WHEN ct.txn_type IN (101,103) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
+        CASE WHEN ct.txn_type IN (102,104) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
+        NULL,t.office_id,c.teller_id,ct.cashier_id,ct.cashier_id,ct.cashier_id,CAST(0 AS decimal(19,6)),
+        NULL,NULL,NULL,NULL,ct.txn_amount,NULL,NULL,NULL,false
+      FROM m_cashier_transactions ct
+      JOIN m_cashiers c ON c.id=ct.cashier_id JOIN m_tellers t ON t.id=c.teller_id
+      WHERE NOT (ct.entity_type='BASE_TELLER_DEPOSIT'
+        AND EXISTS (SELECT 1 FROM m_base_teller_deposit d WHERE d.id=ct.entity_id))
+        AND NOT (ct.entity_type='BASE_TELLER_SAVINGS_OPENING'
+        AND EXISTS (SELECT 1 FROM m_base_teller_savings_opening x WHERE x.id=ct.entity_id))
+        AND NOT EXISTS (SELECT 1 FROM m_base_teller_returned_check_payment p WHERE p.cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_base_teller_credit_payment p WHERE p.cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_service_payment p WHERE p.cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation r WHERE r.cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction x WHERE x.cashier_transaction_id=ct.id)
+    )
+    """;
   }
 
   private record Scope(

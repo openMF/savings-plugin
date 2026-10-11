@@ -116,11 +116,9 @@ class CashInventoryReadPlatformServiceIntegrationTest {
 
     assertEquals(3, all.size());
     assertEquals(
-        2,
-        all.stream().filter(row -> row.inventoryType() == CashInventoryType.CASH).count());
+        2, all.stream().filter(row -> row.inventoryType() == CashInventoryType.CASH).count());
     assertEquals(
-        1,
-        all.stream().filter(row -> row.inventoryType() == CashInventoryType.CHECK).count());
+        1, all.stream().filter(row -> row.inventoryType() == CashInventoryType.CHECK).count());
     assertEquals(1, service.inventory(null, "CHECK", "MXN", false).size());
     assertEquals(1, service.inventory(null, "CASH", "USD", false).size());
   }
@@ -225,7 +223,8 @@ class CashInventoryReadPlatformServiceIntegrationTest {
   private void dropAndCreateSchema() {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
-    jdbc.execute("CREATE TABLE m_office(id BIGINT PRIMARY KEY,name VARCHAR(100),hierarchy VARCHAR(100))");
+    jdbc.execute(
+        "CREATE TABLE m_office(id BIGINT PRIMARY KEY,name VARCHAR(100),hierarchy VARCHAR(100))");
     jdbc.execute("CREATE TABLE m_staff(id BIGINT PRIMARY KEY,display_name VARCHAR(100))");
     jdbc.execute(
         "CREATE TABLE m_tellers(id BIGINT PRIMARY KEY,office_id BIGINT,name VARCHAR(100),"
@@ -236,7 +235,8 @@ class CashInventoryReadPlatformServiceIntegrationTest {
     jdbc.execute(
         "CREATE TABLE m_appuser(id BIGINT PRIMARY KEY,staff_id BIGINT,username VARCHAR(100))");
     jdbc.execute(
-        "CREATE TABLE m_organisation_currency(code VARCHAR(3),name VARCHAR(100),decimal_places INT)");
+        "CREATE TABLE m_organisation_currency(code VARCHAR(3),name VARCHAR(100),decimal_places"
+            + " INT)");
     jdbc.execute(
         "CREATE TABLE m_cashier_transactions(id BIGINT PRIMARY KEY,cashier_id BIGINT,txn_type INT,"
             + "txn_date DATE,txn_amount NUMERIC(19,6),created_date TIMESTAMP,txn_note VARCHAR(100),"
@@ -247,14 +247,15 @@ class CashInventoryReadPlatformServiceIntegrationTest {
             + "amount NUMERIC(19,6),source_cashier_transaction_id BIGINT,"
             + "destination_cashier_transaction_id BIGINT)");
     jdbc.execute(
-        "CREATE TABLE m_cash_operation_transaction(id BIGINT PRIMARY KEY,transaction_type VARCHAR(30),"
-            + "business_date DATE,currency_code VARCHAR(3),cash_total NUMERIC(19,6),office_id BIGINT,"
-            + "cashier_id BIGINT,status VARCHAR(30),completed_on_utc TIMESTAMP,"
-            + "cashier_transaction_id BIGINT)");
+        "CREATE TABLE m_cash_operation_transaction(id BIGINT PRIMARY KEY,transaction_type"
+            + " VARCHAR(30),business_date DATE,currency_code VARCHAR(3),cash_total"
+            + " NUMERIC(19,6),office_id BIGINT,cashier_id BIGINT,status"
+            + " VARCHAR(30),completed_on_utc TIMESTAMP,cashier_transaction_id BIGINT)");
     jdbc.execute(
-        "CREATE TABLE m_cashier_reconciliation(id BIGINT PRIMARY KEY,business_date DATE,"
-            + "currency_code VARCHAR(3),cash_total NUMERIC(19,6),office_id BIGINT,status VARCHAR(30),"
-            + "completed_on_utc TIMESTAMP)");
+        "CREATE TABLE m_cashier_reconciliation(id BIGINT PRIMARY KEY,business_date"
+            + " DATE,currency_code VARCHAR(3),cash_total NUMERIC(19,6),settled_cash_total"
+            + " NUMERIC(19,6),office_id BIGINT,status VARCHAR(30),cashier_id"
+            + " BIGINT,completed_on_utc TIMESTAMP)");
     jdbc.execute(
         "CREATE TABLE m_savings_account_transaction(id BIGINT PRIMARY KEY,transaction_date DATE)");
     jdbc.execute(
@@ -262,9 +263,9 @@ class CashInventoryReadPlatformServiceIntegrationTest {
             + "currency_code VARCHAR(3),funding_type VARCHAR(20),status VARCHAR(30),"
             + "amount NUMERIC(19,6),created_on_utc TIMESTAMP,savings_transaction_id BIGINT)");
     jdbc.execute(
-        "CREATE TABLE m_base_teller_savings_opening(id BIGINT PRIMARY KEY,cashier_id BIGINT,"
-            + "currency_code VARCHAR(3),funding_type VARCHAR(20),status VARCHAR(30),"
-            + "amount NUMERIC(19,6),created_on_utc TIMESTAMP,initial_deposit_transaction_id BIGINT)");
+        "CREATE TABLE m_base_teller_savings_opening(id BIGINT PRIMARY KEY,cashier_id"
+            + " BIGINT,currency_code VARCHAR(3),funding_type VARCHAR(20),status VARCHAR(30),amount"
+            + " NUMERIC(19,6),created_on_utc TIMESTAMP,initial_deposit_transaction_id BIGINT)");
     jdbc.execute(
         "CREATE TABLE m_base_teller_deposit_check_detail(id BIGINT PRIMARY KEY,deposit_id BIGINT,"
             + "amount NUMERIC(19,6))");
@@ -279,11 +280,14 @@ class CashInventoryReadPlatformServiceIntegrationTest {
         "CREATE TABLE m_cash_operation_check(id BIGINT PRIMARY KEY,operation_id BIGINT,"
             + "deposit_check_detail_id BIGINT,amount NUMERIC(19,6))");
     jdbc.execute(
-        "CREATE TABLE m_cashier_reconciliation_check(id BIGINT PRIMARY KEY,reconciliation_id BIGINT,"
-            + "deposit_check_detail_id BIGINT,amount NUMERIC(19,6))");
+        "CREATE TABLE m_end_of_day_closing_check(id BIGINT PRIMARY KEY,reconciliation_id"
+            + " BIGINT,source_type VARCHAR(10),currency_code VARCHAR(3),amount NUMERIC(19,6))");
     jdbc.execute(
-        "CREATE TABLE m_base_teller_returned_check(id BIGINT PRIMARY KEY,cashier_id BIGINT,"
-            + "currency_code VARCHAR(3),amount NUMERIC(19,6),returned_on_date DATE,status VARCHAR(30),"
-            + "deposit_check_detail_id BIGINT)");
+        "CREATE TABLE m_cashier_reconciliation_check(id BIGINT PRIMARY KEY,reconciliation_id"
+            + " BIGINT,deposit_check_detail_id BIGINT,amount NUMERIC(19,6))");
+    jdbc.execute(
+        "CREATE TABLE m_base_teller_returned_check(id BIGINT PRIMARY KEY,cashier_id"
+            + " BIGINT,currency_code VARCHAR(3),amount NUMERIC(19,6),returned_on_date DATE,status"
+            + " VARCHAR(30),deposit_check_detail_id BIGINT)");
   }
 }

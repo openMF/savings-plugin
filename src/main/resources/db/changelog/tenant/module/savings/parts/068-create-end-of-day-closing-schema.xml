@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+ <changeSet author="fineract" id="ss-068-end-of-day-closing">
+  <createTable tableName="m_end_of_day_closing">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true"/></column>
+   <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="snapshot" type="text"><constraints nullable="false"/></column>
+  </createTable>
+  <addUniqueConstraint tableName="m_end_of_day_closing" columnNames="cashier_id,business_date" constraintName="uk_end_of_day_session"/>
+  <createIndex tableName="m_end_of_day_closing" indexName="idx_end_of_day_office"><column name="office_id"/><column name="business_date"/></createIndex>
+  <addForeignKeyConstraint baseTableName="m_end_of_day_closing" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_eod_office"/>
+  <addForeignKeyConstraint baseTableName="m_end_of_day_closing" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_eod_cashier"/>
+  <addColumn tableName="m_cashier_reconciliation">
+   <column name="end_of_day_closing_id" type="bigint"/>
+   <column name="voucher_total" type="decimal(19,6)" defaultValueNumeric="0"><constraints nullable="false"/></column>
+  </addColumn>
+  <addForeignKeyConstraint baseTableName="m_cashier_reconciliation" baseColumnNames="end_of_day_closing_id" referencedTableName="m_end_of_day_closing" referencedColumnNames="id" constraintName="fk_recon_eod"/>
+  <createTable tableName="m_end_of_day_closing_check">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="closing_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="reconciliation_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="source_type" type="varchar(10)"><constraints nullable="false"/></column>
+   <column name="source_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+   <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+  </createTable>
+  <addUniqueConstraint tableName="m_end_of_day_closing_check" columnNames="source_type,source_id" constraintName="uk_eod_check_custody"/>
+  <addForeignKeyConstraint baseTableName="m_end_of_day_closing_check" baseColumnNames="closing_id" referencedTableName="m_end_of_day_closing" referencedColumnNames="id" constraintName="fk_eod_check_parent"/>
+  <addForeignKeyConstraint baseTableName="m_end_of_day_closing_check" baseColumnNames="reconciliation_id" referencedTableName="m_cashier_reconciliation" referencedColumnNames="id" constraintName="fk_eod_check_recon"/>
+  <sql>ALTER TABLE m_end_of_day_closing_check ADD CONSTRAINT ck_eod_check_source CHECK (source_type IN ('DEPOSIT','OPENING','CREDIT'));</sql>
+ </changeSet>
+ <changeSet author="fineract" id="ss-068-end-of-day-permissions">
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_BASE_TELLER_END_OF_DAY_CLOSING"/><column name="entity_name" value="BASE_TELLER_END_OF_DAY_CLOSING"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_BASE_TELLER_END_OF_DAY_CLOSING"/><column name="entity_name" value="BASE_TELLER_END_OF_DAY_CLOSING"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="AUTHORIZE_BASE_TELLER_END_OF_DAY_CLOSING"/><column name="entity_name" value="BASE_TELLER_END_OF_DAY_CLOSING"/><column name="action_name" value="AUTHORIZE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="REPRINT_BASE_TELLER_END_OF_DAY_CLOSING"/><column name="entity_name" value="BASE_TELLER_END_OF_DAY_CLOSING"/><column name="action_name" value="REPRINT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+ </changeSet>
+</databaseChangeLog>

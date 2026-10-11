@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+    <changeSet author="fineract" id="ss-069-closing-system-settlement">
+        <!-- NULL preserves historical WEB-1232 physical-cash settlement semantics. -->
+        <addColumn tableName="m_cashier_reconciliation">
+            <column name="settled_cash_total" type="decimal(19,6)"/>
+        </addColumn>
+        <sql>ALTER TABLE m_cashier_reconciliation ADD CONSTRAINT ck_reconciliation_settled_cash CHECK (settled_cash_total IS NULL OR settled_cash_total &gt;= 0);</sql>
+    </changeSet>
+</databaseChangeLog>
