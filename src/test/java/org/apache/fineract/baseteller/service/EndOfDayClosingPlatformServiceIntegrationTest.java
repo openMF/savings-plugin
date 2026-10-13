@@ -593,6 +593,18 @@ class EndOfDayClosingPlatformServiceIntegrationTest {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
     jdbc.execute(
+        "CREATE TABLE m_transaction_reversal(id bigint PRIMARY KEY,cashier_id bigint,business_date"
+            + " date,currency_code varchar(3),cash_effect numeric(19,6),check_effect"
+            + " numeric(19,6),reversed_at timestamp)");
+    jdbc.execute(
+        "CREATE TABLE m_transaction_reversal_check(id bigint,source_type"
+            + " varchar(50),source_check_id bigint)");
+    jdbc.execute("CREATE TABLE m_transaction_reversal_denomination(id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_exchange(id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_exchange_detail(id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_exchange_mutex(id bigint PRIMARY KEY)");
+    jdbc.update("INSERT INTO m_cash_exchange_mutex VALUES(1)");
+    jdbc.execute(
         "CREATE TABLE m_office(id BIGINT PRIMARY KEY,name VARCHAR(100),hierarchy VARCHAR(100))");
     jdbc.execute("CREATE TABLE m_staff(id BIGINT PRIMARY KEY,display_name VARCHAR(100))");
     jdbc.execute(

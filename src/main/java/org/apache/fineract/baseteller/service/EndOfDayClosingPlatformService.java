@@ -79,6 +79,7 @@ public class EndOfDayClosingPlatformService {
     validate(request, true);
     LocalDate date = LocalDate.parse(request.businessDate());
     Cashier cashier = authorizedCashier(request.cashierId(), user, date);
+    jdbc.queryForObject("SELECT id FROM m_cash_exchange_mutex WHERE id=1 FOR UPDATE", Long.class);
     // PostgreSQL custody writers do not all take a common drawer lock. Serialize the final
     // snapshot with *all* existing writers, including native commands and check transitions.
     // Coarse locks are deliberate until all those workflows share a per-drawer protocol.
@@ -92,9 +93,9 @@ public class EndOfDayClosingPlatformService {
             + " m_service_payment, m_savings_account_transaction, m_loan_transaction,"
             + " m_client_transaction, m_account_transfer_transaction, m_payment_detail,"
             + " m_payment_type, m_savings_account, m_loan, m_client, m_staff, m_appuser,"
-            + " m_service_payment_denomination,"
-            + " m_organisation_currency, m_end_of_day_closing, m_end_of_day_closing_check IN SHARE"
-            + " ROW EXCLUSIVE MODE");
+            + " m_service_payment_denomination, m_organisation_currency, m_end_of_day_closing,"
+            + " m_end_of_day_closing_check,m_transaction_reversal,m_transaction_reversal_check,m_transaction_reversal_denomination,m_cash_exchange,m_cash_exchange_detail"
+            + " IN SHARE ROW EXCLUSIVE MODE");
     cashier = authorizedCashier(request.cashierId(), user, date);
     List<String> codes =
         request.currencies().stream().map(CurrencyDeclaration::currencyCode).toList();
@@ -476,6 +477,7 @@ public class EndOfDayClosingPlatformService {
       FROM m_base_teller_deposit_check_detail cd JOIN m_base_teller_deposit d ON d.id=cd.deposit_id
       JOIN m_appuser u ON u.id=d.operator_id
       WHERE d.status IN ('PENDING_COLLECTION','COMPLETED')
+      AND NOT EXISTS(SELECT 1 FROM m_transaction_reversal_check r WHERE r.source_type='SAVINGS_DEPOSIT' AND r.source_check_id=cd.id)
       AND NOT EXISTS (SELECT 1 FROM m_base_teller_returned_check rc WHERE rc.deposit_check_detail_id=cd.id AND rc.status IN ('RETURNED','SETTLED'))
       AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation_check rc WHERE rc.deposit_check_detail_id=cd.id)
       AND NOT EXISTS (SELECT 1 FROM m_cash_operation_check oc WHERE oc.deposit_check_detail_id=cd.id)
@@ -488,6 +490,7 @@ public class EndOfDayClosingPlatformService {
       FROM m_base_teller_credit_payment_check c JOIN m_base_teller_credit_payment p ON p.id=c.credit_payment_id
       JOIN m_appuser u ON u.id=c.accepted_by WHERE c.status IN ('PENDING_COLLECTION','CLEARED')
       AND p.status IN ('PENDING_COLLECTION','CLEARED')
+      AND NOT EXISTS(SELECT 1 FROM m_transaction_reversal_check r WHERE r.source_type='CREDIT_PAYMENT' AND r.source_check_id=c.id)
       """;
 
   private EndOfDayClosingData stored(Long id, AppUser user) {

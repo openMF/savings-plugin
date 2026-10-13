@@ -224,6 +224,10 @@ class CashInventoryReadPlatformServiceIntegrationTest {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
     jdbc.execute(
+        "CREATE TABLE m_transaction_reversal(id bigint PRIMARY KEY,cashier_id bigint,business_date"
+            + " date,currency_code varchar(3),cash_effect numeric(19,6),check_effect"
+            + " numeric(19,6),reversed_at timestamp)");
+    jdbc.execute(
         "CREATE TABLE m_office(id BIGINT PRIMARY KEY,name VARCHAR(100),hierarchy VARCHAR(100))");
     jdbc.execute("CREATE TABLE m_staff(id BIGINT PRIMARY KEY,display_name VARCHAR(100))");
     jdbc.execute(

@@ -695,6 +695,13 @@ public class TransactionHistoryReadPlatformServiceImpl
               "operation_id",
               "d.line_total",
               "CAST(NULL AS varchar)");
+      case "TRANSACTION_REVERSAL" ->
+          new DenominationSource(
+              "m_transaction_reversal_denomination",
+              "m_transaction_reversal",
+              "reversal_id",
+              "d.denomination_value*d.quantity",
+              "d.direction");
       default -> null;
     };
   }
@@ -767,12 +774,12 @@ public class TransactionHistoryReadPlatformServiceImpl
         "error.msg.base.teller.transaction.history." + code, message);
   }
 
-  private static String historyCte() {
+  static String historyCte() {
     return """
-    WITH history AS (
+    WITH original_history AS (
       SELECT 'SAVINGS_DEPOSIT' source_type,d.id source_id,
         COALESCE(d.completed_on_utc,d.created_on_utc) transaction_date,
-        CAST(COALESCE(d.completed_on_utc,d.created_on_utc) AS date) business_date,
+        COALESCE((SELECT st.transaction_date FROM m_savings_account_transaction st WHERE st.id=d.savings_transaction_id),CAST(COALESCE(d.completed_on_utc,d.created_on_utc) AS date)) business_date,
         'SAVINGS_DEPOSIT' operation,d.funding_type transaction_type,
         'SAVINGS_DEPOSIT' concept,d.status,d.receipt_number reference,
         CONCAT_WS(' ',d.receipt_number,
@@ -784,25 +791,25 @@ public class TransactionHistoryReadPlatformServiceImpl
         CASE WHEN d.funding_type='CHECK' THEN d.amount END checks_received,
         CAST(NULL AS decimal(19,6)) change_amount,CAST(NULL AS decimal(19,6)) adjustment,
         d.amount total_amount,CAST(NULL AS varchar) cancellation_reason,
-        CAST(NULL AS varchar) cancellation_user,CAST(NULL AS timestamp) cancellation_date,true receipt_supported
+        CAST(NULL AS varchar) cancellation_user,CAST(NULL AS timestamp) cancellation_date,true receipt_supported,d.operator_id performed_by
       FROM m_base_teller_deposit d
       UNION ALL
       SELECT 'SAVINGS_OPENING',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),
-        CAST(COALESCE(x.completed_on_utc,x.created_on_utc) AS date),'OPEN_SAVINGS_ACCOUNT',x.funding_type,
+        COALESCE((SELECT st.transaction_date FROM m_savings_account_transaction st WHERE st.id=x.initial_deposit_transaction_id),CAST(COALESCE(x.completed_on_utc,x.created_on_utc) AS date)),'OPEN_SAVINGS_ACCOUNT',x.funding_type,
         'SAVINGS_ACCOUNT_OPENING',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.check_number),
         UPPER(x.currency_code),x.amount,CAST(0 AS decimal(19,6)),x.client_id,x.office_id,x.teller_id,x.cashier_id,
         x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),
         CASE WHEN x.funding_type='CASH' THEN x.amount END,
         CASE WHEN x.funding_type='CHECK' THEN x.amount END,
-        NULL,NULL,x.amount,NULL,NULL,NULL,true
+        NULL,NULL,x.amount,NULL,NULL,NULL,true,x.operator_id
       FROM m_base_teller_savings_opening x
       UNION ALL
       SELECT 'RETURNED_CHECK_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),
-        CAST(COALESCE(p.completed_on_utc,p.created_on_utc) AS date),'SETTLE_RETURNED_CHECK','CASH',
+        COALESCE((SELECT ct.txn_date FROM m_cashier_transactions ct WHERE ct.id=p.cashier_transaction_id),CAST(COALESCE(p.completed_on_utc,p.created_on_utc) AS date)),'SETTLE_RETURNED_CHECK','CASH',
         'RETURNED_CHECK_PAYMENT',p.status,p.receipt_number,CONCAT_WS(' ',p.receipt_number,rc.check_number),
         UPPER(p.currency_code),rc.amount,CAST(0 AS decimal(19,6)),rc.client_id,p.office_id,p.teller_id,p.cashier_id,
         p.cashier_id,p.cashier_id,CAST(0 AS decimal(19,6)),p.cash_received,CAST(NULL AS decimal(19,6)),
-        p.change_amount,NULL,rc.amount,NULL,NULL,NULL,true
+        p.change_amount,NULL,rc.amount,NULL,NULL,NULL,true,p.operator_id
       FROM m_base_teller_returned_check_payment p
       JOIN m_base_teller_returned_check rc ON rc.id=p.returned_check_id
       UNION ALL
@@ -811,7 +818,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         CONCAT_WS(' ',p.receipt_number,p.service_reference),UPPER(p.currency_code),p.total_to_pay,
         CAST(0 AS decimal(19,6)),p.client_id,p.office_id,p.teller_id,p.cashier_id,p.cashier_id,p.cashier_id,
         CAST(0 AS decimal(19,6)),p.amount_received,CAST(NULL AS decimal(19,6)),p.change_amount,NULL,
-        p.total_to_pay,NULL,NULL,NULL,true
+        p.total_to_pay,NULL,NULL,NULL,true,p.operator_id
       FROM m_service_payment p
       UNION ALL
       SELECT 'CREDIT_PAYMENT',p.id,COALESCE(p.completed_on_utc,p.created_on_utc),p.business_date,
@@ -822,7 +829,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         CASE WHEN p.payment_method='CHECK' THEN p.amount END,p.change_amount,NULL,p.amount,
         CASE WHEN p.status='RETURNED' THEN c.return_reason END,
         CASE WHEN p.status='RETURNED' THEN ru.username END,
-        CASE WHEN p.status='RETURNED' THEN c.returned_on_utc END,true
+        CASE WHEN p.status='RETURNED' THEN c.returned_on_utc END,true,p.operator_id
       FROM m_base_teller_credit_payment p
       LEFT JOIN m_base_teller_credit_payment_check c ON c.credit_payment_id=p.id
       LEFT JOIN m_appuser ru ON ru.id=c.returned_by
@@ -834,20 +841,20 @@ public class TransactionHistoryReadPlatformServiceImpl
         CASE WHEN a.source_cashier_id IS NOT NULL THEN a.amount ELSE CAST(0 AS decimal(19,6)) END,
         NULL,a.office_id,NULL,COALESCE(a.destination_cashier_id,a.source_cashier_id),
         a.source_cashier_id,a.destination_cashier_id,a.amount,NULL,NULL,NULL,NULL,a.amount,
-        NULL,NULL,NULL,true
+        NULL,NULL,NULL,true,a.initiated_by
       FROM m_cash_allocation a
       UNION ALL
       SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
         'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
         e.currency_code,CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),
         NULL,e.office_id,e.teller_id,e.cashier_id,e.cashier_id,e.cashier_id,
-        CAST(0 AS decimal(19,6)),e.received_total,NULL,NULL,NULL,e.received_total,NULL,NULL,NULL,true
+        CAST(0 AS decimal(19,6)),e.received_total,NULL,NULL,NULL,e.received_total,NULL,NULL,NULL,true,e.created_by
       FROM m_cash_exchange e
       UNION ALL
       SELECT 'CASHIER_CLOSING',r.id,r.completed_on_utc,r.business_date,'CLOSE_CASHIER','MIXED',
         'CASHIER_RECONCILIATION',r.status,r.receipt_number,r.receipt_number,UPPER(r.currency_code),
         CAST(0 AS decimal(19,6)),COALESCE(r.settled_cash_total,r.cash_total)+r.check_total,NULL,r.office_id,r.teller_id,r.cashier_id,r.cashier_id,r.cashier_id,
-        CAST(0 AS decimal(19,6)),NULL,NULL,NULL,r.difference_amount,r.actual_amount,NULL,NULL,NULL,true
+        CAST(0 AS decimal(19,6)),NULL,NULL,NULL,r.difference_amount,r.actual_amount,NULL,NULL,NULL,true,r.completed_by
       FROM m_cashier_reconciliation r
       UNION ALL
       SELECT 'CASH_OPERATION',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),x.business_date,
@@ -855,7 +862,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         CASE WHEN x.cash_total>0 AND x.check_total>0 THEN 'MIXED' WHEN x.check_total>0 THEN 'CHECK' ELSE 'CASH' END,
         'CASH_OPERATION',x.status,x.receipt_number,CONCAT_WS(' ',x.receipt_number,x.description),
         UPPER(x.currency_code),CAST(0 AS decimal(19,6)),x.amount,NULL,x.office_id,x.teller_id,x.cashier_id,
-        x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,x.amount,NULL,NULL,NULL,false
+        x.cashier_id,x.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,x.amount,NULL,NULL,NULL,false,x.actor_id
       FROM m_cash_operation_transaction x
       UNION ALL
       SELECT 'CASHIER_TRANSACTION',ct.id,COALESCE(ct.created_date,CAST(ct.txn_date AS timestamp)),ct.txn_date,
@@ -866,7 +873,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         CASE WHEN ct.txn_type IN (101,103) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
         CASE WHEN ct.txn_type IN (102,104) THEN ct.txn_amount ELSE CAST(0 AS decimal(19,6)) END,
         NULL,t.office_id,c.teller_id,ct.cashier_id,ct.cashier_id,ct.cashier_id,CAST(0 AS decimal(19,6)),
-        NULL,NULL,NULL,NULL,ct.txn_amount,NULL,NULL,NULL,false
+        NULL,NULL,NULL,NULL,ct.txn_amount,NULL,NULL,NULL,false,CAST(NULL AS bigint)
       FROM m_cashier_transactions ct
       JOIN m_cashiers c ON c.id=ct.cashier_id JOIN m_tellers t ON t.id=c.teller_id
       WHERE NOT (ct.entity_type='BASE_TELLER_DEPOSIT'
@@ -879,6 +886,18 @@ public class TransactionHistoryReadPlatformServiceImpl
         AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation r WHERE r.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction x WHERE x.cashier_transaction_id=ct.id)
+    ), history AS (
+      SELECT h.source_type,h.source_id,h.transaction_date,h.business_date,h.operation,h.transaction_type,h.concept,CASE WHEN r.id IS NOT NULL THEN 'REVERSED' ELSE h.status END status,h.reference,h.searchable_reference,h.currency_code,h.inflow,h.outflow,h.client_id,h.office_id,h.teller_id,h.cashier_id,h.source_cashier_id,h.destination_cashier_id,h.transfer_amount,h.cash_received,h.checks_received,h.change_amount,h.adjustment,h.total_amount,h.cancellation_reason,h.cancellation_user,h.cancellation_date,h.receipt_supported,h.performed_by FROM original_history h
+      LEFT JOIN m_transaction_reversal r ON r.original_history_id=CONCAT(h.source_type,':',h.source_id)
+      UNION ALL
+      SELECT 'TRANSACTION_REVERSAL',r.id,r.reversed_at,r.business_date,'REVERSE_TRANSACTION','REVERSAL',r.source_type,r.status,
+        r.original_history_id,r.original_history_id,r.currency_code,
+        CASE WHEN r.cash_effect+r.check_effect>0 THEN r.cash_effect+r.check_effect ELSE 0 END,
+        CASE WHEN r.cash_effect+r.check_effect<0 THEN -(r.cash_effect+r.check_effect) ELSE 0 END,
+        NULL,r.office_id,r.teller_id,r.cashier_id,r.cashier_id,r.cashier_id,0,
+        CASE WHEN r.cash_effect>0 THEN r.cash_effect ELSE NULL END,
+        CASE WHEN r.check_effect>0 THEN r.check_effect ELSE NULL END,NULL,NULL,r.amount,NULL,NULL,NULL,false,r.reversed_by
+      FROM m_transaction_reversal r
     )
     """;
   }

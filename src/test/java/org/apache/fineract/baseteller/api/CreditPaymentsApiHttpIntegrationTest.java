@@ -33,6 +33,7 @@ class CreditPaymentsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
   private static Long checkPaymentTypeId;
   private static Long bankId;
   private static String currency;
+  private static String cashDenomination;
   private static String businessDate;
 
   @BeforeAll
@@ -49,7 +50,7 @@ class CreditPaymentsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         INSERT INTO m_service_payment_denomination
           (identifier,currency_code,value,denomination_type,active)
         VALUES ('web1253-10',%s,10,'BANKNOTE',true)
-        ON CONFLICT (currency_code,identifier) DO UPDATE SET value=10,active=true;
+        ON CONFLICT (currency_code,value) DO UPDATE SET active=true;
 
         INSERT INTO m_base_teller_bank (code,name,active)
         VALUES ('WEB1253-BANK','WEB-1253 Test Bank',true)
@@ -124,6 +125,9 @@ class CreditPaymentsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         NO_CLEAR_USERNAME,
         USERNAME,
         NO_CLEAR_USERNAME);
+    cashDenomination = querySingleValueInDefaultTenant(
+        "SELECT identifier FROM m_service_payment_denomination WHERE currency_code="
+            + sqlLiteral(currency) + " AND value=10");
     bankId = Long.valueOf(querySingleValueInDefaultTenant("SELECT id FROM m_base_teller_bank WHERE code='WEB1253-BANK'"));
     createAndDisburseLoan();
   }
@@ -136,14 +140,17 @@ class CreditPaymentsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
     final String beforeCash = outstanding();
     final String cashBody =
         paymentBody("cash-payment-1", "CASH", 20, cashPaymentTypeId,
-            "\"denominations\":[{\"denominationId\":\"web1253-10\",\"quantity\":2}]");
+            "\"denominations\":[{\"denominationId\":\"" + cashDenomination + "\",\"quantity\":2}]");
     final Response cash = post(PATH, cashBody, 200);
     cash.then().body("status", equalTo("COMPLETED")).body("loanTransactionId", notNullValue())
         .body("cashierTransactionId", notNullValue()).body("principalPortion", notNullValue())
         .body("tenderAmount", equalTo(20.0F));
     final String afterCash = outstanding();
     assertNotEquals(beforeCash, afterCash);
-    assertEquals("1", querySingleValueInDefaultTenant("SELECT COUNT(*) FROM m_cashier_transactions WHERE entity_type='BASE_TELLER_CREDIT_PAYMENT'"));
+    assertEquals("1", querySingleValueInDefaultTenant(
+        "SELECT COUNT(*) FROM m_cashier_transactions ct JOIN m_base_teller_credit_payment p"
+            + " ON ct.entity_type='BASE_TELLER_CREDIT_PAYMENT' AND ct.entity_id=p.id"
+            + " WHERE p.loan_id=" + loanId));
     assertEquals("0.000000", querySingleValueInDefaultTenant(
         "SELECT (SUM(CASE WHEN type_enum=1 THEN amount ELSE 0 END)-"
             + "SUM(CASE WHEN type_enum=2 THEN amount ELSE 0 END))::numeric(19,6)"

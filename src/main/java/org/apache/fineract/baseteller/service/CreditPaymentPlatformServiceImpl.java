@@ -509,7 +509,9 @@ public class CreditPaymentPlatformServiceImpl
             + " c.check_type,c.check_number,c.check_account_number,c.routing_code,c.classification,"
             + " p.client_id,p.loan_id,p.amount,p.currency_code,p.payment_type_id,p.office_id,p.teller_id,p.cashier_id"
             + " FROM m_base_teller_credit_payment_check c JOIN m_base_teller_credit_payment p"
-            + " ON p.id=c.credit_payment_id WHERE c.id=? FOR UPDATE",
+            + " ON p.id=c.credit_payment_id WHERE c.id=? AND NOT EXISTS(SELECT 1 FROM"
+            + " m_transaction_reversal_check r WHERE r.source_type='CREDIT_PAYMENT' AND"
+            + " r.source_check_id=c.id) FOR UPDATE",
         (rs, row) -> new LockedCheck(
             rs.getLong(1), rs.getLong(2), CreditPaymentStatus.valueOf(rs.getString(3)), rs.getString(4), rs.getString(5),
             rs.getString(6), rs.getString(7), rs.getLong(8), rs.getString(9), rs.getString(10), rs.getString(11),

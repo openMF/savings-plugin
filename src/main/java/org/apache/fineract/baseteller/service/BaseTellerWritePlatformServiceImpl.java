@@ -194,7 +194,7 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
               request.idempotencyKey() + ":deposit");
       updateDepositTransaction(
           request.idempotencyKey(),
-          parseLong(deposit.getTransactionId()),
+          firstNonNull(parseLong(deposit.getTransactionId()), deposit.getResourceId()),
           BaseTellerDepositStatus.DEPOSIT_POSTED);
       completeDepositOperation(request.idempotencyKey());
       return readPlatformService.retrieveDepositReceipt(receiptNumber);
@@ -232,7 +232,8 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
     if (!"SAVINGS".equals(returnedCheck.originType())) {
       throw new GeneralPlatformDomainRuleException(
           "error.msg.base.teller.returned.check.loan.settlement.unsupported",
-          "A returned pending loan-payment check did not reduce the loan and cannot be settled as a savings returned check.");
+          "A returned pending loan-payment check did not reduce the loan and cannot be settled as a"
+              + " savings returned check.");
     }
     if (!StringUtils.equalsIgnoreCase(returnedCheck.currencyCode(), request.currencyCode())) {
       throw new GeneralPlatformDomainRuleException(
@@ -333,7 +334,7 @@ public class BaseTellerWritePlatformServiceImpl implements BaseTellerWritePlatfo
             request.idempotencyKey() + ":deposit");
     updateOpeningDeposit(
         request.idempotencyKey(),
-        parseLong(deposit.getTransactionId()),
+        firstNonNull(parseLong(deposit.getTransactionId()), deposit.getResourceId()),
         BaseTellerOpeningStatus.FUNDED);
   }
 
