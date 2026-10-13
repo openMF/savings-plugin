@@ -103,6 +103,8 @@ public class CashManagementPlatformServiceImpl
 
     final CashierData cashier = cashier(request.cashierId(), request.businessDate(), authorizer);
     jdbcTemplate.queryForObject(
+        "SELECT id FROM m_cash_exchange_mutex WHERE id=1 FOR UPDATE", Long.class);
+    jdbcTemplate.queryForObject(
         "SELECT id FROM m_cashiers WHERE id = ? FOR UPDATE", Long.class, request.cashierId());
     if (authorizer.getStaffId() != null && authorizer.getStaffId().equals(cashier.getStaffId())) {
       throw invalid(
@@ -333,6 +335,8 @@ public class CashManagementPlatformServiceImpl
     }
     final CashierData cashier = cashier(request.cashierId(), request.businessDate(), user);
     jdbcTemplate.queryForObject(
+        "SELECT id FROM m_cash_exchange_mutex WHERE id=1 FOR UPDATE", Long.class);
+    jdbcTemplate.queryForObject(
         "SELECT id FROM m_cashiers WHERE id=? FOR UPDATE", Long.class, request.cashierId());
     final CashierClosingContextData position =
         context(request.cashierId(), request.currencyCode(), request.businessDate(), user, true);
@@ -516,8 +520,32 @@ public class CashManagementPlatformServiceImpl
           while (rs.next()) totals.put(rs.getInt("txn_type"), rs.getBigDecimal("total"));
         });
     final BigDecimal opening = totals.getOrDefault(ALLOCATION, BigDecimal.ZERO);
-    final BigDecimal inflows = totals.getOrDefault(CASH_IN, BigDecimal.ZERO);
-    final BigDecimal outflows = totals.getOrDefault(CASH_OUT, BigDecimal.ZERO);
+    final BigDecimal unlinkedSavings =
+        namedJdbcTemplate.queryForObject(
+            "SELECT COALESCE(SUM(amount),0) FROM (SELECT d.amount FROM m_base_teller_deposit d JOIN"
+                + " m_savings_account_transaction st ON st.id=d.savings_transaction_id WHERE"
+                + " d.cashier_id=:cashierId AND d.status='COMPLETED' AND d.funding_type='CASH' AND"
+                + " st.transaction_date=:date AND LOWER(d.currency_code)=:currency AND NOT"
+                + " EXISTS(SELECT 1 FROM m_cashier_transactions ct WHERE"
+                + " ct.entity_type='BASE_TELLER_DEPOSIT' AND ct.entity_id=d.id) UNION ALL SELECT"
+                + " d.amount FROM m_base_teller_savings_opening d JOIN"
+                + " m_savings_account_transaction st ON st.id=d.initial_deposit_transaction_id"
+                + " WHERE d.cashier_id=:cashierId AND d.status='COMPLETED' AND"
+                + " d.funding_type='CASH' AND st.transaction_date=:date AND"
+                + " LOWER(d.currency_code)=:currency AND NOT EXISTS(SELECT 1 FROM"
+                + " m_cashier_transactions ct WHERE ct.entity_type='BASE_TELLER_SAVINGS_OPENING'"
+                + " AND ct.entity_id=d.id)) custody",
+            params,
+            BigDecimal.class);
+    final BigDecimal inflows = totals.getOrDefault(CASH_IN, BigDecimal.ZERO).add(unlinkedSavings);
+    final BigDecimal reversalOutflow =
+        namedJdbcTemplate.queryForObject(
+            "SELECT COALESCE(SUM(-cash_effect),0) FROM m_transaction_reversal WHERE"
+                + " cashier_id=:cashierId AND business_date=:date AND"
+                + " LOWER(currency_code)=:currency AND cash_effect<0",
+            params,
+            BigDecimal.class);
+    final BigDecimal outflows = totals.getOrDefault(CASH_OUT, BigDecimal.ZERO).add(reversalOutflow);
     final BigDecimal settlements = totals.getOrDefault(SETTLEMENT, BigDecimal.ZERO);
     final List<CashierCheckData> eligibleChecks = eligibleChecks(cashierId, currencyCode, user);
     final BigDecimal expected =
@@ -563,12 +591,13 @@ public class CashManagementPlatformServiceImpl
         "SELECT o.id,o.name FROM m_cashiers c JOIN m_tellers t ON t.id=c.teller_id JOIN m_office o"
             + " ON o.id=t.office_id WHERE c.id=?",
         rs -> {
-          if (rs.next()) {
-            cashier.setOfficeId(rs.getLong(1));
-            cashier.setOfficeName(rs.getString(2));
-          }
+          cashier.setOfficeId(rs.getLong(1));
+          cashier.setOfficeName(rs.getString(2));
         },
         id);
+    if (cashier.getOfficeId() == null) {
+      throw invalid("cashier.not.found", "Cashier office was not found.");
+    }
     final Integer allowed =
         namedJdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM m_office WHERE id=:officeId AND hierarchy LIKE :hierarchy",
@@ -613,7 +642,9 @@ public class CashManagementPlatformServiceImpl
             + " d.status='COMPLETED' AND cd.clearing_status='CLEARED' AND o.hierarchy LIKE"
             + " :hierarchy AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation_check rc WHERE"
             + " rc.deposit_check_detail_id=cd.id) AND NOT EXISTS (SELECT 1 FROM"
-            + " m_cash_operation_check oc WHERE oc.deposit_check_detail_id=cd.id)";
+            + " m_cash_operation_check oc WHERE oc.deposit_check_detail_id=cd.id) AND NOT"
+            + " EXISTS(SELECT 1 FROM m_transaction_reversal_check r WHERE"
+            + " r.source_type='SAVINGS_DEPOSIT' AND r.source_check_id=cd.id)";
     if (ids != null) {
       sql += " AND cd.id IN (:ids)";
       params.put("ids", ids);

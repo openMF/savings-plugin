@@ -278,9 +278,8 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
     return namedParameterJdbcTemplate.query(
         "SELECT sa.id AS account_id, sa.account_no, sa.product_id, sp.name AS product_name,"
             + " sa.currency_code, sa.status_enum AS status,"
-            + " COALESCE(sas.account_balance_derived, 0) AS balance"
+            + " COALESCE(sa.account_balance_derived, 0) AS balance"
             + " FROM m_savings_account sa JOIN m_savings_product sp ON sp.id = sa.product_id"
-            + " LEFT JOIN m_savings_account_summary sas ON sas.savings_account_id = sa.id"
             + " WHERE sa.client_id = :clientId ORDER BY sa.id",
         params,
         new AccountMapper());
@@ -379,14 +378,13 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         + " d.client_id, c.display_name AS customer_name, d.savings_account_id, sa.account_no,"
         + " sa.product_id AS savings_product_id, sp.name AS product_name,"
         + " d.savings_transaction_id, d.funding_type, d.amount, d.currency_code,"
-        + " COALESCE(sas.account_balance_derived, 0) AS resulting_balance,"
+        + " COALESCE(sa.account_balance_derived, 0) AS resulting_balance,"
         + " d.teller_id, d.cashier_id, d.operator_id, au.username AS operator_name,"
         + " d.office_id, off.name AS office_name, d.created_on_utc, d.completed_on_utc"
         + " FROM m_base_teller_deposit d"
         + " JOIN m_client c ON c.id = d.client_id"
         + " JOIN m_savings_account sa ON sa.id = d.savings_account_id"
         + " LEFT JOIN m_savings_product sp ON sp.id = sa.product_id"
-        + " LEFT JOIN m_savings_account_summary sas ON sas.savings_account_id = sa.id"
         + " LEFT JOIN m_appuser au ON au.id = d.operator_id"
         + " LEFT JOIN m_office off ON off.id = d.office_id";
   }
@@ -396,7 +394,7 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         + " o.client_id, c.display_name AS customer_name, o.savings_account_id, sa.account_no,"
         + " o.savings_product_id, sp.name AS product_name, o.initial_deposit_transaction_id,"
         + " o.funding_type, o.amount, o.currency_code,"
-        + " COALESCE(sas.account_balance_derived, 0) AS resulting_balance,"
+        + " COALESCE(sa.account_balance_derived, 0) AS resulting_balance,"
         + " o.teller_id, o.cashier_id, o.operator_id, au.username AS operator_name,"
         + " o.office_id, off.name AS office_name, o.created_on_utc, o.completed_on_utc,"
         + " o.check_type, o.check_bank, o.check_number, o.check_account_number,"
@@ -405,7 +403,6 @@ public class BaseTellerReadPlatformServiceImpl implements BaseTellerReadPlatform
         + " JOIN m_client c ON c.id = o.client_id"
         + " LEFT JOIN m_savings_account sa ON sa.id = o.savings_account_id"
         + " LEFT JOIN m_savings_product sp ON sp.id = o.savings_product_id"
-        + " LEFT JOIN m_savings_account_summary sas ON sas.savings_account_id = sa.id"
         + " LEFT JOIN m_appuser au ON au.id = o.operator_id"
         + " LEFT JOIN m_office off ON off.id = o.office_id";
   }

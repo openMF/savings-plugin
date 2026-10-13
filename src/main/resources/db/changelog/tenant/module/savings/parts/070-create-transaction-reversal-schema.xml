@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+ <changeSet author="fineract" id="ss-070-transaction-reversal">
+  <createTable tableName="m_transaction_reversal_authorization">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="token_hash" type="varchar(64)"><constraints nullable="false"/></column>
+   <column name="history_id" type="varchar(120)"><constraints nullable="false"/></column>
+   <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="actor_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="authorized_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="authorized_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+   <column name="expires_at" type="timestamp"><constraints nullable="false"/></column>
+   <column name="consumed_at" type="timestamp"><constraints nullable="true"/></column>
+  </createTable>
+  <createTable tableName="m_transaction_reversal">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="idempotency_key" type="varchar(80)"><constraints nullable="false"/></column>
+   <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+   <column name="original_history_id" type="varchar(120)"><constraints nullable="false"/></column>
+   <column name="source_type" type="varchar(50)"><constraints nullable="false"/></column>
+   <column name="source_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="teller_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+   <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="cash_effect" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="check_effect" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="authorization_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="authorized_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="authorized_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+   <column name="reversed_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="reversed_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+   <column name="source_reversal_reference" type="varchar(200)"><constraints nullable="true"/></column>
+   <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+  </createTable>
+  <createTable tableName="m_transaction_reversal_denomination">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="reversal_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="direction" type="varchar(3)"><constraints nullable="false"/></column>
+   <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+   <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+  </createTable>
+  <createTable tableName="m_transaction_reversal_check">
+   <column name="id" type="bigint" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+   <column name="reversal_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="source_type" type="varchar(50)"><constraints nullable="false"/></column>
+   <column name="source_check_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="bank_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="check_number" type="varchar(100)"><constraints nullable="false"/></column>
+   <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+  </createTable>
+  <addUniqueConstraint tableName="m_transaction_reversal_authorization" columnNames="token_hash" constraintName="uk_reversal_token"/>
+  <addUniqueConstraint tableName="m_transaction_reversal" columnNames="idempotency_key" constraintName="uk_reversal_idempotency"/>
+  <addUniqueConstraint tableName="m_transaction_reversal" columnNames="original_history_id" constraintName="uk_reversal_history"/>
+  <addUniqueConstraint tableName="m_transaction_reversal" columnNames="source_type,source_id" constraintName="uk_reversal_original"/>
+  <addUniqueConstraint tableName="m_transaction_reversal" columnNames="authorization_id" constraintName="uk_reversal_authorization"/>
+  <addUniqueConstraint tableName="m_transaction_reversal_denomination" columnNames="reversal_id,direction,denomination_identifier" constraintName="uk_reversal_denomination"/>
+  <addUniqueConstraint tableName="m_transaction_reversal_check" columnNames="source_type,source_check_id" constraintName="uk_reversal_check"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_authorization" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_reversal_authorization_cashier_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_authorization" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_reversal_authorization_office_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_authorization" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_reversal_authorization_actor_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_authorization" baseColumnNames="authorized_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_reversal_authorization_authorized_by"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_reversal__cashier_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_reversal__office_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="teller_id" referencedTableName="m_tellers" referencedColumnNames="id" constraintName="fk_reversal__teller_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="authorized_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_reversal__authorized_by"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="reversed_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_reversal__reversed_by"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal" baseColumnNames="authorization_id" referencedTableName="m_transaction_reversal_authorization" referencedColumnNames="id" constraintName="fk_reversal__authorization_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_denomination" baseColumnNames="reversal_id" referencedTableName="m_transaction_reversal" referencedColumnNames="id" constraintName="fk_reversal_denomination_reversal_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_check" baseColumnNames="reversal_id" referencedTableName="m_transaction_reversal" referencedColumnNames="id" constraintName="fk_reversal_check_reversal_id"/>
+  <addForeignKeyConstraint baseTableName="m_transaction_reversal_check" baseColumnNames="bank_id" referencedTableName="m_base_teller_bank" referencedColumnNames="id" constraintName="fk_reversal_check_bank_id"/>
+  <createIndex tableName="m_transaction_reversal" indexName="idx_reversal_drawer"><column name="cashier_id"/><column name="business_date"/><column name="currency_code"/></createIndex>
+  <createIndex tableName="m_transaction_reversal" indexName="idx_reversal_history"><column name="office_id"/><column name="business_date"/><column name="reversed_at"/></createIndex>
+  <sql>
+   ALTER TABLE m_transaction_reversal ADD CONSTRAINT ck_reversal_completed CHECK(status='COMPLETED' AND amount&gt;0);
+   ALTER TABLE m_transaction_reversal_denomination ADD CONSTRAINT ck_reversal_denomination CHECK(direction IN ('IN','OUT') AND quantity&gt;0 AND denomination_value&gt;0);
+   ALTER TABLE m_transaction_reversal_check ADD CONSTRAINT ck_reversal_check CHECK(amount&gt;0);
+  </sql>
+ </changeSet>
+ <changeSet author="fineract" id="ss-070-transaction-reversal-permissions">
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_BASE_TELLER_TRANSACTION_REVERSAL"/><column name="entity_name" value="BASE_TELLER_TRANSACTION_REVERSAL"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_BASE_TELLER_TRANSACTION_REVERSAL"/><column name="entity_name" value="BASE_TELLER_TRANSACTION_REVERSAL"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="AUTHORIZE_BASE_TELLER_TRANSACTION_REVERSAL"/><column name="entity_name" value="BASE_TELLER_TRANSACTION_REVERSAL"/><column name="action_name" value="AUTHORIZE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+ </changeSet>
+ <changeSet author="fineract" id="ss-070-cash-exchange-reversed-state">
+  <sql>
+    ALTER TABLE m_cash_exchange DROP CONSTRAINT ck_cash_exchange_completed;
+    ALTER TABLE m_cash_exchange ADD CONSTRAINT ck_cash_exchange_status CHECK(status IN ('COMPLETED','REVERSED'));
+  </sql>
+ </changeSet>
+</databaseChangeLog>

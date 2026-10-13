@@ -79,4 +79,5 @@
   <include file="parts/067-create-cash-exchange-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/068-create-end-of-day-closing-schema.xml" relativeToChangelogFile="true"/>
     <include file="parts/069-separate-closing-settlement.xml" relativeToChangelogFile="true"/>
+  <include file="parts/070-create-transaction-reversal-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

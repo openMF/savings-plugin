@@ -352,7 +352,12 @@ public class ServicePaymentPlatformServiceImpl
     final Collection<TellerData> tellers = tellerService.getTellers(user.getOffice().getId());
     for (TellerData teller : tellers) {
       for (CashierData cashier : tellerService.getCashiersForTeller(teller.getId(), date, date)) {
-        if (user.getStaffId().equals(cashier.getStaffId())) return cashier;
+        if (user.getStaffId().equals(cashier.getStaffId())) {
+          // Native cashier lists can omit office fields; the containing teller is authoritative.
+          cashier.setOfficeId(teller.getOfficeId());
+          cashier.setOfficeName(teller.getOfficeName());
+          return cashier;
+        }
       }
     }
     throw invalid("cashier.not.allocated", "Authenticated user has no active cashier allocation.");
@@ -425,8 +430,8 @@ public class ServicePaymentPlatformServiceImpl
       final String receipt) {
     jdbcTemplate.update(
         "INSERT INTO m_cashier_transactions"
-            + " (cashier_id,txn_type,txn_date,txn_amount,txn_note,entity_type,entity_id,currency_code)"
-            + " VALUES (?,?,?,?,?,?,?,?)",
+            + " (cashier_id,txn_type,txn_date,txn_amount,txn_note,entity_type,entity_id,currency_code,created_date)"
+            + " VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
         cashier.getId(),
         CASH_IN,
         date,

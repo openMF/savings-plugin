@@ -40,7 +40,7 @@ public class CashExchangeInventory {
               "m_base_teller_deposit_cash_detail",
               "deposit_id",
               "(SELECT st.transaction_date FROM m_savings_account_transaction st WHERE"
-                  + " st.id=h.savings_transaction_id AND NOT st.is_reversed)",
+                  + " st.id=h.savings_transaction_id )",
               "h.amount",
               "h.cashier_id=:cashier AND h.funding_type='CASH'",
               1,
@@ -50,7 +50,7 @@ public class CashExchangeInventory {
               "m_base_teller_savings_opening_cash_detail",
               "opening_id",
               "(SELECT st.transaction_date FROM m_savings_account_transaction st WHERE"
-                  + " st.id=h.initial_deposit_transaction_id AND NOT st.is_reversed)",
+                  + " st.id=h.initial_deposit_transaction_id )",
               "h.amount",
               "h.cashier_id=:cashier AND h.funding_type='CASH'",
               1,
@@ -139,9 +139,18 @@ public class CashExchangeInventory {
   }
 
   private static String sql() {
-    String headers = String.join(" UNION ALL ", SOURCES.stream().map(Source::headerSql).toList());
+    String headers =
+        String.join(" UNION ALL ", SOURCES.stream().map(Source::headerSql).toList())
+            + " UNION ALL SELECT CONCAT('REVERSAL:',h.id),ABS(h.cash_effect),false FROM"
+            + " m_transaction_reversal h WHERE h.cashier_id=:cashier AND h.business_date=:date AND"
+            + " h.currency_code=:currency AND h.source_type<>'CASH_EXCHANGE'";
     String movements =
-        String.join(" UNION ALL ", SOURCES.stream().map(Source::movementSql).toList());
+        String.join(" UNION ALL ", SOURCES.stream().map(Source::movementSql).toList())
+            + " UNION ALL SELECT"
+            + " CONCAT('REVERSAL:',h.id),d.denomination_identifier,d.denomination_value,d.quantity,CASE"
+            + " WHEN d.direction='IN' THEN 1 ELSE -1 END FROM m_transaction_reversal h JOIN"
+            + " m_transaction_reversal_denomination d ON d.reversal_id=h.id WHERE"
+            + " h.cashier_id=:cashier AND h.business_date=:date AND h.currency_code=:currency";
     return "WITH headers AS ("
         + headers
         + "), movements AS ("
@@ -185,11 +194,12 @@ SELECT COALESCE(SUM(amount),0) FROM (
               SELECT CASE WHEN ct.txn_type IN (101,103) THEN ct.txn_amount WHEN ct.txn_type IN (102,104) THEN -ct.txn_amount ELSE 0 END amount
               FROM m_cashier_transactions ct WHERE ct.cashier_id=:cashier AND ct.txn_date=:date AND UPPER(ct.currency_code)=:currency
               UNION ALL SELECT d.amount FROM m_base_teller_deposit d JOIN m_savings_account_transaction st ON st.id=d.savings_transaction_id
-              WHERE d.cashier_id=:cashier AND d.status='COMPLETED' AND d.funding_type='CASH' AND st.transaction_date=:date AND NOT st.is_reversed AND UPPER(d.currency_code)=:currency
+              WHERE d.cashier_id=:cashier AND d.status='COMPLETED' AND d.funding_type='CASH' AND st.transaction_date=:date AND (NOT st.is_reversed OR EXISTS(SELECT 1 FROM m_transaction_reversal r WHERE r.original_history_id=CONCAT('SAVINGS_DEPOSIT:',d.id))) AND UPPER(d.currency_code)=:currency
                 AND NOT EXISTS(SELECT 1 FROM m_cashier_transactions ct WHERE ct.entity_type='BASE_TELLER_DEPOSIT' AND ct.entity_id=d.id)
               UNION ALL SELECT d.amount FROM m_base_teller_savings_opening d JOIN m_savings_account_transaction st ON st.id=d.initial_deposit_transaction_id
               WHERE d.cashier_id=:cashier AND d.status='COMPLETED' AND d.funding_type='CASH' AND st.transaction_date=:date AND NOT st.is_reversed AND UPPER(d.currency_code)=:currency
                 AND NOT EXISTS(SELECT 1 FROM m_cashier_transactions ct WHERE ct.entity_type='BASE_TELLER_SAVINGS_OPENING' AND ct.entity_id=d.id)
+              UNION ALL SELECT r.cash_effect FROM m_transaction_reversal r WHERE r.cashier_id=:cashier AND r.business_date=:date AND r.currency_code=:currency
             ) movements
 """;
 
@@ -220,7 +230,11 @@ SELECT COALESCE(SUM(amount),0) FROM (
     }
 
     private String where() {
-      return " WHERE h.status='COMPLETED' AND "
+      return " WHERE "
+          + ("m_cash_exchange".equals(header)
+              ? "h.status IN ('COMPLETED','REVERSED')"
+              : "h.status='COMPLETED'")
+          + " AND "
           + day
           + "=:date AND UPPER(h.currency_code)=:currency AND "
           + scope;
