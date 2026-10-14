@@ -637,9 +637,12 @@ public class CashManagementPlatformServiceImpl
     String sql =
         "SELECT cd.id,cd.check_bank,cd.check_number,cd.amount FROM"
             + " m_base_teller_deposit_check_detail cd JOIN m_base_teller_deposit d ON"
-            + " d.id=cd.deposit_id JOIN m_office o ON o.id=d.office_id WHERE"
-            + " d.cashier_id=:cashierId AND LOWER(d.currency_code)=:currency AND"
-            + " d.status='COMPLETED' AND cd.clearing_status='CLEARED' AND o.hierarchy LIKE"
+            + " d.id=cd.deposit_id JOIN m_office o ON o.id=d.office_id"
+            + " LEFT JOIN m_cash_drawer_pickup_check pc ON pc.source_type='DEPOSIT' AND pc.source_id=cd.id WHERE"
+            + " COALESCE(pc.destination_cashier_id,d.cashier_id)=:cashierId AND LOWER(d.currency_code)=:currency AND"
+            + " ((d.status='COMPLETED' AND cd.clearing_status='CLEARED') OR"
+            + " (pc.id IS NOT NULL AND d.status IN ('COMPLETED','PENDING_COLLECTION')))"
+            + " AND o.hierarchy LIKE"
             + " :hierarchy AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation_check rc WHERE"
             + " rc.deposit_check_detail_id=cd.id) AND NOT EXISTS (SELECT 1 FROM"
             + " m_cash_operation_check oc WHERE oc.deposit_check_detail_id=cd.id) AND NOT"
@@ -649,7 +652,7 @@ public class CashManagementPlatformServiceImpl
       sql += " AND cd.id IN (:ids)";
       params.put("ids", ids);
     }
-    sql += " ORDER BY cd.id" + (lock ? " FOR UPDATE" : "");
+    sql += " ORDER BY cd.id" + (lock ? " FOR UPDATE OF cd,d" : "");
     final List<CashierCheckData> result =
         namedJdbcTemplate.query(
             sql,

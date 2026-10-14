@@ -234,15 +234,15 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
               + " initial_balance,COALESCE(SUM(CASE WHEN txn_type=:cashIn THEN txn_amount ELSE 0"
               + " END),0) inflows,COALESCE(SUM(CASE WHEN txn_type=:cashOut OR (txn_type=:settlement"
               + " AND (EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
-              + " a.source_cashier_transaction_id=ct.id) OR EXISTS (SELECT 1 FROM"
+              + " a.source_cashier_transaction_id=ct.id) OR EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id) OR EXISTS (SELECT 1 FROM"
               + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id))) THEN"
               + " txn_amount ELSE 0 END),0) outflows,COALESCE(SUM(CASE WHEN txn_type=:settlement"
               + " AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
-              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
               + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) THEN"
               + " txn_amount ELSE 0 END),0) cutoffs,MAX(CASE WHEN txn_type=:settlement AND NOT"
               + " EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
-              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+              + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
               + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) THEN"
               + " created_date END) last_cutoff_at FROM m_cashier_transactions ct WHERE cashier_id"
               + " IN (:cashierIds) AND txn_date=:date"
@@ -378,8 +378,37 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final Map<String, Object> params = filterParams(scope.tellerIds(), date, currency);
       aggregateAcceptedChecks(params, date, currency, values);
       aggregateRemovedChecks(params, date, currency, values);
+      aggregatePickedUpChecks(params, values);
     }
     aggregateVaultAndTransitChecks(scope, date, currency, values);
+  }
+
+  private void aggregatePickedUpChecks(
+      final Map<String, Object> params, final Map<InventoryKey, Amounts> values) {
+    jdbcTemplate.query(
+        "SELECT cashier_id,currency_code,SUM(CASE WHEN business_date<:date THEN amount ELSE 0 END) prior,"
+            + " SUM(CASE WHEN business_date=:date THEN amount ELSE 0 END) current_amount,direction FROM ("
+            + " SELECT pc.source_cashier_id cashier_id,UPPER(c.currency_code) currency_code,p.business_date,pc.amount,'OUT' direction"
+            + " FROM m_cash_drawer_pickup_check pc JOIN m_cash_drawer_pickup_currency c ON c.id=pc.pickup_currency_id"
+            + " JOIN m_cash_drawer_pickup p ON p.id=c.pickup_id WHERE p.status='COMPLETED'"
+            + " UNION ALL SELECT pc.destination_cashier_id,UPPER(c.currency_code),p.business_date,pc.amount,'IN'"
+            + " FROM m_cash_drawer_pickup_check pc JOIN m_cash_drawer_pickup_currency c ON c.id=pc.pickup_currency_id"
+            + " JOIN m_cash_drawer_pickup p ON p.id=c.pickup_id WHERE p.status='COMPLETED') movements"
+            + " WHERE cashier_id IN (:cashierIds) AND business_date<=:date"
+
+            + " GROUP BY cashier_id,currency_code,direction",
+        params,
+        rs -> {
+          Amounts amount = amount(values, tellerKey(rs.getLong("cashier_id")),
+              CashInventoryType.CHECK, rs.getString("currency_code"));
+          if ("IN".equals(rs.getString("direction"))) {
+            amount.initial = amount.initial.add(rs.getBigDecimal("prior"));
+            amount.inflows = amount.inflows.add(rs.getBigDecimal("current_amount"));
+          } else {
+            amount.initial = amount.initial.subtract(rs.getBigDecimal("prior"));
+            amount.outflows = amount.outflows.add(rs.getBigDecimal("current_amount"));
+          }
+        });
   }
 
   private void aggregateAcceptedChecks(
@@ -425,28 +454,35 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
       final String currency,
       final Map<InventoryKey, Amounts> values) {
     final String removals =
-        "SELECT d.cashier_id,d.currency_code,oc.amount,o.business_date removed_date,'OUTFLOW'"
+        "SELECT COALESCE(pc.destination_cashier_id,d.cashier_id) cashier_id,d.currency_code,oc.amount,o.business_date removed_date,'OUTFLOW'"
             + " category,o.completed_on_utc removed_at FROM m_cash_operation_check oc JOIN"
             + " m_cash_operation_transaction o ON o.id=oc.operation_id JOIN"
             + " m_base_teller_deposit_check_detail cd ON cd.id=oc.deposit_check_detail_id JOIN"
-            + " m_base_teller_deposit d ON d.id=cd.deposit_id WHERE d.cashier_id IN (:cashierIds)"
+            + " m_base_teller_deposit d ON d.id=cd.deposit_id LEFT JOIN m_cash_drawer_pickup_check pc"
+            + " ON pc.source_type='DEPOSIT' AND pc.source_id=cd.id"
+            + " WHERE COALESCE(pc.destination_cashier_id,d.cashier_id) IN (:cashierIds)"
             + " AND o.status='COMPLETED'"
             + currencyClauseFor("d", currency)
             + " UNION ALL SELECT"
-            + " d.cashier_id,d.currency_code,rc.amount,r.business_date,'CUTOFF',r.completed_on_utc"
+            + " COALESCE(pc.destination_cashier_id,d.cashier_id),d.currency_code,rc.amount,r.business_date,'CUTOFF',r.completed_on_utc"
             + " FROM m_cashier_reconciliation_check rc JOIN m_cashier_reconciliation r ON"
             + " r.id=rc.reconciliation_id JOIN m_base_teller_deposit_check_detail cd ON"
             + " cd.id=rc.deposit_check_detail_id JOIN m_base_teller_deposit d ON d.id=cd.deposit_id"
-            + " WHERE d.cashier_id IN (:cashierIds) AND r.status='COMPLETED'"
+            + " LEFT JOIN m_cash_drawer_pickup_check pc ON pc.source_type='DEPOSIT' AND pc.source_id=cd.id"
+            + " WHERE COALESCE(pc.destination_cashier_id,d.cashier_id) IN (:cashierIds) AND r.status='COMPLETED'"
             + currencyClauseFor("d", currency)
             + " UNION ALL SELECT"
-            + " rc.cashier_id,rc.currency_code,rc.amount,rc.returned_on_date,'OUTFLOW',NULL FROM"
-            + " m_base_teller_returned_check rc WHERE rc.cashier_id IN (:cashierIds) AND"
+            + " COALESCE(pc.destination_cashier_id,rc.cashier_id),rc.currency_code,rc.amount,rc.returned_on_date,'OUTFLOW',NULL FROM"
+            + " m_base_teller_returned_check rc LEFT JOIN m_cash_drawer_pickup_check pc"
+            + " ON pc.source_type='DEPOSIT' AND pc.source_id=rc.deposit_check_detail_id"
+            + " WHERE COALESCE(pc.destination_cashier_id,rc.cashier_id) IN (:cashierIds) AND"
             + " rc.deposit_check_detail_id IS NOT NULL AND rc.status IN ('RETURNED','SETTLED')"
             + currencyClauseFor("rc", currency)
-            + " UNION ALL SELECT p.cashier_id,p.currency_code,p.amount,CAST(c.returned_on_utc AS"
+            + " UNION ALL SELECT COALESCE(pc.destination_cashier_id,p.cashier_id),p.currency_code,p.amount,CAST(c.returned_on_utc AS"
             + " date),'OUTFLOW',c.returned_on_utc FROM m_base_teller_credit_payment_check c JOIN"
-            + " m_base_teller_credit_payment p ON p.id=c.credit_payment_id WHERE p.cashier_id IN"
+            + " m_base_teller_credit_payment p ON p.id=c.credit_payment_id"
+            + " LEFT JOIN m_cash_drawer_pickup_check pc ON pc.source_type='CREDIT' AND pc.source_id=c.id"
+            + " WHERE COALESCE(pc.destination_cashier_id,p.cashier_id) IN"
             + " (:cashierIds) AND c.status='RETURNED'"
             + currencyClauseFor("p", currency)
             + " UNION ALL SELECT"
@@ -553,7 +589,7 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
             + " AND ct.txn_date=:date AND ct.txn_type=:settlement"
             + currencyClauseFor("ct", currency)
             + " AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE"
-            + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
+            + " a.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id) AND NOT EXISTS (SELECT 1 FROM"
             + " m_cash_operation_transaction op WHERE op.cashier_transaction_id=ct.id) AND NOT"
             + " EXISTS (SELECT 1 FROM m_cashier_transactions newer WHERE"
             + " newer.cashier_id=ct.cashier_id AND newer.txn_date=ct.txn_date AND"

@@ -78,6 +78,7 @@ public class TransactionHistoryReadPlatformServiceImpl
   private final CreditPaymentReadPlatformService creditPaymentReadPlatformService;
   private final CashManagementReadPlatformService cashManagementReadPlatformService;
   private final CashExchangePlatformService cashExchangePlatformService;
+  private final CashDrawerPickupPlatformService cashDrawerPickupPlatformService;
 
   @Override
   public TransactionHistoryContextData context() {
@@ -143,6 +144,17 @@ public class TransactionHistoryReadPlatformServiceImpl
   public TransactionHistoryDenominationsData denominations(final String historyId) {
     final HistoryKey key = historyKey(historyId);
     detail(historyId);
+    if ("CASH_DRAWER_PICKUP".equals(key.sourceType())) {
+      detail(historyId);
+      List<TransactionHistoryDenominationLineData> lines = jdbcTemplate.query(
+          "SELECT c.currency_code,d.denomination_identifier,d.denomination_value,d.quantity,d.line_total,d.denomination_type"
+              + " FROM m_cash_drawer_pickup_cash d JOIN m_cash_drawer_pickup_currency c ON c.id=d.pickup_currency_id"
+              + " WHERE c.pickup_id=:id ORDER BY c.currency_code,d.denomination_value DESC",
+          Map.of("id", key.sourceId()),
+          (rs, row) -> new TransactionHistoryDenominationLineData(rs.getString(1), rs.getString(2),
+              rs.getBigDecimal(3), rs.getLong(4), rs.getBigDecimal(5), rs.getString(6)));
+      return new TransactionHistoryDenominationsData(historyId, true, lines, false, List.of());
+    }
     if ("CASH_EXCHANGE".equals(key.sourceType())) {
       return new TransactionHistoryDenominationsData(
           historyId,
@@ -205,6 +217,7 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CASH_ALLOCATION" -> cashAllocationReadPlatformService.reprint(key.sourceId());
           case "CASHIER_CLOSING" -> cashManagementReadPlatformService.closing(key.sourceId());
           case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
+          case "CASH_DRAWER_PICKUP" -> cashDrawerPickupPlatformService.receipt(key.sourceId());
           default ->
               throw invalid(
                   "receipt.unsupported",
@@ -844,6 +857,19 @@ public class TransactionHistoryReadPlatformServiceImpl
         NULL,NULL,NULL,true,a.initiated_by
       FROM m_cash_allocation a
       UNION ALL
+      SELECT 'CASH_DRAWER_PICKUP',p.id,p.completed_at,p.business_date,
+        'CASH_DRAWER_PICKUP','INTERNAL_MOVEMENT','CASH_DRAWER_PICKUP',p.status,p.reference,p.reference,
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id)=1
+          THEN (SELECT MAX(c.currency_code) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id) ELSE NULL END,
+        CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),NULL,p.office_id,NULL,p.source_cashier_id,
+        p.source_cashier_id,p.destination_cashier_id,CAST(0 AS decimal(19,6)),
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id)=1
+          THEN (SELECT SUM(c.cash_total) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id) ELSE NULL END,
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id)=1
+          THEN (SELECT SUM(c.check_total) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id) ELSE NULL END,
+        NULL,NULL,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,true,p.created_by
+      FROM m_cash_drawer_pickup p WHERE p.status='COMPLETED'
+      UNION ALL
       SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
         'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
         e.currency_code,CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),
@@ -884,6 +910,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         AND NOT EXISTS (SELECT 1 FROM m_base_teller_credit_payment p WHERE p.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_service_payment p WHERE p.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id OR p.destination_cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation r WHERE r.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction x WHERE x.cashier_transaction_id=ct.id)
     ), history AS (

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+ <changeSet author="fineract" id="ss-071-cash-drawer-pickup">
+  <createTable tableName="m_cash_drawer_pickup">
+   <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="idempotency_key" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_drawer_pickup_key"/></column>
+   <column name="request_fingerprint" type="varchar(64)"><constraints nullable="false"/></column>
+   <column name="reference" type="varchar(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_cash_drawer_pickup_reference"/></column>
+   <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="office_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="source_cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="destination_cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="authorized_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="authorized_at" type="timestamp"><constraints nullable="false"/></column>
+   <column name="created_by" type="bigint"><constraints nullable="false"/></column>
+   <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+   <column name="completed_at" type="timestamp"/>
+   <column name="snapshot" type="text"><constraints nullable="false"/></column>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_pickup_office"/>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup" baseColumnNames="source_cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_pickup_source"/>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup" baseColumnNames="destination_cashier_id" referencedTableName="m_cashiers" referencedColumnNames="id" constraintName="fk_pickup_destination"/>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup" baseColumnNames="authorized_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_pickup_authorizer"/>
+  <createIndex tableName="m_cash_drawer_pickup" indexName="idx_pickup_office_date"><column name="office_id"/><column name="business_date"/></createIndex>
+  <createTable tableName="m_cash_drawer_pickup_currency">
+   <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="pickup_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="currency_code" type="varchar(3)"><constraints nullable="false"/></column>
+   <column name="business_date" type="date"><constraints nullable="false"/></column>
+   <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+   <column name="source_cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="destination_cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="cash_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="check_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="source_cashier_transaction_id" type="bigint"/>
+   <column name="destination_cashier_transaction_id" type="bigint"/>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup_currency" baseColumnNames="pickup_id" referencedTableName="m_cash_drawer_pickup" referencedColumnNames="id" constraintName="fk_pickup_currency" onDelete="CASCADE"/>
+  <addUniqueConstraint tableName="m_cash_drawer_pickup_currency" columnNames="pickup_id,currency_code" constraintName="uk_pickup_currency"/>
+  <createTable tableName="m_cash_drawer_pickup_cash">
+   <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="pickup_currency_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="denomination_identifier" type="varchar(100)"><constraints nullable="false"/></column>
+   <column name="denomination_type" type="varchar(10)"><constraints nullable="false"/></column>
+   <column name="denomination_value" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="quantity" type="bigint"><constraints nullable="false"/></column>
+   <column name="line_total" type="decimal(19,6)"><constraints nullable="false"/></column>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup_cash" baseColumnNames="pickup_currency_id" referencedTableName="m_cash_drawer_pickup_currency" referencedColumnNames="id" constraintName="fk_pickup_cash_currency" onDelete="CASCADE"/>
+  <addUniqueConstraint tableName="m_cash_drawer_pickup_cash" columnNames="pickup_currency_id,denomination_identifier" constraintName="uk_pickup_cash_denomination"/>
+  <createTable tableName="m_cash_drawer_pickup_check">
+   <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+   <column name="pickup_currency_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="source_type" type="varchar(10)"><constraints nullable="false"/></column>
+   <column name="source_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="amount" type="decimal(19,6)"><constraints nullable="false"/></column>
+   <column name="source_cashier_id" type="bigint"><constraints nullable="false"/></column>
+   <column name="destination_cashier_id" type="bigint"><constraints nullable="false"/></column>
+  </createTable>
+  <addForeignKeyConstraint baseTableName="m_cash_drawer_pickup_check" baseColumnNames="pickup_currency_id" referencedTableName="m_cash_drawer_pickup_currency" referencedColumnNames="id" constraintName="fk_pickup_check_currency" onDelete="CASCADE"/>
+  <addUniqueConstraint tableName="m_cash_drawer_pickup_check" columnNames="source_type,source_id" constraintName="uk_pickup_check_custody"/>
+  <sql>ALTER TABLE m_cash_drawer_pickup_cash ADD CONSTRAINT ck_pickup_cash_positive CHECK (quantity &gt; 0 AND denomination_value &gt; 0 AND line_total = quantity * denomination_value); ALTER TABLE m_cash_drawer_pickup_check ADD CONSTRAINT ck_pickup_check_positive CHECK (amount &gt; 0 AND source_cashier_id &lt;&gt; destination_cashier_id); ALTER TABLE m_cash_drawer_pickup_currency ADD CONSTRAINT ck_pickup_totals CHECK (cash_total &gt;= 0 AND check_total &gt;= 0);</sql>
+ </changeSet>
+ <changeSet author="fineract" id="ss-071-cash-drawer-pickup-permissions">
+  <sql>
+   INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+   SELECT 'portfolio', x.code, 'BASE_TELLER_CASH_DRAWER_PICKUP', x.action, false
+   FROM (VALUES ('READ_BASE_TELLER_CASH_DRAWER_PICKUP','READ'),('CREATE_BASE_TELLER_CASH_DRAWER_PICKUP','CREATE'),('REPRINT_BASE_TELLER_CASH_DRAWER_PICKUP','REPRINT'),('AUTHORIZE_BASE_TELLER_CASH_DRAWER_PICKUP','AUTHORIZE')) x(code,action)
+   WHERE NOT EXISTS (SELECT 1 FROM m_permission p WHERE p.code=x.code);
+  </sql>
+ </changeSet>
+</databaseChangeLog>

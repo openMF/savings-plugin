@@ -124,6 +124,32 @@ class CashInventoryReadPlatformServiceIntegrationTest {
   }
 
   @Test
+  void pickupCashAndCheckCustodyConserveBranchValue() {
+    cashierTransaction(1, 10, 101, "500.00", "MXN");
+    cashierTransaction(2, 11, 101, "100.00", "MXN");
+    jdbc.update("INSERT INTO m_base_teller_deposit(id,cashier_id,currency_code,funding_type,status,amount,created_on_utc) VALUES(1,10,'MXN','CHECK','COMPLETED',20,CURRENT_TIMESTAMP)");
+    jdbc.update("INSERT INTO m_base_teller_deposit_check_detail(id,deposit_id,amount) VALUES(1,1,20)");
+    var before = service.inventory(null, null, "MXN", false);
+    assertEquals(new BigDecimal("500.00"),row(before,"TELLER:10").balance());
+    jdbc.update("INSERT INTO m_cash_drawer_pickup VALUES(1,?,'COMPLETED')",date);
+    jdbc.update("INSERT INTO m_cash_drawer_pickup_currency VALUES(1,1,'MXN',3,4)");
+    jdbc.update("INSERT INTO m_cash_drawer_pickup_check VALUES(1,1,'DEPOSIT',1,10,11,20)");
+    cashierTransaction(3,10,102,"200.00","MXN");
+    cashierTransaction(4,11,101,"200.00","MXN");
+    var after = service.inventory(null,null,"MXN",false);
+    var sourceCash = after.stream().filter(x -> x.custodianKey().equals("TELLER:10") && x.inventoryType()==CashInventoryType.CASH).findFirst().orElseThrow();
+    var destinationCash = after.stream().filter(x -> x.custodianKey().equals("TELLER:11") && x.inventoryType()==CashInventoryType.CASH).findFirst().orElseThrow();
+    var sourceCheck = after.stream().filter(x -> x.custodianKey().equals("TELLER:10") && x.inventoryType()==CashInventoryType.CHECK).findFirst().orElseThrow();
+    var destinationCheck = after.stream().filter(x -> x.custodianKey().equals("TELLER:11") && x.inventoryType()==CashInventoryType.CHECK).findFirst().orElseThrow();
+    assertEquals(new BigDecimal("300.00"),sourceCash.balance());
+    assertEquals(new BigDecimal("300.00"),destinationCash.balance());
+    assertEquals(new BigDecimal("0.00"),sourceCheck.balance());
+    assertEquals(new BigDecimal("20.00"),destinationCheck.balance());
+    assertEquals(new BigDecimal("620.00"),sourceCash.balance().add(destinationCash.balance()).add(sourceCheck.balance()).add(destinationCheck.balance()));
+    assertEquals(new BigDecimal("0.00"),sourceCash.cutOffs());
+  }
+
+  @Test
   void transferIsOutflowNotCutoffAndConservesBranchInventory() {
     jdbc.update(
         "INSERT INTO m_cash_allocation"
@@ -223,6 +249,9 @@ class CashInventoryReadPlatformServiceIntegrationTest {
   private void dropAndCreateSchema() {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup(id bigint PRIMARY KEY,business_date date,status varchar(20))");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup_currency(id bigint PRIMARY KEY,pickup_id bigint,currency_code varchar(3),source_cashier_transaction_id bigint,destination_cashier_transaction_id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup_check(id bigint PRIMARY KEY,pickup_currency_id bigint,source_type varchar(10),source_id bigint,source_cashier_id bigint,destination_cashier_id bigint,amount numeric(19,6))");
     jdbc.execute(
         "CREATE TABLE m_transaction_reversal(id bigint PRIMARY KEY,cashier_id bigint,business_date"
             + " date,currency_code varchar(3),cash_effect numeric(19,6),check_effect"
