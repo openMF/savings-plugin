@@ -592,6 +592,10 @@ class EndOfDayClosingPlatformServiceIntegrationTest {
   private void dropAndCreateSchema() {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup(id bigint PRIMARY KEY,business_date date,status varchar(20))");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup_currency(id bigint PRIMARY KEY,pickup_id bigint,currency_code varchar(3),source_cashier_transaction_id bigint,destination_cashier_transaction_id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup_check(id bigint PRIMARY KEY,pickup_currency_id bigint,source_type varchar(10),source_id bigint,source_cashier_id bigint,destination_cashier_id bigint,amount numeric(19,6))");
+    jdbc.execute("CREATE TABLE m_cash_drawer_pickup_cash(id bigint PRIMARY KEY)");
     jdbc.execute(
         "CREATE TABLE m_transaction_reversal(id bigint PRIMARY KEY,cashier_id bigint,business_date"
             + " date,currency_code varchar(3),cash_effect numeric(19,6),check_effect"

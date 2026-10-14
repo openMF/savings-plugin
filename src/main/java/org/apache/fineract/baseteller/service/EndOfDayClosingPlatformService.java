@@ -451,7 +451,8 @@ public class EndOfDayClosingPlatformService {
     return named.query(
         "SELECT q.* FROM ("
             + CHECKS
-            + ") q WHERE q.cashier_id=:cashier AND q.office_id=:office AND q.accepted_date<=:date"
+            + ") q LEFT JOIN m_cash_drawer_pickup_check pc ON pc.source_type=q.source_type AND pc.source_id=q.id"
+            + " WHERE COALESCE(pc.destination_cashier_id,q.cashier_id)=:cashier AND q.office_id=:office AND q.accepted_date<=:date"
             + " AND NOT EXISTS (SELECT 1 FROM m_end_of_day_closing_check x WHERE"
             + " x.source_type=q.source_type AND x.source_id=q.id) ORDER BY"
             + " q.currency_code,q.source_type,q.id",

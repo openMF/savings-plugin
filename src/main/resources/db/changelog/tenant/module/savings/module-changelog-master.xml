@@ -80,4 +80,7 @@
   <include file="parts/068-create-end-of-day-closing-schema.xml" relativeToChangelogFile="true"/>
     <include file="parts/069-separate-closing-settlement.xml" relativeToChangelogFile="true"/>
   <include file="parts/070-create-transaction-reversal-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/071-create-cash-drawer-pickup-schema.xml" relativeToChangelogFile="true"/>
+  <include file="parts/072-grant-cash-drawer-pickup-superuser.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

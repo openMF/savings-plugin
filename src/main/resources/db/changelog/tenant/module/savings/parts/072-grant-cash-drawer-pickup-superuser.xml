@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+ <changeSet author="fineract" id="ss-072-cash-drawer-pickup-superuser">
+  <sql>
+   INSERT INTO m_role_permission(role_id,permission_id)
+   SELECT r.id,p.id FROM m_role r JOIN m_permission p ON p.entity_name='BASE_TELLER_CASH_DRAWER_PICKUP'
+   WHERE r.name='Super user' AND NOT EXISTS(SELECT 1 FROM m_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+  </sql>
+ </changeSet>
+</databaseChangeLog>
