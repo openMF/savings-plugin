@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.stream.Collectors;
+import org.apache.fineract.fastpayment.sinpe.exception.SinpeParticipantNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,7 @@ public class SinpeParticipantReadPlatformServiceImpl implements SinpeParticipant
     @Override
     public SinpeParticipantData retrieveByCode(final String code) {
         final SinpeParticipant participant = repository.findByCode(code)
-                .orElseThrow(() -> new PlatformResourceNotFoundException(
+                .orElseThrow(() -> new SinpeParticipantNotFoundException(
                         "error.msg.sinpe.participant.not.found",
                         "SINPE Participant with code " + code + " does not exist",
                         code));
@@ -43,7 +44,7 @@ public class SinpeParticipantReadPlatformServiceImpl implements SinpeParticipant
     @Override
     public SinpeParticipantData retrieveByLegalId(final String legalId) {
         final SinpeParticipant participant = repository.findByLegalId(legalId)
-                .orElseThrow(() -> new PlatformResourceNotFoundException(
+                .orElseThrow(() -> new SinpeParticipantNotFoundException(
                         "error.msg.sinpe.participant.not.found.by.legalid",
                         "SINPE Participant with legal id " + legalId + " does not exist",
                         legalId));
@@ -53,7 +54,7 @@ public class SinpeParticipantReadPlatformServiceImpl implements SinpeParticipant
     @Override
     public SinpeParticipantData retrieveOne(final Long id) {
         final SinpeParticipant participant = repository.findById(id)
-                .orElseThrow(() -> new PlatformResourceNotFoundException(
+                .orElseThrow(() -> new SinpeParticipantNotFoundException(
                         "error.msg.sinpe.participant.not.found",
                         "SINPE Participant with id " + id + " does not exist",
                         id));

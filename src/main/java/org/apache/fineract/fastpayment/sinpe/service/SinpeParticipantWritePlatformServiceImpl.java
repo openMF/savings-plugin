@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import org.apache.fineract.fastpayment.sinpe.exception.SinpeParticipantNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +59,7 @@ public class SinpeParticipantWritePlatformServiceImpl implements SinpeParticipan
     @Transactional
     public void update(final String code, final Map<String, Object> request) {
         final SinpeParticipant participant = repository.findByCode(code)
-                .orElseThrow(() -> new PlatformResourceNotFoundException(
+                .orElseThrow(() -> new SinpeParticipantNotFoundException(
                         "error.msg.sinpe.participant.not.found",
                         "SINPE Participant with code " + code + " does not exist",
                         code));
@@ -84,7 +85,7 @@ public class SinpeParticipantWritePlatformServiceImpl implements SinpeParticipan
     @Transactional
     public void deactivate(final String code) {
         final SinpeParticipant participant = repository.findByCode(code)
-                .orElseThrow(() -> new PlatformResourceNotFoundException(
+                .orElseThrow(() -> new SinpeParticipantNotFoundException(
                         "error.msg.sinpe.participant.not.found",
                         "SINPE Participant with code " + code + " does not exist",
                         code));
