@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <!-- Workflow identity and receipt snapshot only. All monetary posting remains native. -->
+  <changeSet id="ss-074-base-teller-account-transfer-workflow" author="fineract">
+    <createTable tableName="m_base_teller_account_transfer">
+      <column name="native_transfer_id" type="BIGINT"><constraints primaryKey="true" nullable="false"
+          referencedTableName="m_account_transfer_transaction" referencedColumnNames="id" foreignKeyName="fk_bt_transfer_native"/></column>
+      <column name="native_detail_id" type="BIGINT"><constraints nullable="false" unique="true"
+          referencedTableName="m_account_transfer_details" referencedColumnNames="id" foreignKeyName="fk_bt_transfer_details"/></column>
+      <column name="idempotency_key" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_bt_transfer_idempotency"/></column>
+      <column name="request_fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="operation_type" type="VARCHAR(32)"><constraints nullable="false"/></column>
+      <column name="operator_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_bt_transfer_operator"/></column>
+      <column name="office_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_office" referencedColumnNames="id" foreignKeyName="fk_bt_transfer_office"/></column>
+      <column name="teller_id" type="BIGINT"/>
+      <column name="cashier_id" type="BIGINT"/>
+      <column name="completed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="receipt_json" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex tableName="m_base_teller_account_transfer" indexName="idx_bt_transfer_history">
+      <column name="office_id"/><column name="completed_at"/><column name="cashier_id"/>
+    </createIndex>
+  </changeSet>
+</databaseChangeLog>
