@@ -82,5 +82,5 @@
   <include file="parts/070-create-transaction-reversal-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/071-create-cash-drawer-pickup-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/072-grant-cash-drawer-pickup-superuser.xml" relativeToChangelogFile="true"/>
-
+  <include file="parts/073-add-sinpe-participants.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
