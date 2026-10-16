@@ -26,8 +26,6 @@ import org.apache.fineract.baseteller.data.CashExchangeInventoryLineData;
 import org.apache.fineract.baseteller.data.EndOfDayClosingData;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
-import org.apache.fineract.commands.service.SynchronousCommandProcessingService;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.domain.FineractRequestContextHolder;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -331,21 +329,8 @@ public class CashDrawerPickupPlatformService {
   }
 
   private Long movement(CommandWrapperBuilder builder, BigDecimal amount, String currency, LocalDate date, String reference, String key) {
-    Map<String, Object> body = Map.of("currencyCode", currency, "txnAmount", amount, "txnNote", "Cash drawer pickup " + reference,
-        "locale", "en", "dateFormat", "yyyy-MM-dd", "txnDate", date.toString());
-    // Fineract stores the last native command ID in the HTTP request. A second internal
-    // command would otherwise be treated as a retry of the first one.
-    String attribute = SynchronousCommandProcessingService.COMMAND_SOURCE_ID;
-    Object enclosingCommandId = requestContext.getAttribute(attribute, null);
-    CommandProcessingResult result;
-    try {
-      requestContext.setAttribute(attribute, null);
-      result = commands.logCommandSource(builder.withJson(GSON.toJson(body)).build(key));
-    } finally {
-      requestContext.setAttribute(attribute, enclosingCommandId);
-    }
-    if (result == null || result.getSubResourceId() == null) throw invalid("cash.movement.failed", "Fineract did not return a cashier transaction reference.");
-    return result.getSubResourceId();
+    return CashCustodyPosting.movement(commands, requestContext, builder, amount, currency, date,
+        "Cash drawer pickup " + reference, key);
   }
 
   private CashDrawerPickupData data(Long id, String reference, Prepared prepared, Long authorizerId, String authorizerName, String authorizedAt) {

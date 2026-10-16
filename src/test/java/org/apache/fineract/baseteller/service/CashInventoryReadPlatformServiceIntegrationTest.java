@@ -250,6 +250,8 @@ class CashInventoryReadPlatformServiceIntegrationTest {
     jdbc.execute("DROP SCHEMA public CASCADE");
     jdbc.execute("CREATE SCHEMA public");
     jdbc.execute("CREATE TABLE m_cash_drawer_pickup(id bigint PRIMARY KEY,business_date date,status varchar(20))");
+    jdbc.execute("CREATE TABLE m_cash_teller_transfer_currency(id bigint PRIMARY KEY,transfer_id bigint,currency_code varchar(3),business_date date,status varchar(20),source_cashier_id bigint,destination_cashier_id bigint,cash_total numeric(19,6),source_cashier_transaction_id bigint,destination_cashier_transaction_id bigint)");
+    jdbc.execute("CREATE TABLE m_cash_teller_transfer_denomination(id bigint PRIMARY KEY,transfer_currency_id bigint,denomination_identifier varchar(100),denomination_type varchar(10),denomination_value numeric(19,6),quantity bigint,line_total numeric(19,6))");
     jdbc.execute("CREATE TABLE m_cash_drawer_pickup_currency(id bigint PRIMARY KEY,pickup_id bigint,currency_code varchar(3),source_cashier_transaction_id bigint,destination_cashier_transaction_id bigint)");
     jdbc.execute("CREATE TABLE m_cash_drawer_pickup_check(id bigint PRIMARY KEY,pickup_currency_id bigint,source_type varchar(10),source_id bigint,source_cashier_id bigint,destination_cashier_id bigint,amount numeric(19,6))");
     jdbc.execute(

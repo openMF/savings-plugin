@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.baseteller.cashtransfer.CashTransferPlatformService;
 import org.apache.fineract.baseteller.data.TransactionHistoryCancellationData;
 import org.apache.fineract.baseteller.data.TransactionHistoryClientData;
 import org.apache.fineract.baseteller.data.TransactionHistoryContextData;
@@ -80,6 +81,7 @@ public class TransactionHistoryReadPlatformServiceImpl
   private final CashManagementReadPlatformService cashManagementReadPlatformService;
   private final CashExchangePlatformService cashExchangePlatformService;
   private final CashDrawerPickupPlatformService cashDrawerPickupPlatformService;
+  private final CashTransferPlatformService cashTransferPlatformService;
   private final AccountTransferPlatformService accountTransferPlatformService;
 
   @Override
@@ -146,6 +148,16 @@ public class TransactionHistoryReadPlatformServiceImpl
   public TransactionHistoryDenominationsData denominations(final String historyId) {
     final HistoryKey key = historyKey(historyId);
     detail(historyId);
+    if ("CASH_TRANSFER".equals(key.sourceType())) {
+      List<TransactionHistoryDenominationLineData> lines = jdbcTemplate.query(
+          "SELECT c.currency_code,d.denomination_identifier,d.denomination_value,d.quantity,d.line_total,d.denomination_type"
+              + " FROM m_cash_teller_transfer_denomination d JOIN m_cash_teller_transfer_currency c ON c.id=d.transfer_currency_id"
+              + " WHERE c.transfer_id=:id ORDER BY c.currency_code,d.denomination_value DESC",
+          Map.of("id", key.sourceId()),
+          (rs, row) -> new TransactionHistoryDenominationLineData(rs.getString(1), rs.getString(2),
+              rs.getBigDecimal(3), rs.getLong(4), rs.getBigDecimal(5), rs.getString(6)));
+      return new TransactionHistoryDenominationsData(historyId, true, lines, false, List.of());
+    }
     if ("CASH_DRAWER_PICKUP".equals(key.sourceType())) {
       detail(historyId);
       List<TransactionHistoryDenominationLineData> lines = jdbcTemplate.query(
@@ -219,6 +231,7 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CASH_ALLOCATION" -> cashAllocationReadPlatformService.reprint(key.sourceId());
           case "CASHIER_CLOSING" -> cashManagementReadPlatformService.closing(key.sourceId());
           case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
+          case "CASH_TRANSFER" -> cashTransferPlatformService.receipt(key.sourceId());
           case "CASH_DRAWER_PICKUP" -> cashDrawerPickupPlatformService.receipt(key.sourceId());
           case "ACCOUNT_TRANSFER" -> accountTransferPlatformService.retrieve(key.sourceId());
           default ->
@@ -239,15 +252,17 @@ public class TransactionHistoryReadPlatformServiceImpl
                 + where,
             params,
             Long.class);
+    Long perspective = query.tellerId() != null ? query.tellerId() : query.scope().assignedCashierId();
+    if (perspective != null) params.put("tellerId", perspective);
     final List<TransactionHistoryTotalsData> totals =
         jdbcTemplate.query(
-            historyCte()
+            historyCte() + currencyHistoryCte()
                 + " SELECT h.currency_code,oc.decimal_places,"
                 + " COALESCE(SUM("
-                + effectiveInflow(query.tellerId())
+                + effectiveInflow(perspective)
                 + "),0) total_inflows,COALESCE(SUM("
-                + effectiveOutflow(query.tellerId())
-                + "),0) total_outflows FROM history h"
+                + effectiveOutflow(perspective)
+                + "),0) total_outflows FROM currency_history h"
                 + " JOIN m_office o ON o.id=h.office_id"
                 + " LEFT JOIN m_organisation_currency oc ON UPPER(oc.code)=h.currency_code"
                 + where
@@ -267,9 +282,9 @@ public class TransactionHistoryReadPlatformServiceImpl
     String itemSql =
         historyCte()
             + " SELECT h.*,oc.decimal_places,"
-            + effectiveInflow(query.tellerId())
+            + effectiveInflow(perspective)
             + " effective_inflow,"
-            + effectiveOutflow(query.tellerId())
+            + effectiveOutflow(perspective)
             + " effective_outflow FROM history h"
             + " JOIN m_office o ON o.id=h.office_id"
             + " LEFT JOIN m_organisation_currency oc ON UPPER(oc.code)=h.currency_code"
@@ -424,7 +439,11 @@ public class TransactionHistoryReadPlatformServiceImpl
       where.append(" AND (h.source_cashier_id=:tellerId OR h.destination_cashier_id=:tellerId)");
       params.put("tellerId", query.tellerId());
     }
-    appendEqual(where, params, "currency_code", "currencyCode", query.currencyCode());
+    if (query.currencyCode() != null) {
+      params.put("currencyCode", query.currencyCode());
+      where.append(" AND (UPPER(h.currency_code)=:currencyCode OR (h.source_type='CASH_TRANSFER' AND h.currency_code IS NULL"
+          + " AND EXISTS(SELECT 1 FROM m_cash_teller_transfer_currency tc WHERE tc.transfer_id=h.source_id AND tc.currency_code=:currencyCode)))");
+    }
     appendEqual(where, params, "status", "status", query.status());
     appendEqual(where, params, "transaction_type", "transactionType", query.type());
     appendEqual(where, params, "operation", "operation", query.operation());
@@ -608,7 +627,7 @@ public class TransactionHistoryReadPlatformServiceImpl
 
   private static String effectiveInflow(final Long tellerId) {
     if (tellerId == null) {
-      return "h.inflow";
+      return "CASE WHEN h.source_type='CASH_TRANSFER' THEN h.transfer_amount ELSE h.inflow END";
     }
     return "CASE WHEN h.transfer_amount>0 AND h.destination_cashier_id=:tellerId"
         + " THEN h.transfer_amount ELSE h.inflow END";
@@ -616,7 +635,7 @@ public class TransactionHistoryReadPlatformServiceImpl
 
   private static String effectiveOutflow(final Long tellerId) {
     if (tellerId == null) {
-      return "h.outflow";
+      return "CASE WHEN h.source_type='CASH_TRANSFER' THEN h.transfer_amount ELSE h.outflow END";
     }
     return "CASE WHEN h.transfer_amount>0 AND h.source_cashier_id=:tellerId"
         + " THEN h.transfer_amount ELSE h.outflow END";
@@ -860,6 +879,20 @@ public class TransactionHistoryReadPlatformServiceImpl
         NULL,NULL,NULL,true,a.initiated_by
       FROM m_cash_allocation a
       UNION ALL
+      SELECT 'CASH_TRANSFER',p.id,p.completed_at,p.business_date,
+        'CASH_TRANSFER_BETWEEN_TELLERS','INTERNAL_MOVEMENT','CASH_TRANSFER_BETWEEN_TELLERS',p.status,p.reference,p.reference,
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id)=1
+          THEN (SELECT MAX(c.currency_code) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id) ELSE NULL END,
+        CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),NULL,p.office_id,NULL,p.source_cashier_id,
+        p.source_cashier_id,p.destination_cashier_id,
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id)=1
+          THEN (SELECT MAX(c.cash_total) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id) ELSE 0 END,
+        NULL,NULL,NULL,NULL,
+        CASE WHEN (SELECT COUNT(*) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id)=1
+          THEN (SELECT MAX(c.cash_total) FROM m_cash_teller_transfer_currency c WHERE c.transfer_id=p.id) ELSE NULL END,
+        NULL,NULL,NULL,true,p.created_by
+      FROM m_cash_teller_transfer p WHERE p.status='COMPLETED'
+      UNION ALL
       SELECT 'CASH_DRAWER_PICKUP',p.id,p.completed_at,p.business_date,
         'CASH_DRAWER_PICKUP','INTERNAL_MOVEMENT','CASH_DRAWER_PICKUP',p.status,p.reference,p.reference,
         CASE WHEN (SELECT COUNT(*) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id)=1
@@ -923,6 +956,7 @@ public class TransactionHistoryReadPlatformServiceImpl
         AND NOT EXISTS (SELECT 1 FROM m_base_teller_credit_payment p WHERE p.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_service_payment p WHERE p.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id)
+        AND NOT EXISTS (SELECT 1 FROM m_cash_teller_transfer_currency p WHERE p.source_cashier_transaction_id=ct.id OR p.destination_cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id OR p.destination_cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cashier_reconciliation r WHERE r.cashier_transaction_id=ct.id)
         AND NOT EXISTS (SELECT 1 FROM m_cash_operation_transaction x WHERE x.cashier_transaction_id=ct.id)
@@ -940,6 +974,41 @@ public class TransactionHistoryReadPlatformServiceImpl
       FROM m_transaction_reversal r
     )
     """;
+  }
+
+  private static String currencyHistoryCte() {
+    return ", currency_history AS (SELECT "
+        + "h.source_type"
+        + ", h.source_id"
+        + ", h.transaction_date"
+        + ", h.business_date"
+        + ", h.operation"
+        + ", h.transaction_type"
+        + ", h.concept"
+        + ", h.status"
+        + ", h.reference"
+        + ", h.searchable_reference"
+        + ", COALESCE(tc.currency_code,h.currency_code) currency_code"
+        + ", h.inflow"
+        + ", h.outflow"
+        + ", h.client_id"
+        + ", h.office_id"
+        + ", h.teller_id"
+        + ", h.cashier_id"
+        + ", h.source_cashier_id"
+        + ", h.destination_cashier_id"
+        + ", COALESCE(tc.cash_total,h.transfer_amount) transfer_amount"
+        + ", h.cash_received"
+        + ", h.checks_received"
+        + ", h.change_amount"
+        + ", h.adjustment"
+        + ", COALESCE(tc.cash_total,h.total_amount) total_amount"
+        + ", h.cancellation_reason"
+        + ", h.cancellation_user"
+        + ", h.cancellation_date"
+        + ", h.receipt_supported"
+        + ", h.performed_by"
+        + " FROM history h LEFT JOIN m_cash_teller_transfer_currency tc ON h.source_type='CASH_TRANSFER' AND tc.transfer_id=h.source_id) ";
   }
 
   private record Scope(

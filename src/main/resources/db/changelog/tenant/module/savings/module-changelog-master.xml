@@ -84,4 +84,5 @@
   <include file="parts/072-grant-cash-drawer-pickup-superuser.xml" relativeToChangelogFile="true"/>
   <include file="parts/073-add-sinpe-participants.xml" relativeToChangelogFile="true"/>
   <include file="parts/074-create-base-teller-account-transfer-workflow.xml" relativeToChangelogFile="true"/>
+    <include file="parts/075-create-cash-teller-transfer-schema.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
