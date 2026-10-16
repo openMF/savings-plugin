@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <!-- Custody evidence and native movement links only; no independent balance ledger. -->
+  <changeSet author="fineract" id="ss-075-cash-teller-transfer-schema">
+    <createTable tableName="m_cash_teller_transfer">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="idempotency_key" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_ct_key"/></column>
+      <column name="request_fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="reference" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_ct_reference"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="office_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_office" referencedColumnNames="id" foreignKeyName="fk_ct_office"/></column>
+      <column name="source_cashier_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cashiers" referencedColumnNames="id" foreignKeyName="fk_ct_source"/></column>
+      <column name="destination_cashier_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cashiers" referencedColumnNames="id" foreignKeyName="fk_ct_destination"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_ct_actor"/></column>
+      <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+      <column name="completed_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="true"/></column>
+      <column name="snapshot" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_cash_teller_transfer_currency">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="transfer_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cash_teller_transfer" referencedColumnNames="id" foreignKeyName="fk_ct_currency_transfer"/></column>
+      <column name="currency_code" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="source_cashier_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cashiers" referencedColumnNames="id" foreignKeyName="fk_ct_currency_source"/></column>
+      <column name="destination_cashier_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cashiers" referencedColumnNames="id" foreignKeyName="fk_ct_currency_destination"/></column>
+      <column name="cash_total" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="source_cashier_transaction_id" type="BIGINT"><constraints nullable="true" referencedTableName="m_cashier_transactions" referencedColumnNames="id" foreignKeyName="fk_ct_native_source"/></column>
+      <column name="destination_cashier_transaction_id" type="BIGINT"><constraints nullable="true" referencedTableName="m_cashier_transactions" referencedColumnNames="id" foreignKeyName="fk_ct_native_destination"/></column>
+    </createTable>
+    <createTable tableName="m_cash_teller_transfer_denomination">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="transfer_currency_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cash_teller_transfer_currency" referencedColumnNames="id" foreignKeyName="fk_ct_denom_currency"/></column>
+      <column name="denomination_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="denomination_type" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="denomination_value" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="quantity" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="line_total" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex tableName="m_cash_teller_transfer" indexName="idx_ct_office_date"><column name="office_id"/><column name="business_date"/></createIndex>
+    <createIndex tableName="m_cash_teller_transfer" indexName="idx_ct_source_date"><column name="source_cashier_id"/><column name="business_date"/></createIndex>
+    <createIndex tableName="m_cash_teller_transfer" indexName="idx_ct_destination_date"><column name="destination_cashier_id"/><column name="business_date"/></createIndex>
+    <addUniqueConstraint tableName="m_cash_teller_transfer_currency" columnNames="transfer_id,currency_code" constraintName="uk_ct_currency"/>
+    <addUniqueConstraint tableName="m_cash_teller_transfer_currency" columnNames="source_cashier_transaction_id" constraintName="uk_ct_native_source"/>
+    <addUniqueConstraint tableName="m_cash_teller_transfer_currency" columnNames="destination_cashier_transaction_id" constraintName="uk_ct_native_destination"/>
+    <addUniqueConstraint tableName="m_cash_teller_transfer_denomination" columnNames="transfer_currency_id,denomination_identifier" constraintName="uk_ct_denomination"/>
+    <sql>
+      ALTER TABLE m_cash_teller_transfer ADD CONSTRAINT ck_ct_header CHECK
+        (source_cashier_id &lt;&gt; destination_cashier_id AND status IN ('PROCESSING','COMPLETED') AND (status &lt;&gt; 'COMPLETED' OR completed_at IS NOT NULL));
+      ALTER TABLE m_cash_teller_transfer_currency ADD CONSTRAINT ck_ct_currency CHECK
+        (cash_total &gt; 0 AND source_cashier_id &lt;&gt; destination_cashier_id AND (source_cashier_transaction_id IS NULL OR source_cashier_transaction_id &lt;&gt; destination_cashier_transaction_id));
+      ALTER TABLE m_cash_teller_transfer_denomination ADD CONSTRAINT ck_ct_denomination CHECK
+        (quantity &gt; 0 AND denomination_value &gt; 0 AND line_total = quantity * denomination_value AND denomination_type IN ('BANKNOTE','COIN'));
+    </sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-075-cash-teller-transfer-permissions">
+    <sql>
+      INSERT INTO m_permission (grouping,code,entity_name,action_name,can_maker_checker)
+      SELECT 'portfolio', x.code, 'BASE_TELLER_CASH_TRANSFER', x.action, false
+      FROM (VALUES ('READ_BASE_TELLER_CASH_TRANSFER','READ'),('CREATE_BASE_TELLER_CASH_TRANSFER','CREATE'),('REPRINT_BASE_TELLER_CASH_TRANSFER','REPRINT')) x(code,action)
+      WHERE NOT EXISTS (SELECT 1 FROM m_permission p WHERE p.code=x.code);
+      INSERT INTO m_role_permission(role_id,permission_id)
+      SELECT r.id,p.id FROM m_role r JOIN m_permission p ON p.entity_name='BASE_TELLER_CASH_TRANSFER'
+      WHERE r.name='Super user' AND NOT EXISTS(SELECT 1 FROM m_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+    </sql>
+  </changeSet>
+</databaseChangeLog>

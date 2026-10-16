@@ -111,6 +111,24 @@ public class CashExchangeInventory {
               1,
               "false"),
           new Source(
+              "m_cash_teller_transfer_currency",
+              "m_cash_teller_transfer_denomination",
+              "transfer_currency_id",
+              "h.business_date",
+              "h.cash_total",
+              "h.source_cashier_id=:cashier",
+              -1,
+              "false"),
+          new Source(
+              "m_cash_teller_transfer_currency",
+              "m_cash_teller_transfer_denomination",
+              "transfer_currency_id",
+              "h.business_date",
+              "h.cash_total",
+              "h.destination_cashier_id=:cashier",
+              1,
+              "false"),
+          new Source(
               "m_cash_exchange",
               "m_cash_exchange_detail",
               "exchange_id",
@@ -199,6 +217,7 @@ SELECT 1 FROM m_cashier_transactions ct
             WHERE ct.cashier_id=:cashier AND ct.txn_date=:date AND UPPER(ct.currency_code)=:currency
             AND ct.txn_amount<>0
             AND NOT EXISTS (SELECT 1 FROM m_cash_allocation a WHERE a.status='COMPLETED' AND (a.source_cashier_transaction_id=ct.id OR a.destination_cashier_transaction_id=ct.id))
+            AND NOT EXISTS (SELECT 1 FROM m_cash_teller_transfer_currency p WHERE p.source_cashier_transaction_id=ct.id OR p.destination_cashier_transaction_id=ct.id)
             AND NOT EXISTS (SELECT 1 FROM m_cash_drawer_pickup_currency p WHERE p.source_cashier_transaction_id=ct.id OR p.destination_cashier_transaction_id=ct.id)
             AND NOT EXISTS (SELECT 1 FROM m_service_payment a WHERE a.status='COMPLETED' AND a.cashier_transaction_id=ct.id)
             AND NOT EXISTS (SELECT 1 FROM m_base_teller_credit_payment a WHERE a.status='COMPLETED' AND a.payment_method='CASH' AND a.cashier_transaction_id=ct.id)
