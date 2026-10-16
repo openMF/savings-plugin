@@ -30,6 +30,7 @@ import org.apache.fineract.baseteller.data.TransactionHistoryReportData;
 import org.apache.fineract.baseteller.data.TransactionHistorySearchData;
 import org.apache.fineract.baseteller.data.TransactionHistoryTellerData;
 import org.apache.fineract.baseteller.data.TransactionHistoryTotalsData;
+import org.apache.fineract.baseteller.transfer.AccountTransferPlatformService;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -79,6 +80,7 @@ public class TransactionHistoryReadPlatformServiceImpl
   private final CashManagementReadPlatformService cashManagementReadPlatformService;
   private final CashExchangePlatformService cashExchangePlatformService;
   private final CashDrawerPickupPlatformService cashDrawerPickupPlatformService;
+  private final AccountTransferPlatformService accountTransferPlatformService;
 
   @Override
   public TransactionHistoryContextData context() {
@@ -218,6 +220,7 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CASHIER_CLOSING" -> cashManagementReadPlatformService.closing(key.sourceId());
           case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
           case "CASH_DRAWER_PICKUP" -> cashDrawerPickupPlatformService.receipt(key.sourceId());
+          case "ACCOUNT_TRANSFER" -> accountTransferPlatformService.retrieve(key.sourceId());
           default ->
               throw invalid(
                   "receipt.unsupported",
@@ -869,6 +872,16 @@ public class TransactionHistoryReadPlatformServiceImpl
           THEN (SELECT SUM(c.check_total) FROM m_cash_drawer_pickup_currency c WHERE c.pickup_id=p.id) ELSE NULL END,
         NULL,NULL,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,true,p.created_by
       FROM m_cash_drawer_pickup p WHERE p.status='COMPLETED'
+      UNION ALL
+      SELECT 'ACCOUNT_TRANSFER',w.native_transfer_id,w.completed_at,t.transaction_date,
+        'ACCOUNT_TRANSFER','ACCOUNT_TRANSFER',w.operation_type,
+        CASE WHEN t.is_reversed THEN 'REVERSED' ELSE 'COMPLETED' END,
+        CAST(t.id AS varchar),CAST(t.id AS varchar),UPPER(t.currency_code),
+        CAST(0 AS decimal(19,6)),CAST(0 AS decimal(19,6)),d.from_client_id,w.office_id,w.teller_id,w.cashier_id,
+        w.cashier_id,w.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,t.amount,NULL,NULL,NULL,true,w.operator_id
+      FROM m_base_teller_account_transfer w
+      JOIN m_account_transfer_transaction t ON t.id=w.native_transfer_id
+      JOIN m_account_transfer_details d ON d.id=t.account_transfer_details_id
       UNION ALL
       SELECT 'CASH_EXCHANGE',e.id,e.created_on_utc,e.business_date,
         'CASH_EXCHANGE','CASH','CASH_EXCHANGE',e.status,e.receipt_number,e.receipt_number,
