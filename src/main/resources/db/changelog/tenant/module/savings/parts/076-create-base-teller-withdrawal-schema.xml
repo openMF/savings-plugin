@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-076-withdrawal-schema">
+    <createTable tableName="m_base_teller_withdrawal">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="idempotency_key" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_wd_idempotency_key"/></column>
+      <column name="request_fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="reference" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_wd_reference"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_client" referencedColumnNames="id" foreignKeyName="fk_wd_client_id"/></column>
+      <column name="account_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_savings_account" referencedColumnNames="id" foreignKeyName="fk_wd_account_id"/></column>
+      <column name="office_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_office" referencedColumnNames="id" foreignKeyName="fk_wd_office_id"/></column>
+      <column name="teller_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_tellers" referencedColumnNames="id" foreignKeyName="fk_wd_teller_id"/></column>
+      <column name="cashier_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_cashiers" referencedColumnNames="id" foreignKeyName="fk_wd_cashier_id"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_wd_created_by"/></column>
+      <column name="method" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="amount" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="currency_code" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="identifier_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="identification_type_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="identification_mask" type="VARCHAR(8)"><constraints nullable="false"/></column>
+      <column name="savings_transaction_id" type="BIGINT"><constraints nullable="true" referencedTableName="m_savings_account_transaction" referencedColumnNames="id" foreignKeyName="fk_wd_savings_transaction_id"/></column>
+      <column name="cashier_transaction_id" type="BIGINT"><constraints nullable="true" referencedTableName="m_cashier_transactions" referencedColumnNames="id" foreignKeyName="fk_wd_cashier_transaction_id"/></column>
+      <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+      <column name="completed_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="true"/></column>
+      <column name="snapshot" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_base_teller_withdrawal_cash_detail">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="withdrawal_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_base_teller_withdrawal" referencedColumnNames="id" foreignKeyName="fk_wd_cash_header"/></column>
+      <column name="denomination_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="denomination_type" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="denomination_value" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="quantity" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="line_total" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_base_teller_withdrawal" columnNames="savings_transaction_id" constraintName="uk_wd_native_savings"/>
+    <addUniqueConstraint tableName="m_base_teller_withdrawal" columnNames="cashier_transaction_id" constraintName="uk_wd_native_cash"/>
+    <addUniqueConstraint tableName="m_base_teller_withdrawal_cash_detail" columnNames="withdrawal_id,denomination_identifier" constraintName="uk_wd_denomination"/>
+    <createIndex tableName="m_base_teller_withdrawal" indexName="idx_wd_cashier_date"><column name="cashier_id"/><column name="business_date"/></createIndex>
+    <createIndex tableName="m_base_teller_withdrawal" indexName="idx_wd_account"><column name="account_id"/></createIndex>
+    <sql>
+      ALTER TABLE m_base_teller_withdrawal ADD CONSTRAINT ck_wd_header CHECK (method='CASH' AND amount &gt; 0 AND status IN ('PROCESSING','COMPLETED') AND (status &lt;&gt; 'COMPLETED' OR (completed_at IS NOT NULL AND savings_transaction_id IS NOT NULL AND cashier_transaction_id IS NOT NULL)));
+      ALTER TABLE m_base_teller_withdrawal_cash_detail ADD CONSTRAINT ck_wd_cash CHECK (quantity &gt; 0 AND denomination_value &gt; 0 AND line_total=quantity*denomination_value AND denomination_type IN ('BANKNOTE','COIN'));
+    </sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-076-withdrawal-permissions">
+    <sql>
+      INSERT INTO m_permission(grouping,code,entity_name,action_name,can_maker_checker)
+      SELECT 'portfolio',x.code,'BASE_TELLER_WITHDRAWAL',x.action,false FROM (VALUES ('READ_BASE_TELLER_WITHDRAWAL','READ'),('CREATE_BASE_TELLER_WITHDRAWAL','CREATE'),('REPRINT_BASE_TELLER_WITHDRAWAL','REPRINT')) x(code,action)
+      WHERE NOT EXISTS(SELECT 1 FROM m_permission p WHERE p.code=x.code);
+      INSERT INTO m_role_permission(role_id,permission_id) SELECT r.id,p.id FROM m_role r JOIN m_permission p ON p.entity_name='BASE_TELLER_WITHDRAWAL' WHERE r.name='Super user' AND NOT EXISTS(SELECT 1 FROM m_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+    </sql>
+  </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-077-withdrawal-native-custody-projection">
+    <!-- Native teller reporting projects the savings debit as cash out. A second cashier
+         settlement would double-count cash and incorrectly move it to the main vault. -->
+    <preConditions onFail="HALT">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM m_base_teller_withdrawal WHERE cashier_transaction_id IS NOT NULL</sqlCheck>
+    </preConditions>
+    <sql>ALTER TABLE m_base_teller_withdrawal DROP CONSTRAINT ck_wd_header;</sql>
+    <dropColumn tableName="m_base_teller_withdrawal" columnName="cashier_transaction_id"/>
+    <sql>
+      ALTER TABLE m_base_teller_withdrawal ADD CONSTRAINT ck_wd_header CHECK
+        (method='CASH' AND amount &gt; 0 AND status IN ('PROCESSING','COMPLETED')
+        AND (status &lt;&gt; 'COMPLETED' OR (completed_at IS NOT NULL AND savings_transaction_id IS NOT NULL)));
+    </sql>
+  </changeSet>
+</databaseChangeLog>
