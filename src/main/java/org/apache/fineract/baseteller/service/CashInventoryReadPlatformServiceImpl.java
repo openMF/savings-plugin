@@ -281,6 +281,9 @@ public class CashInventoryReadPlatformServiceImpl implements CashInventoryReadPl
               + " AND NOT EXISTS (SELECT 1 FROM m_cashier_transactions ct"
               + " WHERE ct.entity_type='BASE_TELLER_SAVINGS_OPENING' AND ct.entity_id=o.id)"
               + currencyClauseFor("o", currency)
+              + " UNION ALL SELECT w.cashier_id,w.currency_code,-w.amount FROM m_base_teller_withdrawal w"
+              + " WHERE w.cashier_id IN (:cashierIds) AND w.method='CASH' AND w.status='COMPLETED' AND w.business_date=:date"
+              + currencyClauseFor("w", currency)
               + " UNION ALL SELECT r.cashier_id,r.currency_code,r.cash_effect FROM"
               + " m_transaction_reversal r WHERE r.cashier_id IN (:cashierIds) AND"
               + " r.business_date=:date"

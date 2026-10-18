@@ -84,6 +84,15 @@ public class CashExchangeInventory {
               1,
               "h.change_amount<>0"),
           new Source(
+              "m_base_teller_withdrawal",
+              "m_base_teller_withdrawal_cash_detail",
+              "withdrawal_id",
+              "h.business_date",
+              "h.amount",
+              "h.cashier_id=:cashier AND h.method='CASH'",
+              -1,
+              "false"),
+          new Source(
               "m_cash_operation_transaction",
               "m_cash_operation_denomination",
               "operation_id",
@@ -161,7 +170,7 @@ public class CashExchangeInventory {
             throw invalid(
                 "inventory.unknown",
                 "Complete, reconciled denomination composition is unavailable. Unrecorded"
-                    + " movements, change payments or invalid snapshots prevent exchange.");
+                    + " movements, change payments or invalid snapshots prevent this cash operation.");
           if (rs.getString("identifier") != null) {
             try {
               result.put(rs.getString("identifier"), rs.getBigDecimal("quantity").longValueExact());
@@ -198,13 +207,17 @@ public class CashExchangeInventory {
         + """
         SELECT q.identifier,q.quantity,
           EXISTS(SELECT 1 FROM m_cashier_reconciliation WHERE cashier_id=:cashier AND business_date=:date AND UPPER(currency_code)=:currency) closed,
-          NOT EXISTS(SELECT 1 FROM headers h WHERE h.unexplained OR h.expected<>COALESCE((SELECT SUM(m.value*m.quantity) FROM movements m WHERE m.source_key=h.source_key),0))
+          NOT EXISTS(SELECT 1 FROM m_base_teller_withdrawal w JOIN m_savings_account_transaction st ON st.id=w.savings_transaction_id
+            WHERE w.cashier_id=:cashier AND w.business_date=:date AND w.currency_code=:currency AND st.is_reversed)
+          AND NOT EXISTS(SELECT 1 FROM headers h WHERE h.unexplained OR h.expected<>COALESCE((SELECT SUM(m.value*m.quantity) FROM movements m WHERE m.source_key=h.source_key),0))
           AND NOT EXISTS(SELECT 1 FROM movements m LEFT JOIN m_service_payment_denomination c ON c.currency_code=:currency AND c.identifier=m.identifier
             WHERE m.quantity<0 OR (m.quantity>0 AND (c.id IS NULL OR c.value<>m.value)))
           AND NOT EXISTS(SELECT 1 FROM quantities WHERE quantity<0)
           AND NOT EXISTS(
         """
         + UNKNOWN_NATIVE
+        + ") AND NOT EXISTS ("
+        + UNKNOWN_SAVINGS_WITHDRAWALS
         + """
           ) AND COALESCE((SELECT SUM(m.value*m.quantity*m.sign) FROM movements m),0)=(SELECT * FROM monetary) valid
         FROM (SELECT 1) sentinel LEFT JOIN quantities q ON true
@@ -226,6 +239,24 @@ SELECT 1 FROM m_cashier_transactions ct
             AND NOT EXISTS (SELECT 1 FROM m_base_teller_deposit a WHERE a.status='COMPLETED' AND a.funding_type='CASH' AND ct.entity_type='BASE_TELLER_DEPOSIT' AND ct.entity_id=a.id)
             AND NOT EXISTS (SELECT 1 FROM m_base_teller_savings_opening a WHERE a.status='COMPLETED' AND a.funding_type='CASH' AND ct.entity_type='BASE_TELLER_SAVINGS_OPENING' AND ct.entity_id=a.id)
 """;
+  // Native teller reporting derives these cash outflows from savings transactions, without a
+  // persisted cashier row. An external native withdrawal has no known denomination composition.
+  private static final String UNKNOWN_SAVINGS_WITHDRAWALS =
+      """
+      SELECT 1 FROM m_savings_account_transaction st
+      JOIN m_savings_account sa ON sa.id=st.savings_account_id
+      JOIN m_appuser au ON au.id=st.created_by
+      JOIN m_cashiers cashier ON cashier.staff_id=au.staff_id
+      LEFT JOIN m_payment_detail pd ON pd.id=st.payment_detail_id
+      LEFT JOIN m_payment_type pt ON pt.id=pd.payment_type_id
+      WHERE cashier.id=:cashier AND st.transaction_date=:date AND UPPER(sa.currency_code)=:currency
+        AND st.transaction_type_enum=2 AND NOT st.is_reversed AND st.amount<>0
+        AND (st.payment_detail_id IS NULL OR pt.is_cash_payment=true)
+        AND NOT EXISTS(SELECT 1 FROM m_account_transfer_transaction t
+          WHERE t.from_savings_transaction_id=st.id OR t.to_savings_transaction_id=st.id)
+        AND NOT EXISTS(SELECT 1 FROM m_base_teller_withdrawal w
+          WHERE w.savings_transaction_id=st.id AND w.status='COMPLETED')
+      """;
   private static final String MONETARY =
 """
 SELECT COALESCE(SUM(amount),0) FROM (
@@ -237,6 +268,8 @@ SELECT COALESCE(SUM(amount),0) FROM (
               UNION ALL SELECT d.amount FROM m_base_teller_savings_opening d JOIN m_savings_account_transaction st ON st.id=d.initial_deposit_transaction_id
               WHERE d.cashier_id=:cashier AND d.status='COMPLETED' AND d.funding_type='CASH' AND st.transaction_date=:date AND NOT st.is_reversed AND UPPER(d.currency_code)=:currency
                 AND NOT EXISTS(SELECT 1 FROM m_cashier_transactions ct WHERE ct.entity_type='BASE_TELLER_SAVINGS_OPENING' AND ct.entity_id=d.id)
+              UNION ALL SELECT -w.amount FROM m_base_teller_withdrawal w JOIN m_savings_account_transaction st ON st.id=w.savings_transaction_id
+              WHERE w.cashier_id=:cashier AND w.status='COMPLETED' AND w.method='CASH' AND w.business_date=:date AND NOT st.is_reversed AND w.currency_code=:currency
               UNION ALL SELECT r.cash_effect FROM m_transaction_reversal r WHERE r.cashier_id=:cashier AND r.business_date=:date AND r.currency_code=:currency
             ) movements
 """;

@@ -83,6 +83,7 @@ public class TransactionHistoryReadPlatformServiceImpl
   private final CashDrawerPickupPlatformService cashDrawerPickupPlatformService;
   private final CashTransferPlatformService cashTransferPlatformService;
   private final AccountTransferPlatformService accountTransferPlatformService;
+  private final org.apache.fineract.baseteller.withdrawal.WithdrawalPlatformService withdrawalPlatformService;
 
   @Override
   public TransactionHistoryContextData context() {
@@ -233,6 +234,7 @@ public class TransactionHistoryReadPlatformServiceImpl
           case "CASH_EXCHANGE" -> cashExchangePlatformService.receipt(key.sourceId());
           case "CASH_TRANSFER" -> cashTransferPlatformService.receipt(key.sourceId());
           case "CASH_DRAWER_PICKUP" -> cashDrawerPickupPlatformService.receipt(key.sourceId());
+          case "SAVINGS_WITHDRAWAL" -> withdrawalPlatformService.receipt(key.sourceId());
           case "ACCOUNT_TRANSFER" -> accountTransferPlatformService.retrieve(key.sourceId());
           default ->
               throw invalid(
@@ -674,6 +676,9 @@ public class TransactionHistoryReadPlatformServiceImpl
 
   private static DenominationSource denominationSource(final String sourceType) {
     return switch (sourceType) {
+      case "SAVINGS_WITHDRAWAL" ->
+          new DenominationSource("m_base_teller_withdrawal_cash_detail", "m_base_teller_withdrawal",
+              "withdrawal_id", "d.line_total", "d.denomination_type");
       case "SAVINGS_DEPOSIT" ->
           new DenominationSource(
               "m_base_teller_deposit_cash_detail",
@@ -828,6 +833,14 @@ public class TransactionHistoryReadPlatformServiceImpl
         d.amount total_amount,CAST(NULL AS varchar) cancellation_reason,
         CAST(NULL AS varchar) cancellation_user,CAST(NULL AS timestamp) cancellation_date,true receipt_supported,d.operator_id performed_by
       FROM m_base_teller_deposit d
+      UNION ALL
+      SELECT 'SAVINGS_WITHDRAWAL',w.id,w.completed_at,w.business_date,
+        'CASH_WITHDRAWAL','CASH','SAVINGS_WITHDRAWAL',
+        CASE WHEN st.is_reversed THEN 'RECONCILIATION_REQUIRED' ELSE w.status END,w.reference,w.reference,
+        UPPER(w.currency_code),CAST(0 AS decimal(19,6)),w.amount,w.client_id,w.office_id,w.teller_id,w.cashier_id,
+        w.cashier_id,w.cashier_id,CAST(0 AS decimal(19,6)),NULL,NULL,NULL,NULL,w.amount,NULL,NULL,NULL,true,w.created_by
+      FROM m_base_teller_withdrawal w JOIN m_savings_account_transaction st ON st.id=w.savings_transaction_id
+      WHERE w.status='COMPLETED'
       UNION ALL
       SELECT 'SAVINGS_OPENING',x.id,COALESCE(x.completed_on_utc,x.created_on_utc),
         COALESCE((SELECT st.transaction_date FROM m_savings_account_transaction st WHERE st.id=x.initial_deposit_transaction_id),CAST(COALESCE(x.completed_on_utc,x.created_on_utc) AS date)),'OPEN_SAVINGS_ACCOUNT',x.funding_type,
