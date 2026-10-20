@@ -3,10 +3,15 @@ package org.apache.fineract.baseteller.api;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import org.apache.fineract.testing.support.SavingsIntegrationTestBase;
 import org.apache.fineract.testing.support.SavingsTestUtils;
@@ -773,13 +778,45 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
             + "\",\"denominations\":[{\"denominationId\":\""
             + note
             + "\",\"quantity\":20}],\"vouchers\":0,\"checks\":[]}]}";
-    Response closing = ok(ACTOR, "POST", "/v2/base-teller/end-of-day-closing/preview", request);
+    String closingPath = "/v2/base-teller/end-of-day-closing";
+    List<String> configuredCurrencies =
+        ok(ACTOR, "GET", closingPath + "/context", null)
+            .jsonPath()
+            .getList("currencies.currencyCode");
+    assertTrue(configuredCurrencies.contains(currency));
+    String beforeClosing = snapshot();
+    if (configuredCurrencies.size() > 1) {
+      // A preceding cash-exchange suite can enable another tenant currency. Closing must still
+      // reject incomplete declarations; the successful preview below must declare every currency.
+      Response incomplete = call(ACTOR, "POST", closingPath + "/preview", request);
+      assertEquals(403, incomplete.statusCode());
+      assertEquals(
+          "error.msg.base.teller.end.of.day.currency.incomplete",
+          incomplete.jsonPath().getString("errors[0].userMessageGlobalisationCode"));
+      assertEquals(beforeClosing, snapshot());
+    }
+    JsonObject completeRequest = JsonParser.parseString(request).getAsJsonObject();
+    for (String code : configuredCurrencies) {
+      if (code.equals(currency)) continue;
+      JsonObject declaration = new JsonObject();
+      declaration.addProperty("currencyCode", code);
+      declaration.add("denominations", new JsonArray());
+      declaration.addProperty("vouchers", 0);
+      declaration.add("checks", new JsonArray());
+      completeRequest.getAsJsonArray("currencies").add(declaration);
+    }
+    Response closing = ok(ACTOR, "POST", closingPath + "/preview", completeRequest.toString());
+    List<Map<String, Object>> balances = closing.jsonPath().getList("balancesByCurrency");
+    assertEquals(configuredCurrencies.size(), balances.size());
     assertEquals(
-        0,
-        new BigDecimal("2000")
-            .compareTo(
-                new BigDecimal(
-                    closing.jsonPath().getString("balancesByCurrency[0].expectedCash"))));
+        Set.copyOf(configuredCurrencies),
+        Set.copyOf(balances.stream().map(b -> (String) b.get("currencyCode")).toList()));
+    for (var balance : balances) {
+      BigDecimal expected =
+          currency.equals(balance.get("currencyCode")) ? new BigDecimal("2000") : BigDecimal.ZERO;
+      assertEquals(0, expected.compareTo(new BigDecimal(balance.get("expectedCash").toString())));
+    }
+    assertEquals(beforeClosing, snapshot());
   }
 
   @Test
