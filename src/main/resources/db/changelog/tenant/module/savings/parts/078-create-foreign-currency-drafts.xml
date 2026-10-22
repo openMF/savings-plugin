@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-078-fx-draft-schema">
+    <comment>Non-operational branch proposals. Neither dynamic rates nor financial ledgers read these drafts.</comment>
+    <createTable tableName="m_fx_rate_draft">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="office_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="base_currency" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="quote_currency" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="daily_base_rate" type="DECIMAL(32,12)"><constraints nullable="false"/></column>
+      <column name="buy_points" type="DECIMAL(32,12)"><constraints nullable="false"/></column>
+      <column name="sell_points" type="DECIMAL(32,12)"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(10)" defaultValue="DRAFT"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_fx_rate_draft" baseColumnNames="office_id" referencedTableName="m_office" referencedColumnNames="id" constraintName="fk_fx_draft_office"/>
+    <addForeignKeyConstraint baseTableName="m_fx_rate_draft" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_fx_draft_operator"/>
+    <addUniqueConstraint tableName="m_fx_rate_draft" columnNames="office_id,effective_date,base_currency,quote_currency,version" constraintName="uk_fx_draft_revision"/>
+    <createTable tableName="m_fx_rate_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="draft_id" type="BIGINT"><constraints nullable="false" unique="true" uniqueConstraintName="uk_fx_audit_draft"/></column>
+      <column name="previous_draft_id" type="BIGINT"/>
+      <column name="operator_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_fx_rate_audit" baseColumnNames="draft_id" referencedTableName="m_fx_rate_draft" referencedColumnNames="id" constraintName="fk_fx_audit_draft"/>
+    <addForeignKeyConstraint baseTableName="m_fx_rate_audit" baseColumnNames="previous_draft_id" referencedTableName="m_fx_rate_draft" referencedColumnNames="id" constraintName="fk_fx_audit_previous"/>
+    <addForeignKeyConstraint baseTableName="m_fx_rate_audit" baseColumnNames="operator_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_fx_audit_operator"/>
+  </changeSet>
+  <changeSet author="fineract" id="ss-078-fx-draft-constraints">
+    <sql>
+      ALTER TABLE m_fx_rate_draft ADD CONSTRAINT ck_fx_draft_only CHECK(status='DRAFT' AND base_currency='USD' AND quote_currency &lt;&gt; 'USD' AND daily_base_rate &gt; 0 AND version &gt; 0);
+      ALTER TABLE m_fx_rate_audit ADD CONSTRAINT ck_fx_audit_action CHECK(action='DRAFT_CONFIRMED' AND (previous_draft_id IS NULL OR previous_draft_id &lt;&gt; draft_id));
+    </sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-078-fx-permissions">
+    <sql>
+      INSERT INTO m_permission(grouping,code,entity_name,action_name,can_maker_checker)
+      SELECT 'portfolio',x.code,x.entity,x.action,false FROM (
+        SELECT 'READ_BASE_TELLER_FX_RATE' code,'BASE_TELLER_FX_RATE' entity,'READ' action
+        UNION ALL SELECT 'CREATE_BASE_TELLER_FX_RATE','BASE_TELLER_FX_RATE','CREATE'
+        UNION ALL SELECT 'PUBLISH_BASE_TELLER_FX_RATE','BASE_TELLER_FX_RATE','PUBLISH'
+        UNION ALL SELECT 'READ_BASE_TELLER_FX','BASE_TELLER_FX','READ'
+        UNION ALL SELECT 'CREATE_BASE_TELLER_FX_SALE','BASE_TELLER_FX_SALE','CREATE'
+        UNION ALL SELECT 'CREATE_BASE_TELLER_FX_PURCHASE','BASE_TELLER_FX_PURCHASE','CREATE'
+      ) x WHERE NOT EXISTS(SELECT 1 FROM m_permission p WHERE p.code=x.code);
+      INSERT INTO m_role_permission(role_id,permission_id)
+      SELECT r.id,p.id FROM m_role r JOIN m_permission p ON p.entity_name IN ('BASE_TELLER_FX_RATE','BASE_TELLER_FX','BASE_TELLER_FX_SALE','BASE_TELLER_FX_PURCHASE')
+      WHERE r.name='Super user' AND NOT EXISTS(SELECT 1 FROM m_role_permission rp WHERE rp.role_id=r.id AND rp.permission_id=p.id);
+    </sql>
+  </changeSet>
+</databaseChangeLog>
