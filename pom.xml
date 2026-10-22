@@ -23,16 +23,16 @@
 
     <properties>
       <java.version>25</java.version>
-      <fineract.version>0.0.1586-3bcec6a</fineract.version>
+      <fineract.version>0.0.1608-479f11b</fineract.version>
       <eclipselink.version>5.0.2</eclipselink.version>
       <truth.version>1.4.5</truth.version>
-      <spotless.version>3.10.3</spotless.version>
+      <spotless.version>3.10.4</spotless.version>
       <swagger.version>2.2.55</swagger.version>
       <testcontainers.version>1.21.4</testcontainers.version>
       <mockito.version>5.17.0</mockito.version>
       <mapstruct.version>1.6.3</mapstruct.version>
       <testcontainers.version>2.0.5</testcontainers.version>
-      <rest-assured.version>6.0.1</rest-assured.version>
+      <rest-assured.version>6.2.0</rest-assured.version>
         <maven.compiler.release>25</maven.compiler.release>
     </properties>
 
