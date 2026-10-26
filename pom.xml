@@ -12,7 +12,7 @@
     <parent>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-parent</artifactId>
-            <version>4.1.1</version>
+            <version>4.1.2</version>
             <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>community.mifos</groupId>
@@ -23,7 +23,7 @@
 
     <properties>
       <java.version>25</java.version>
-      <fineract.version>0.0.1608-479f11b</fineract.version>
+      <fineract.version>0.0.1628-bc1c598</fineract.version>
       <eclipselink.version>5.0.2</eclipselink.version>
       <truth.version>1.4.5</truth.version>
       <spotless.version>3.10.4</spotless.version>
@@ -32,7 +32,7 @@
       <mockito.version>5.17.0</mockito.version>
       <mapstruct.version>1.6.3</mapstruct.version>
       <testcontainers.version>2.0.5</testcontainers.version>
-      <rest-assured.version>6.2.0</rest-assured.version>
+      <rest-assured.version>6.3.0</rest-assured.version>
         <maven.compiler.release>25</maven.compiler.release>
     </properties>
 
@@ -552,7 +552,7 @@
         <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
-          <version>0.8.15</version>
+          <version>0.8.16</version>
           <executions>
             <!-- Surefire agent: writes to target/jacoco.exec -->
             <execution>
