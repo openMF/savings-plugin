@@ -48,6 +48,9 @@ abstract class CashTransferNativeTestSupport {
             .withEnv("FINERACT_DEFAULT_TENANTDB_UID", "anvaykharb")
             .withEnv("FINERACT_DEFAULT_TENANTDB_PWD", "cash-transfer-test")
             .withEnv("FINERACT_DEFAULT_TENANTDB_CONN_PARAMS", "")
+            // Match the container clock: native summaries filter UTC created_date by assignment
+            // dates. A tenant date ahead of UTC excludes same-session settlement transactions.
+            .withEnv("FINERACT_DEFAULT_TENANTDB_TIMEZONE", "UTC")
             .withEnv("FINERACT_MODULE_SAVINGS_ENABLED", "true")
             .withEnv("SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING", "true")
             .withEnv("TZ", "UTC")
