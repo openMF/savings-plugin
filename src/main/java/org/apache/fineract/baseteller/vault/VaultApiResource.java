@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(
     name = "Base Teller Vault",
-    description = "Read-only office vault context; no deposit preview or execution")
+    description = "Read-only office vault context and catalog; deposit execution is unavailable")
 @RequiredArgsConstructor
 public class VaultApiResource {
   private final VaultReadPlatformService service;
