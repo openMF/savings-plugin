@@ -236,7 +236,7 @@ class VaultApiHttpIntegrationTest {
       assertEquals("VAULT:" + branchA, context.getString("vault.key"));
       assertEquals("UNKNOWN", context.getString("vault.status"));
       assertTrue(context.getBoolean("capabilities.viewContext"));
-      assertFalse(context.getBoolean("capabilities.previewDeposit"));
+      assertTrue(context.getBoolean("capabilities.previewDeposit"));
       assertFalse(context.getBoolean("capabilities.executeDeposit"));
       assertFalse(context.getBoolean("readiness.depositReady"));
       assertNotNull(context.getString("businessDate"));

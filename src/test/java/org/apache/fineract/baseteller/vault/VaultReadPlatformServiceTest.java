@@ -122,7 +122,7 @@ class VaultReadPlatformServiceTest {
     assertEquals(LocalDate.of(2026, 10, 26), result.businessDate());
     assertTrue(result.capabilities().viewContext());
     assertTrue(result.capabilities().viewDenominations());
-    assertFalse(result.capabilities().previewDeposit());
+    assertTrue(result.capabilities().previewDeposit());
     assertFalse(result.capabilities().executeDeposit());
     assertFalse(result.readiness().depositReady());
     assertTrue(result.readiness().limitations().contains("DENOMINATIONS_UNAVAILABLE:USD"));

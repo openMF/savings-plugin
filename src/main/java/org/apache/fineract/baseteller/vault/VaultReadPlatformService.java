@@ -47,7 +47,6 @@ public class VaultReadPlatformService {
           List<VaultData.Currency> currencies = currencies(selected.scope());
           var limitations = new ArrayList<String>();
           limitations.add("VAULT_STATUS_UNKNOWN");
-          limitations.add("DEPOSIT_PREVIEW_NOT_IMPLEMENTED");
           limitations.add("DEPOSIT_EXECUTION_NOT_IMPLEMENTED");
           if (currencies.isEmpty()) limitations.add("CURRENCIES_UNAVAILABLE");
           for (var currency : currencies) {
@@ -63,7 +62,7 @@ public class VaultReadPlatformService {
                   VaultData.Status.UNKNOWN),
               selected.date(),
               currencies,
-              new VaultData.Capabilities(true, true, true, true, false, false),
+              new VaultData.Capabilities(true, true, true, true, true, false),
               new VaultData.Readiness(false, List.copyOf(limitations)));
         });
   }
