@@ -388,10 +388,12 @@ class VaultApiHttpIntegrationTest {
     try (var s = c.createStatement();
         var r = s.executeQuery("SELECT current_database()")) {
       r.next();
-      if (!r.getString(1).startsWith("web1328_") && !r.getString(1).startsWith("web1328p3_")) {
+      if (!r.getString(1).startsWith("web1328_")
+          && !r.getString(1).startsWith("web1328p3_")
+          && !r.getString(1).startsWith("web1328p4_")) {
         c.close();
         throw new IllegalStateException(
-            "Refusing fixture writes outside a disposable web1328_* or web1328p3_* database");
+            "Refusing fixture writes outside a disposable web1328_*, web1328p3_* or web1328p4_* database");
       }
     }
     return c;
