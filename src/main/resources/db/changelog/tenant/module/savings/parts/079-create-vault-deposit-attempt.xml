@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <!-- Blocked request evidence only: deliberately no financial transaction or balance table. -->
+  <changeSet author="fineract" id="ss-079-vault-deposit-attempt">
+    <createTable tableName="m_vault_deposit_attempt">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="idempotency_key" type="VARCHAR(100)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_vda_key"/></column>
+      <column name="request_fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="attempt_reference" type="VARCHAR(40)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_vda_reference"/></column>
+      <column name="status" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="office_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_office" referencedColumnNames="id" foreignKeyName="fk_vda_office"/></column>
+      <column name="initiated_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_vda_actor"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+      <column name="snapshot" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <sql>ALTER TABLE m_vault_deposit_attempt ADD CONSTRAINT ck_vda_blocked CHECK (status='BLOCKED');</sql>
+    <insert tableName="m_permission">
+      <column name="grouping" value="portfolio"/>
+      <column name="code" value="REQUEST_BASE_TELLER_VAULT_DEPOSIT"/>
+      <column name="entity_name" value="BASE_TELLER_VAULT_DEPOSIT"/>
+      <column name="action_name" value="REQUEST"/>
+      <column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+  </changeSet>
+  <changeSet author="fineract" id="ss-079-vault-deposit-attempt-immutable-pg" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+      CREATE FUNCTION reject_vault_deposit_attempt_change() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'Vault deposit attempt evidence is immutable'; END;
+      $$;
+      CREATE TRIGGER immutable_vault_deposit_attempt BEFORE UPDATE OR DELETE ON m_vault_deposit_attempt
+      FOR EACH ROW EXECUTE FUNCTION reject_vault_deposit_attempt_change();
+    ]]></sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-079-vault-deposit-attempt-immutable-mysql" dbms="mysql,mariadb">
+    <sql splitStatements="false">CREATE TRIGGER immutable_vda_update BEFORE UPDATE ON m_vault_deposit_attempt FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Vault deposit attempt evidence is immutable'</sql>
+    <sql splitStatements="false">CREATE TRIGGER immutable_vda_delete BEFORE DELETE ON m_vault_deposit_attempt FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Vault deposit attempt evidence is immutable'</sql>
+  </changeSet>
+</databaseChangeLog>

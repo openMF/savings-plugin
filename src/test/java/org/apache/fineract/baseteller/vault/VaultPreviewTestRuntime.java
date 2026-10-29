@@ -18,7 +18,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
-/** Fresh real Fineract tenants, or explicitly supplied disposable local web1328p2_* databases. */
+/** Fresh real Fineract tenants, or explicitly supplied disposable local Phase 2/3 databases. */
 final class VaultPreviewTestRuntime implements AutoCloseable {
   private Network network;
   private PostgreSQLContainer<?> database;
@@ -169,10 +169,11 @@ final class VaultPreviewTestRuntime implements AutoCloseable {
     try (var statement = c.createStatement();
         var rows = statement.executeQuery("SELECT current_database()")) {
       rows.next();
-      if (!rows.getString(1).startsWith("web1328p2_")) {
+      if (!rows.getString(1).startsWith("web1328p2_")
+          && !rows.getString(1).startsWith("web1328p3_")) {
         c.close();
         throw new IllegalArgumentException(
-            "Refusing fixture writes outside disposable web1328p2_* databases.");
+            "Refusing fixture writes outside disposable web1328p2_* or web1328p3_* databases.");
       }
     }
     return c;

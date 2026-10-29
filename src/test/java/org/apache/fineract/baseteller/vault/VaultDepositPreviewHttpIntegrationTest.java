@@ -466,7 +466,7 @@ class VaultDepositPreviewHttpIntegrationTest {
   }
 
   @Test
-  void phaseOneRoutesRemainAvailableAndNoExecutionRouteExists() {
+  void phaseOneRoutesRemainAvailableAndPreviewPermissionCannotExecute() {
     for (String path :
         List.of(
             "/v2/base-teller/vault/context",
@@ -483,7 +483,7 @@ class VaultDepositPreviewHttpIntegrationTest {
             .jsonPath()
             .getBoolean("capabilities.executeDeposit"));
     assertEquals(
-        404,
+        403,
         call(reader, "POST", "/v2/base-teller/vault-cash-deposits", body(), "default")
             .statusCode());
   }
