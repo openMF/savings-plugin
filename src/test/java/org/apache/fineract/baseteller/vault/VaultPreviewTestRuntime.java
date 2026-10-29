@@ -170,10 +170,12 @@ final class VaultPreviewTestRuntime implements AutoCloseable {
         var rows = statement.executeQuery("SELECT current_database()")) {
       rows.next();
       if (!rows.getString(1).startsWith("web1328p2_")
-          && !rows.getString(1).startsWith("web1328p3_")) {
+          && !rows.getString(1).startsWith("web1328p3_")
+          && !rows.getString(1).startsWith("web1328p4_")) {
         c.close();
         throw new IllegalArgumentException(
-            "Refusing fixture writes outside disposable web1328p2_* or web1328p3_* databases.");
+            "Refusing fixture writes outside disposable web1328p2_*, web1328p3_* or web1328p4_*"
+                + " databases.");
       }
     }
     return c;

@@ -415,13 +415,14 @@ class VaultDepositExecutionHttpIntegrationTest {
   }
 
   @Test
-  void phaseOneAndTwoStayReadOnlyAndThereIsNoApprovalOrReceiptEndpoint() {
+  void phaseOneAndTwoStayReadOnlyAndReceiptRequiresPhaseFourHistoryPermission() {
     assertEquals(200, ok(operator, "GET", "/v2/base-teller/vault/context", null).statusCode());
     var preview = ok(operator, "POST", ROOT + "/preview", body(office).get("deposit"));
     assertFalse(preview.jsonPath().getBoolean("executionReadiness.executionAllowed"));
     assertEquals(
         404, call(operator, "POST", ROOT + "/1/approve", Map.of(), "default").statusCode());
-    assertEquals(404, call(operator, "GET", ROOT + "/1/receipt", null, "default").statusCode());
+    assertEquals(403, call(operator, "GET", ROOT + "/1/receipt", null, "default").statusCode());
+    assertEquals(404, call("mifos", "GET", ROOT + "/1/receipt", null, "default").statusCode());
   }
 
   private static void assertBlocked(Response response) {
