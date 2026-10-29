@@ -88,4 +88,5 @@
   <include file="parts/076-create-base-teller-withdrawal-schema.xml" relativeToChangelogFile="true"/>
   <include file="parts/077-use-native-withdrawal-custody-projection.xml" relativeToChangelogFile="true"/>
   <include file="parts/078-create-foreign-currency-drafts.xml" relativeToChangelogFile="true"/>
+  <include file="parts/079-create-vault-deposit-attempt.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
