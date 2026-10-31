@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-080-savings-product-policy">
+    <createTable tableName="m_savings_product_policy">
+      <column name="savings_product_id" type="BIGINT"><constraints primaryKey="true" nullable="false" referencedTableName="m_savings_product" referencedColumnNames="id" foreignKeyName="fk_spp_product"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)" defaultValue="DRAFT"><constraints nullable="false"/></column>
+      <column name="policy_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="fee_charge_id" type="BIGINT"><constraints referencedTableName="m_charge" referencedColumnNames="id" foreignKeyName="fk_spp_charge"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_spp_creator"/></column>
+      <column name="updated_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_spp_editor"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <sql>ALTER TABLE m_savings_product_policy ADD CONSTRAINT ck_spp_draft CHECK (status='DRAFT');</sql>
+    <sql>ALTER TABLE m_savings_product_policy ADD CONSTRAINT ck_spp_revision CHECK (revision &gt; 0);</sql>
+    <insert tableName="m_permission">
+      <column name="grouping" value="portfolio"/><column name="code" value="READ_SAVINGS_PRODUCT_POLICY"/>
+      <column name="entity_name" value="SAVINGS_PRODUCT_POLICY"/><column name="action_name" value="READ"/>
+      <column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+    <insert tableName="m_permission">
+      <column name="grouping" value="portfolio"/><column name="code" value="UPDATE_SAVINGS_PRODUCT_POLICY"/>
+      <column name="entity_name" value="SAVINGS_PRODUCT_POLICY"/><column name="action_name" value="UPDATE"/>
+      <column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+  </changeSet>
+</databaseChangeLog>
