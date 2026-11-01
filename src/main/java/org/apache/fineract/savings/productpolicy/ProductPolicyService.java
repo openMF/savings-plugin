@@ -48,7 +48,8 @@ public class ProductPolicyService {
       product(productId, false);
       List<Configuration> rows =
           jdbc.query(
-              "SELECT revision,policy_json FROM m_savings_product_policy WHERE savings_product_id=?",
+              "SELECT revision,policy_json FROM m_savings_product_policy WHERE"
+                  + " savings_product_id=?",
               (rs, row) ->
                   new Configuration(
                       productId,
@@ -75,9 +76,17 @@ public class ProductPolicyService {
       // Lock the authoritative product before reading its currency/rate/opening balance. Every
       // writer of this aggregate takes the same lock; revision is still mandatory for lost updates.
       product(productId, true);
+      if (!jdbc.queryForList(
+              "SELECT version FROM m_savings_product_policy_version WHERE savings_product_id=? AND"
+                  + " status='PENDING_APPROVAL'",
+              Long.class,
+              productId)
+          .isEmpty()) throw new Conflict();
       var core =
           jdbc.queryForMap(
-              "SELECT currency_code,currency_digits,min_required_opening_balance,nominal_annual_interest_rate FROM m_savings_product WHERE id=?",
+              "SELECT"
+                  + " currency_code,currency_digits,min_required_opening_balance,nominal_annual_interest_rate"
+                  + " FROM m_savings_product WHERE id=?",
               productId);
       validation.validateProduct(
           request.policy(),
@@ -91,7 +100,9 @@ public class ProductPolicyService {
         // reference. Automatic monthly-average posting is deliberately absent.
         var charges =
             jdbc.queryForList(
-                "SELECT id FROM m_charge WHERE id=? AND is_active=true AND is_deleted=false AND currency_code='MXN' AND charge_applies_to_enum=2 AND charge_time_enum=2 AND charge_calculation_enum=1 AND is_penalty=false FOR UPDATE",
+                "SELECT id FROM m_charge WHERE id=? AND is_active=true AND is_deleted=false AND"
+                    + " currency_code='MXN' AND charge_applies_to_enum=2 AND charge_time_enum=2 AND"
+                    + " charge_calculation_enum=1 AND is_penalty=false FOR UPDATE",
                 Long.class,
                 chargeId);
         if (charges.isEmpty())
@@ -108,7 +119,9 @@ public class ProductPolicyService {
       String policy = GSON.toJson(request.policy());
       if (current == 0) {
         jdbc.update(
-            "INSERT INTO m_savings_product_policy(savings_product_id,revision,status,policy_json,fee_charge_id,created_by,updated_by,created_at,updated_at) VALUES (?,1,'DRAFT',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+            "INSERT INTO"
+                + " m_savings_product_policy(savings_product_id,revision,status,policy_json,fee_charge_id,created_by,updated_by,created_at,updated_at)"
+                + " VALUES (?,1,'DRAFT',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
             productId,
             policy,
             chargeId,
@@ -117,7 +130,9 @@ public class ProductPolicyService {
       } else {
         int changed =
             jdbc.update(
-                "UPDATE m_savings_product_policy SET revision=revision+1,policy_json=?,fee_charge_id=?,updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE savings_product_id=? AND revision=? AND status='DRAFT'",
+                "UPDATE m_savings_product_policy SET"
+                    + " revision=revision+1,policy_json=?,fee_charge_id=?,updated_by=?,updated_at=CURRENT_TIMESTAMP"
+                    + " WHERE savings_product_id=? AND revision=? AND status='DRAFT'",
                 policy,
                 chargeId,
                 actorId,
@@ -125,8 +140,21 @@ public class ProductPolicyService {
                 current);
         if (changed != 1) throw new Conflict();
       }
+      jdbc.update(
+          "INSERT INTO"
+              + " m_savings_product_policy_audit(savings_product_id,version,action,actor_id,recorded_at,previous_state,new_state,snapshot_json)"
+              + " VALUES (?,?,?,?,?,?,'DRAFT',?)",
+          productId,
+          current + 1,
+          current == 0 ? "DRAFT_CREATE" : "DRAFT_EDIT",
+          actorId,
+          org.apache.fineract.infrastructure.core.service.DateUtils.getAuditLocalDateTime(),
+          current == 0 ? null : "DRAFT",
+          policy);
       return new Configuration(
           productId, current + 1, Status.DRAFT, false, request.policy(), capabilities());
+    } catch (org.springframework.dao.ConcurrencyFailureException e) {
+      throw new Conflict();
     } catch (DataAccessException e) {
       throw unavailable();
     }
@@ -156,7 +184,8 @@ public class ProductPolicyService {
   private static PlatformInternalServerException unavailable() {
     return new PlatformInternalServerException(
         "error.msg.savings.product.policy.unavailable",
-        "Product policy storage is unavailable; no core product operation was performed. Retrieve the draft before retrying.");
+        "Product policy storage is unavailable; no core product operation was performed. Retrieve"
+            + " the draft before retrying.");
   }
 
   public static class Conflict extends RuntimeException {}

@@ -93,7 +93,7 @@ public final class ProductPolicyData {
   public static Capabilities capabilities() {
     return new Capabilities(
         true,
-        false,
+        true,
         false,
         false,
         List.of(Classification.values()),
@@ -102,7 +102,6 @@ public final class ProductPolicyData {
         List.of(Freezing.values()),
         List.of(InterestMode.values()),
         List.of(
-            "APPROVAL_AND_ACTIVATION",
             "TRANSACTION_RESTRICTIONS",
             "BALANCE_LIMITS",
             "FROZEN_FUNDS",

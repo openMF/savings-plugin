@@ -65,7 +65,7 @@ class ProductPolicyServiceTest {
     doReturn(actor).when(security).authenticatedUser();
     when(actor.getId()).thenReturn(1L);
     ThreadLocalContextUtil.setTenant(mock(FineractPlatformTenant.class));
-    assertFalse(service.template().activation());
+    assertTrue(service.template().activation());
     verify(actor).validateHasPermissionTo(ProductPolicyService.READ);
     verifyNoInteractions(jdbc);
   }

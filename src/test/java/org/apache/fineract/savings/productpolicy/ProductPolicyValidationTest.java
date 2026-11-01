@@ -159,7 +159,7 @@ class ProductPolicyValidationTest {
       p.addProperty("interestMode", "REFERENCE_RATE");
       assertNotNull(validator.parse(body.toString()));
     }
-    assertFalse(ProductPolicyData.capabilities().activation());
+    assertTrue(ProductPolicyData.capabilities().activation());
     assertFalse(ProductPolicyData.capabilities().financialEnforcement());
   }
 
