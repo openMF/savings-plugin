@@ -89,4 +89,5 @@
   <include file="parts/077-use-native-withdrawal-custody-projection.xml" relativeToChangelogFile="true"/>
   <include file="parts/078-create-foreign-currency-drafts.xml" relativeToChangelogFile="true"/>
   <include file="parts/079-create-vault-deposit-attempt.xml" relativeToChangelogFile="true"/>
+  <include file="parts/080-create-savings-product-policy.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
