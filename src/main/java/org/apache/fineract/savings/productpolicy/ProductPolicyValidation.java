@@ -78,6 +78,20 @@ public class ProductPolicyValidation {
     }
   }
 
+  static JsonObject object(String json) {
+    if (json == null || json.length() > 16000)
+      throw invalid("request", "A bounded JSON object is required.");
+    try (var reader = new JsonReader(new StringReader(json))) {
+      reader.setStrictness(Strictness.STRICT);
+      scan(reader, 0);
+      if (reader.peek() != JsonToken.END_DOCUMENT)
+        throw invalid("request", "Trailing JSON content.");
+      return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+    } catch (Exception e) {
+      throw invalid("request", "Malformed or duplicate-key JSON object.");
+    }
+  }
+
   private static void scan(JsonReader reader, int depth) throws java.io.IOException {
     if (depth > 3) throw invalid("request", "JSON nesting is unsupported.");
     if (reader.peek() == JsonToken.BEGIN_OBJECT) {
@@ -167,7 +181,8 @@ public class ProductPolicyValidation {
     if (policy.interestMode() == InterestMode.NONE && rate != null && rate.signum() != 0)
       throw invalid(
           "interestMode",
-          "NONE requires zero nominal interest in the core product; this API does not change rates.");
+          "NONE requires zero nominal interest in the core product; this API does not change"
+              + " rates.");
   }
 
   private static void money(BigDecimal value, String name, int digits) {

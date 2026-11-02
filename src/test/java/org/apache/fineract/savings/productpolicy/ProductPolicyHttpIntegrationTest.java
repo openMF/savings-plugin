@@ -45,18 +45,25 @@ class ProductPolicyHttpIntegrationTest {
     denied = "policy-denied-" + suffix;
     for (String name : List.of(reader, denied)) {
       jdbc.update(
-          "INSERT INTO m_role(name,description,is_disabled) VALUES (?, 'WEB-1350 disposable fixture',false)",
+          "INSERT INTO m_role(name,description,is_disabled) VALUES (?, 'WEB-1350 disposable"
+              + " fixture',false)",
           name);
       jdbc.update(
-          "INSERT INTO m_appuser(office_id,username,firstname,lastname,password,email,firsttime_login_remaining,nonexpired,nonlocked,nonexpired_credentials,enabled,last_time_password_updated,password_never_expires) SELECT 1,?,'Policy','Fixture',password,'policy@example.test',false,true,true,true,true,CURRENT_DATE,true FROM m_appuser WHERE username='mifos'",
+          "INSERT INTO"
+              + " m_appuser(office_id,username,firstname,lastname,password,email,firsttime_login_remaining,nonexpired,nonlocked,nonexpired_credentials,enabled,last_time_password_updated,password_never_expires)"
+              + " SELECT"
+              + " 1,?,'Policy','Fixture',password,'policy@example.test',false,true,true,true,true,CURRENT_DATE,true"
+              + " FROM m_appuser WHERE username='mifos'",
           name);
       jdbc.update(
-          "INSERT INTO m_appuser_role(appuser_id,role_id) SELECT u.id,r.id FROM m_appuser u,m_role r WHERE u.username=? AND r.name=?",
+          "INSERT INTO m_appuser_role(appuser_id,role_id) SELECT u.id,r.id FROM m_appuser u,m_role"
+              + " r WHERE u.username=? AND r.name=?",
           name,
           name);
     }
     jdbc.update(
-        "INSERT INTO m_role_permission(role_id,permission_id) SELECT r.id,p.id FROM m_role r,m_permission p WHERE r.name=? AND p.code='READ_SAVINGS_PRODUCT_POLICY'",
+        "INSERT INTO m_role_permission(role_id,permission_id) SELECT r.id,p.id FROM m_role"
+            + " r,m_permission p WHERE r.name=? AND p.code='READ_SAVINGS_PRODUCT_POLICY'",
         reader);
     // Standard products are created using the authoritative Fineract API, never by policy storage.
     product = createProduct("Policy " + suffix, "P" + suffix.substring(0, 3));
@@ -159,7 +166,7 @@ class ProductPolicyHttpIntegrationTest {
             "mifos", "default", "PUT", ROOT + "/" + product, ProductPolicyValidationTest.JSON, 200);
     assertEquals("DRAFT", saved.jsonPath().getString("status"));
     assertFalse(saved.jsonPath().getBoolean("operational"));
-    assertFalse(saved.jsonPath().getBoolean("capabilities.activation"));
+    assertTrue(saved.jsonPath().getBoolean("capabilities.activation"));
     assertEquals(1, saved.jsonPath().getInt("revision"));
     var read = call(reader, "default", "GET", ROOT + "/" + product, null, 200);
     assertEquals(saved.jsonPath().getMap("policy"), read.jsonPath().getMap("policy"));
@@ -220,7 +227,7 @@ class ProductPolicyHttpIntegrationTest {
     call(denied, "default", "PUT", ROOT + "/" + product, ProductPolicyValidationTest.JSON, 403);
     call(reader, "default", "PUT", ROOT + "/" + product, ProductPolicyValidationTest.JSON, 403);
     var capabilities = call("mifos", "default", "GET", ROOT + "/template", null, 200);
-    assertFalse(capabilities.jsonPath().getBoolean("activation"));
+    assertTrue(capabilities.jsonPath().getBoolean("activation"));
     assertFalse(capabilities.jsonPath().getBoolean("financialEnforcement"));
     assertEquals(3, capabilities.jsonPath().getList("classifications").size());
   }
@@ -299,8 +306,11 @@ class ProductPolicyHttpIntegrationTest {
             expected,
             "actualStatus",
             response.statusCode(),
+            "request",
+            body == null ? "" : body,
             "response",
             response.asString()));
+    if (expected == -1) return response;
     if (expected == 0)
       assertTrue(List.of(200, 409).contains(response.statusCode()), response.asString());
     else

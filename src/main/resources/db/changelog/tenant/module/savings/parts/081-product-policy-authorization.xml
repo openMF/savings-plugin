@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-081-product-policy-authorization">
+    <createTable tableName="m_savings_product_policy_version">
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="base_version" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="maker_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="draft_creator_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="draft_editor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="checker_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="policy_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="core_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="submitted_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="decided_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="reason" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+    </createTable>
+    <createTable tableName="m_savings_product_policy_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="previous_state" type="VARCHAR(20)"><constraints nullable="true"/></column>
+      <column name="new_state" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="true"/></column>
+      <column name="reason" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+      <column name="snapshot_json" type="CLOB"><constraints nullable="true"/></column>
+    </createTable>
+    <createTable tableName="m_savings_account_policy">
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="purpose" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="bound_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_product_policy_version" columnNames="savings_product_id,version" constraintName="pk_spp_version"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="savings_product_id" referencedTableName="m_savings_product" referencedColumnNames="id" constraintName="fk_sppv_product"/>
+    <addForeignKeyConstraint baseTableName="m_savings_account_policy" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_sap_account"/>
+    <addForeignKeyConstraint baseTableName="m_savings_account_policy" baseColumnNames="savings_product_id,version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_sap_version"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_audit" baseColumnNames="savings_product_id" referencedTableName="m_savings_product" referencedColumnNames="id" constraintName="fk_sppa_product"/>
+    <addUniqueConstraint tableName="m_savings_product_policy_audit" columnNames="savings_product_id,version,action" constraintName="uq_sppa_event"/>
+    <createIndex tableName="m_savings_product_policy_version" indexName="idx_sppv_effective"><column name="savings_product_id"/><column name="status"/><column name="effective_date"/></createIndex>
+    <createIndex tableName="m_savings_product_policy_version" indexName="idx_sppv_pending"><column name="status"/></createIndex>
+    <sql>ALTER TABLE m_savings_product_policy_version ADD CONSTRAINT ck_sppv_status CHECK (status IN ('PENDING_APPROVAL','APPROVED','REJECTED'));</sql>
+    <sql>ALTER TABLE m_savings_product_policy_version ADD CONSTRAINT ck_sppv_review CHECK ((status='PENDING_APPROVAL' AND checker_id IS NULL AND decided_at IS NULL) OR (status IN ('APPROVED','REJECTED') AND checker_id IS NOT NULL AND decided_at IS NOT NULL AND checker_id&lt;&gt;maker_id AND checker_id&lt;&gt;draft_creator_id AND checker_id&lt;&gt;draft_editor_id));</sql>
+    <sql>ALTER TABLE m_savings_product_policy_version ADD CONSTRAINT ck_sppv_version CHECK (version&gt;0);</sql>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="maker_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sppv_maker_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="draft_creator_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sppv_draft_creator_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="draft_editor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sppv_draft_editor_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="checker_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sppv_checker_id"/>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="SUBMIT_SAVINGS_PRODUCT_POLICY"/><column name="entity_name" value="SAVINGS_PRODUCT_POLICY"/><column name="action_name" value="SUBMIT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CHECK_SAVINGS_PRODUCT_POLICY"/><column name="entity_name" value="SAVINGS_PRODUCT_POLICY"/><column name="action_name" value="CHECK"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+</databaseChangeLog>

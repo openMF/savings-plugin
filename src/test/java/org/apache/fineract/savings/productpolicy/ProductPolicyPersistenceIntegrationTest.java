@@ -70,21 +70,32 @@ class ProductPolicyPersistenceIntegrationTest {
     for (DataSource ds : sources.values()) {
       var j = new JdbcTemplate(ds);
       j.execute(
-          "CREATE TABLE m_savings_product(id bigint PRIMARY KEY,deposit_type_enum integer,currency_code varchar(3),currency_digits integer,min_required_opening_balance numeric(19,6),nominal_annual_interest_rate numeric(19,6))");
+          "CREATE TABLE m_savings_product(id bigint PRIMARY KEY,deposit_type_enum"
+              + " integer,currency_code varchar(3),currency_digits"
+              + " integer,min_required_opening_balance numeric(19,6),nominal_annual_interest_rate"
+              + " numeric(19,6))");
       j.execute(
-          "CREATE TABLE m_charge(id bigint PRIMARY KEY,is_active boolean,is_deleted boolean,currency_code varchar(3),charge_applies_to_enum integer,charge_time_enum integer,charge_calculation_enum integer,is_penalty boolean)");
+          "CREATE TABLE m_charge(id bigint PRIMARY KEY,is_active boolean,is_deleted"
+              + " boolean,currency_code varchar(3),charge_applies_to_enum integer,charge_time_enum"
+              + " integer,charge_calculation_enum integer,is_penalty boolean)");
+      j.execute("CREATE TABLE m_client(id bigint PRIMARY KEY)");
+      j.execute("CREATE TABLE m_savings_account(id bigint PRIMARY KEY)");
       j.execute("CREATE TABLE m_appuser(id bigint PRIMARY KEY)");
       j.execute(
-          "CREATE TABLE m_permission(id bigserial PRIMARY KEY,grouping varchar(100),code varchar(100) UNIQUE,entity_name varchar(100),action_name varchar(100),can_maker_checker boolean)");
+          "CREATE TABLE m_permission(id bigserial PRIMARY KEY,grouping varchar(100),code"
+              + " varchar(100) UNIQUE,entity_name varchar(100),action_name"
+              + " varchar(100),can_maker_checker boolean)");
       j.update("INSERT INTO m_permission(code) VALUES ('EXISTING_PERMISSION')");
       j.update("INSERT INTO m_appuser VALUES(1)");
       j.update(
-          "INSERT INTO m_savings_product VALUES(1,100,'MXN',2,0,0),(2,100,'MXN',2,0,0),(3,100,'USD',2,0,0),(4,200,'MXN',2,0,0)");
+          "INSERT INTO m_savings_product"
+              + " VALUES(1,100,'MXN',2,0,0),(2,100,'MXN',2,0,0),(3,100,'USD',2,0,0),(4,200,'MXN',2,0,0)");
       j.update(
-          "INSERT INTO m_charge VALUES(1,true,false,'MXN',2,2,1,false),(2,true,false,'USD',2,2,1,false),(3,true,false,'MXN',1,2,1,false),(4,false,false,'MXN',2,2,1,false),(5,true,false,'MXN',2,1,1,false),(6,true,false,'MXN',2,2,1,true)");
+          "INSERT INTO m_charge"
+              + " VALUES(1,true,false,'MXN',2,2,1,false),(2,true,false,'USD',2,2,1,false),(3,true,false,'MXN',1,2,1,false),(4,false,false,'MXN',2,2,1,false),(5,true,false,'MXN',2,1,1,false),(6,true,false,'MXN',2,2,1,true)");
       migrate(ds);
       migrate(ds);
-      assertEquals(3, j.queryForObject("SELECT count(*) FROM m_permission", Integer.class));
+      assertEquals(5, j.queryForObject("SELECT count(*) FROM m_permission", Integer.class));
       assertEquals(
           0, j.queryForObject("SELECT count(*) FROM m_savings_product_policy", Integer.class));
     }
@@ -118,6 +129,21 @@ class ProductPolicyPersistenceIntegrationTest {
         lb.update(new Contexts(), new LabelExpression());
       }
     }
+    for (String part :
+        List.of("081-product-policy-authorization.xml", "082-product-policy-opening-slots.xml")) {
+      try (var connection = ds.getConnection()) {
+        var db =
+            DatabaseFactory.getInstance()
+                .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+        try (var lb =
+            new Liquibase(
+                "db/changelog/tenant/module/savings/parts/" + part,
+                new ClassLoaderResourceAccessor(),
+                db)) {
+          lb.update(new Contexts(), new LabelExpression());
+        }
+      }
+    }
   }
 
   @BeforeEach
@@ -139,8 +165,14 @@ class ProductPolicyPersistenceIntegrationTest {
     when(security.authenticatedUser()).thenReturn(actor);
     service = new ProductPolicyService(security, jdbc, new ProductPolicyValidation());
     tx = new TransactionTemplate(new DataSourceTransactionManager(routing));
-    for (String name : sources.keySet())
-      new JdbcTemplate(sources.get(name)).update("DELETE FROM m_savings_product_policy");
+    for (String name : sources.keySet()) {
+      var j = new JdbcTemplate(sources.get(name));
+      j.update("DELETE FROM m_savings_policy_opening_slot");
+      j.update("DELETE FROM m_savings_account_policy");
+      j.update("DELETE FROM m_savings_product_policy_audit");
+      j.update("DELETE FROM m_savings_product_policy_version");
+      j.update("DELETE FROM m_savings_product_policy");
+    }
     tenant("one");
   }
 

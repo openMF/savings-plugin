@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-082-product-policy-opening-slots">
+    <!-- A database uniqueness constraint also protects concurrent openings under REPEATABLE_READ. -->
+    <createTable tableName="m_savings_policy_opening_slot">
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="purpose" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false" unique="true"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_policy_opening_slot" columnNames="client_id,purpose" constraintName="pk_spp_opening_slot"/>
+    <addForeignKeyConstraint baseTableName="m_savings_policy_opening_slot" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_spp_slot_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_policy_opening_slot" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_spp_slot_account"/>
+  </changeSet>
+</databaseChangeLog>
