@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 public class ProductPolicyValidation {
   private static final Gson GSON = new Gson();
   private static final Set<String> OPTIONAL =
-      Set.of("feeChargeId", "freezingTermDays", "paymentReferencePartner");
+      Set.of("feeChargeId", "freezingTermDays", "paymentReferencePartner", "interestMatrix");
 
   public WriteRequest parse(String json) {
     if (json == null || json.length() > 16000)
@@ -51,6 +51,10 @@ public class ProductPolicyValidation {
         JsonElement value = policy.get(name);
         if (value == null || value.isJsonNull()) {
           if (!OPTIONAL.contains(name)) throw invalid(name, "Required configuration is missing.");
+          continue;
+        }
+        if (name.equals("interestMatrix")) {
+          InterestMatrixValidation.parse(value);
           continue;
         }
         if (!value.isJsonPrimitive()) throw invalid(name, "A scalar value is required.");
@@ -93,7 +97,7 @@ public class ProductPolicyValidation {
   }
 
   private static void scan(JsonReader reader, int depth) throws java.io.IOException {
-    if (depth > 3) throw invalid("request", "JSON nesting is unsupported.");
+    if (depth > 6) throw invalid("request", "JSON nesting is unsupported.");
     if (reader.peek() == JsonToken.BEGIN_OBJECT) {
       reader.beginObject();
       Set<String> keys = new HashSet<>();
@@ -103,19 +107,26 @@ public class ProductPolicyValidation {
       }
       reader.endObject();
     } else if (reader.peek() == JsonToken.BEGIN_ARRAY) {
-      throw invalid("request", "Arrays are unsupported.");
+      reader.beginArray();
+      int size = 0;
+      while (reader.hasNext()) {
+        if (++size > InterestMatrixValidation.MAX_BRACKETS)
+          throw invalid("request", "Too many array entries.");
+        scan(reader, depth + 1);
+      }
+      reader.endArray();
     } else {
       reader.skipValue();
     }
   }
 
-  private static void fields(JsonObject object, Set<String> supported) {
+  static void fields(JsonObject object, Set<String> supported) {
     if (object == null) throw invalid("request", "A JSON object is required.");
     for (String key : object.keySet())
       if (!supported.contains(key)) throw invalid(key, "Unsupported configuration option.");
   }
 
-  private static void integer(JsonElement value, String name) {
+  static void integer(JsonElement value, String name) {
     if (value == null
         || !value.isJsonPrimitive()
         || !value.getAsJsonPrimitive().isNumber()
@@ -132,6 +143,10 @@ public class ProductPolicyValidation {
       } catch (ReflectiveOperationException e) {
         throw new IllegalStateException(e);
       }
+    }
+    if (p.interestMatrix() != null) {
+      if (p.interestMode() != InterestMode.TIERED || p.classification() == Classification.SIGHT)
+        throw invalid("interestMatrix", "A matrix requires an eligible TIERED product policy.");
     }
     money(p.maximumBalance(), "maximumBalance", 6);
     money(p.minimumMonthlyAverageBalance(), "minimumMonthlyAverageBalance", 6);
@@ -173,6 +188,8 @@ public class ProductPolicyValidation {
     validate(policy);
     if (!"MXN".equals(currency))
       throw invalid("savingsProductId", "WEB-1350 requires an MXN product.");
+    if (policy.interestMatrix() != null)
+      InterestMatrixValidation.validate(policy.interestMatrix(), digits, policy.maximumBalance());
     money(policy.maximumBalance(), "maximumBalance", digits);
     money(policy.minimumMonthlyAverageBalance(), "minimumMonthlyAverageBalance", digits);
     if (opening != null && (opening.signum() < 0 || policy.maximumBalance().compareTo(opening) < 0))

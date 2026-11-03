@@ -66,7 +66,48 @@ public final class ProductPolicyData {
       String accountDesignation,
       Boolean additionalPaymentReference,
       String paymentReferencePartner,
-      InterestMode interestMode) {}
+      InterestMode interestMode,
+      InterestMatrixData.Matrix interestMatrix) {
+    /** Backward-compatible construction for BE-01/BE-02 consumers and historical policies. */
+    public Policy(
+        Classification classification,
+        Purpose purpose,
+        Boolean withdrawalsAllowed,
+        Boolean depositsAllowed,
+        Boolean liquidGuarantee,
+        BigDecimal maximumBalance,
+        BigDecimal minimumMonthlyAverageBalance,
+        Boolean feeApplicable,
+        Long feeChargeId,
+        Freezing freezing,
+        Integer freezingTermDays,
+        Boolean directDebitForLoanPayment,
+        Multiplicity multiplicity,
+        String accountDesignation,
+        Boolean additionalPaymentReference,
+        String paymentReferencePartner,
+        InterestMode interestMode) {
+      this(
+          classification,
+          purpose,
+          withdrawalsAllowed,
+          depositsAllowed,
+          liquidGuarantee,
+          maximumBalance,
+          minimumMonthlyAverageBalance,
+          feeApplicable,
+          feeChargeId,
+          freezing,
+          freezingTermDays,
+          directDebitForLoanPayment,
+          multiplicity,
+          accountDesignation,
+          additionalPaymentReference,
+          paymentReferencePartner,
+          interestMode,
+          null);
+    }
+  }
 
   public record WriteRequest(Long expectedRevision, Policy policy) {}
 
