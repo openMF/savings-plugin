@@ -95,6 +95,10 @@ public class ProductPolicyWorkflow {
                 revision)
             .isEmpty()) throw new ProductPolicyService.Conflict();
     var policy = JSON.fromJson((String) draft.get("policy_json"), ProductPolicyData.Policy.class);
+    if (policy.interestMode() == ProductPolicyData.InterestMode.TIERED
+        && policy.interestMatrix() == null)
+      throw ProductPolicyValidation.invalid(
+          "interestMatrix", "TIERED submission requires a validated matrix snapshot.");
     core.validate(product, policy, validation);
     String snapshot = JSON.toJson(core.capture(product));
     Long base = latestApproved(product);

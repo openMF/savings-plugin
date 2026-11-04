@@ -133,6 +133,12 @@ final class VaultPreviewTestRuntime implements AutoCloseable {
               + " tenants(identifier,name,timezone_id,oltp_id,report_id) SELECT"
               + " 'vault-preview-secondary','Preview secondary','UTC',id,id FROM"
               + " tenant_server_connections WHERE schema_name='fineract_secondary';");
+      // Discover both tenants during normal application startup. Adding one to a running
+      // instance leaves native tenant configuration/rounding caches uninitialized, and their
+      // lazy first-request initialization can recurse through the configuration cache.
+      fineract.stop();
+      fineract.start();
+      baseUrl = "https://localhost:" + fineract.getMappedPort(8443);
       String prefix = "jdbc:postgresql://localhost:" + database.getMappedPort(5432) + "/";
       primary =
           DriverManager.getConnection(
