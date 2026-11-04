@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-083-reference-rates">
+    <createTable tableName="m_savings_reference_rate">
+      <column name="reference_id" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="reference_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="tenor" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="source_description" type="VARCHAR(500)"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="maker_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_savings_reference_fixing">
+      <column name="reference_id" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="annual_rate_percent" type="DECIMAL(25,12)"><constraints nullable="false"/></column>
+      <column name="publication_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="source_reference" type="VARCHAR(500)"><constraints nullable="false"/></column>
+      <column name="note" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+      <column name="base_version" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="maker_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="submitter_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="checker_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="captured_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="submitted_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="decided_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="reason" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+      <column name="open_effective_date" type="DATE"><constraints nullable="true"/></column>
+      <column name="approved_effective_date" type="DATE"><constraints nullable="true"/></column>
+    </createTable>
+    <createTable tableName="m_savings_reference_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="reference_id" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="previous_state" type="VARCHAR(20)"><constraints nullable="true"/></column>
+      <column name="new_state" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="reason" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_reference_rate" columnNames="reference_id" constraintName="pk_srr"/>
+    <addPrimaryKey tableName="m_savings_reference_fixing" columnNames="reference_id,version" constraintName="pk_srf"/>
+    <addUniqueConstraint tableName="m_savings_reference_fixing" columnNames="reference_id,open_effective_date" constraintName="uq_srf_open"/>
+    <addUniqueConstraint tableName="m_savings_reference_fixing" columnNames="reference_id,approved_effective_date" constraintName="uq_srf_approved"/>
+    <addUniqueConstraint tableName="m_savings_reference_audit" columnNames="reference_id,version,action" constraintName="uq_sra_event"/>
+    <addColumn tableName="m_savings_product_policy"><column name="reference_rate_id" type="VARCHAR(64)"/></addColumn>
+    <addColumn tableName="m_savings_product_policy_version"><column name="reference_rate_id" type="VARCHAR(64)"/></addColumn>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_fixing" baseColumnNames="reference_id" referencedTableName="m_savings_reference_rate" referencedColumnNames="reference_id" constraintName="fk_srf_ref"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_fixing" baseColumnNames="reference_id,base_version" referencedTableName="m_savings_reference_fixing" referencedColumnNames="reference_id,version" constraintName="fk_srf_base"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_audit" baseColumnNames="reference_id" referencedTableName="m_savings_reference_rate" referencedColumnNames="reference_id" constraintName="fk_sra_ref"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_rate" baseColumnNames="maker_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_srr_maker_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_fixing" baseColumnNames="maker_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_srf_maker_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_fixing" baseColumnNames="submitter_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_srf_submitter_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_fixing" baseColumnNames="checker_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_srf_checker_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_reference_audit" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sra_actor_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy" baseColumnNames="reference_rate_id" referencedTableName="m_savings_reference_rate" referencedColumnNames="reference_id" constraintName="fk_spp_reference"/>
+    <addForeignKeyConstraint baseTableName="m_savings_product_policy_version" baseColumnNames="reference_rate_id" referencedTableName="m_savings_reference_rate" referencedColumnNames="reference_id" constraintName="fk_sppv_reference"/>
+    <sql>ALTER TABLE m_savings_reference_rate ADD CONSTRAINT ck_srr_type CHECK (reference_type='CETES' AND revision&gt;=0);</sql>
+    <sql>ALTER TABLE m_savings_reference_fixing ADD CONSTRAINT ck_srf_status CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED','REJECTED'));</sql>
+    <sql>ALTER TABLE m_savings_reference_fixing ADD CONSTRAINT ck_srf_values CHECK (version&gt;0 AND revision&gt;=0 AND annual_rate_percent&gt;=0 AND effective_date&gt;=publication_date);</sql>
+    <sql>ALTER TABLE m_savings_reference_fixing ADD CONSTRAINT ck_srf_review CHECK ((status='DRAFT' AND revision=0 AND submitter_id IS NULL AND submitted_at IS NULL AND checker_id IS NULL AND decided_at IS NULL) OR (status='PENDING_APPROVAL' AND revision=1 AND submitter_id IS NOT NULL AND submitted_at IS NOT NULL AND checker_id IS NULL AND decided_at IS NULL) OR (status IN ('APPROVED','REJECTED') AND revision=2 AND submitter_id IS NOT NULL AND submitted_at IS NOT NULL AND checker_id IS NOT NULL AND decided_at IS NOT NULL AND checker_id&lt;&gt;maker_id AND checker_id&lt;&gt;submitter_id));</sql>
+    <sql>ALTER TABLE m_savings_reference_fixing ADD CONSTRAINT ck_srf_reject CHECK (status&lt;&gt;'REJECTED' OR (reason IS NOT NULL AND LENGTH(TRIM(reason))&gt;0));</sql>
+    <sql>ALTER TABLE m_savings_reference_fixing ADD CONSTRAINT ck_srf_effective CHECK ((status IN ('DRAFT','PENDING_APPROVAL') AND open_effective_date IS NOT NULL AND open_effective_date=effective_date AND approved_effective_date IS NULL) OR (status='APPROVED' AND open_effective_date IS NULL AND approved_effective_date IS NOT NULL AND approved_effective_date=effective_date) OR (status='REJECTED' AND open_effective_date IS NULL AND approved_effective_date IS NULL));</sql>
+    <createIndex tableName="m_savings_reference_fixing" indexName="idx_srf_resolve"><column name="reference_id"/><column name="status"/><column name="effective_date"/></createIndex>
+    <createIndex tableName="m_savings_reference_fixing" indexName="idx_srf_pending"><column name="status"/></createIndex>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_SAVINGS_REFERENCE_RATE"/><column name="entity_name" value="SAVINGS_REFERENCE_RATE"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_SAVINGS_REFERENCE_RATE"/><column name="entity_name" value="SAVINGS_REFERENCE_RATE"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CAPTURE_SAVINGS_REFERENCE_RATE"/><column name="entity_name" value="SAVINGS_REFERENCE_RATE"/><column name="action_name" value="CAPTURE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="SUBMIT_SAVINGS_REFERENCE_RATE"/><column name="entity_name" value="SAVINGS_REFERENCE_RATE"/><column name="action_name" value="SUBMIT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CHECK_SAVINGS_REFERENCE_RATE"/><column name="entity_name" value="SAVINGS_REFERENCE_RATE"/><column name="action_name" value="CHECK"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+  <!-- PostgreSQL additionally protects sealed observations and append-only audit against accidental SQL mutation. -->
+  <changeSet author="fineract" id="ss-083-reference-rate-immutability-pg" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+CREATE FUNCTION savings_reference_fixing_immutable() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP='DELETE' OR OLD.status IN ('APPROVED','REJECTED') THEN
+    RAISE EXCEPTION 'Reference fixing history is immutable';
+  END IF;
+  IF (NEW.reference_id,NEW.version,NEW.annual_rate_percent,NEW.publication_date,NEW.effective_date,
+      NEW.source_reference,NEW.note,NEW.base_version,NEW.maker_id,NEW.captured_at)
+    IS DISTINCT FROM (OLD.reference_id,OLD.version,OLD.annual_rate_percent,OLD.publication_date,OLD.effective_date,
+      OLD.source_reference,OLD.note,OLD.base_version,OLD.maker_id,OLD.captured_at) THEN
+    RAISE EXCEPTION 'Reference observation is immutable; capture a new version';
+  END IF;
+  IF NOT ((OLD.status='DRAFT' AND NEW.status='PENDING_APPROVAL') OR
+      (OLD.status='PENDING_APPROVAL' AND NEW.status IN ('APPROVED','REJECTED'))) THEN
+    RAISE EXCEPTION 'Invalid reference fixing transition';
+  END IF;
+  IF OLD.status='PENDING_APPROVAL' AND (NEW.submitter_id,NEW.submitted_at) IS DISTINCT FROM (OLD.submitter_id,OLD.submitted_at) THEN
+    RAISE EXCEPTION 'Reference contributor history is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_srf_immutable BEFORE UPDATE OR DELETE ON m_savings_reference_fixing FOR EACH ROW EXECUTE FUNCTION savings_reference_fixing_immutable();
+CREATE FUNCTION savings_reference_audit_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Reference audit is append-only';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_sra_immutable BEFORE UPDATE OR DELETE ON m_savings_reference_audit FOR EACH ROW EXECUTE FUNCTION savings_reference_audit_immutable();
+CREATE FUNCTION savings_reference_definition_immutable() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Reference definitions are immutable'; END IF;
+  IF (NEW.reference_id,NEW.reference_type,NEW.tenor,NEW.source_description,NEW.maker_id,NEW.created_at)
+    IS DISTINCT FROM (OLD.reference_id,OLD.reference_type,OLD.tenor,OLD.source_description,OLD.maker_id,OLD.created_at) THEN
+    RAISE EXCEPTION 'Reference identity is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_srr_immutable BEFORE UPDATE OR DELETE ON m_savings_reference_rate FOR EACH ROW EXECUTE FUNCTION savings_reference_definition_immutable();
+    ]]></sql>
+  </changeSet>
+</databaseChangeLog>

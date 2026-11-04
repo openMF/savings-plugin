@@ -52,6 +52,10 @@ public class ProductPolicyCoreSnapshot {
   }
 
   void validate(long product, ProductPolicyData.Policy policy, ProductPolicyValidation validation) {
+    if (policy.interestMode() == ProductPolicyData.InterestMode.REFERENCE_RATE
+        && policy.referenceRate() == null)
+      throw ProductPolicyValidation.invalid(
+          "referenceRate", "REFERENCE_RATE authorization requires a complete formula snapshot.");
     var r =
         jdbc.queryForMap(
             "SELECT"
@@ -64,6 +68,7 @@ public class ProductPolicyCoreSnapshot {
         ((Number) r.get("currency_digits")).intValue(),
         (BigDecimal) r.get("min_required_opening_balance"),
         (BigDecimal) r.get("nominal_annual_interest_rate"));
+    ReferenceRateValidation.definition(jdbc, policy.referenceRate());
     if (policy.feeChargeId() != null
         && jdbc.queryForList(
                 "SELECT id FROM m_charge WHERE id=? AND is_active=true AND is_deleted=false AND"

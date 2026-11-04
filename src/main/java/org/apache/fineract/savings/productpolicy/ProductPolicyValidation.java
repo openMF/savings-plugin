@@ -26,7 +26,12 @@ import org.springframework.stereotype.Component;
 public class ProductPolicyValidation {
   private static final Gson GSON = new Gson();
   private static final Set<String> OPTIONAL =
-      Set.of("feeChargeId", "freezingTermDays", "paymentReferencePartner", "interestMatrix");
+      Set.of(
+          "feeChargeId",
+          "freezingTermDays",
+          "paymentReferencePartner",
+          "interestMatrix",
+          "referenceRate");
 
   public WriteRequest parse(String json) {
     if (json == null || json.length() > 16000)
@@ -51,6 +56,10 @@ public class ProductPolicyValidation {
         JsonElement value = policy.get(name);
         if (value == null || value.isJsonNull()) {
           if (!OPTIONAL.contains(name)) throw invalid(name, "Required configuration is missing.");
+          continue;
+        }
+        if (name.equals("referenceRate")) {
+          ReferenceRateValidation.formula(value);
           continue;
         }
         if (name.equals("interestMatrix")) {
@@ -147,6 +156,12 @@ public class ProductPolicyValidation {
     if (p.interestMatrix() != null) {
       if (p.interestMode() != InterestMode.TIERED || p.classification() == Classification.SIGHT)
         throw invalid("interestMatrix", "A matrix requires an eligible TIERED product policy.");
+    }
+    if (p.referenceRate() != null) {
+      if (p.interestMode() != InterestMode.REFERENCE_RATE
+          || p.classification() == Classification.SIGHT)
+        throw invalid("referenceRate", "A formula requires an eligible REFERENCE_RATE policy.");
+      ReferenceRateValidation.validate(p.referenceRate());
     }
     money(p.maximumBalance(), "maximumBalance", 6);
     money(p.minimumMonthlyAverageBalance(), "minimumMonthlyAverageBalance", 6);
