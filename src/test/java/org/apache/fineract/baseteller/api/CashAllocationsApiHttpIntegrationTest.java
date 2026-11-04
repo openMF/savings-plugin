@@ -7,10 +7,10 @@
 package org.apache.fineract.baseteller.api;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.restassured.http.ContentType;
 import org.apache.fineract.testing.support.SavingsIntegrationTestBase;
@@ -25,6 +25,7 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
   private static final String AUTHORIZED_USERNAME = "web1221-read-allocation";
   private static final String RESTRICTED_USERNAME = "web1221-no-allocation";
   private static String currency;
+  private static String denominationIdentifier;
 
   @BeforeAll
   static void seedDenominationAndRestrictedUser() {
@@ -36,7 +37,7 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         INSERT INTO m_service_payment_denomination
           (identifier,currency_code,value,denomination_type,active)
         VALUES ('web1221-unit',%s,1,'COIN',true)
-        ON CONFLICT (currency_code,identifier) DO UPDATE SET active=true;
+        ON CONFLICT (currency_code,value) DO UPDATE SET active=true;
 
         INSERT INTO m_role (name,description,is_disabled)
         VALUES ('WEB-1221 allocation reader','Cash allocation read role',false),
@@ -123,6 +124,13 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         RESTRICTED_USERNAME,
         AUTHORIZED_USERNAME,
         RESTRICTED_USERNAME);
+    // Other HTTP suites share this tenant and may already have configured the unit value.
+    // Resolve that denomination's real identifier instead of renaming or duplicating its row.
+    denominationIdentifier =
+        querySingleValueInDefaultTenant(
+            "SELECT identifier FROM m_service_payment_denomination WHERE currency_code='"
+                + currency
+                + "' AND value=1 AND active=true");
     assertEquals(
         "1",
         querySingleValueInDefaultTenant(
@@ -148,7 +156,7 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         .body("businessDate", notNullValue())
         .body("officeId", equalTo(1))
         .body("currencies[0].code", equalTo(currency))
-        .body("currencies[0].denominations.identifier", hasItem("web1221-unit"));
+        .body("currencies[0].denominations.identifier", hasItem(denominationIdentifier));
   }
 
   @Test
@@ -165,7 +173,9 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
   @Test
   void safeOpeningPostsAccountingOnceAndReturnsImmutableReceipt() {
     final String businessDate =
-        given(SavingsTestUtils.requestSpecWithAuth(getFineractPort(), AUTHORIZED_USERNAME, "password"))
+        given(
+                SavingsTestUtils.requestSpecWithAuth(
+                    getFineractPort(), AUTHORIZED_USERNAME, "password"))
             .queryParam("officeId", 1)
             .queryParam("currencyCode", currency)
             .when()
@@ -183,13 +193,15 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
           "businessDate":"%s",
           "currencyCode":"%s",
           "amount":20,
-          "denominations":[{"denominationId":"web1221-unit","quantity":20}]
+          "denominations":[{"denominationId":"%s","quantity":20}]
         }
         """
-            .formatted(businessDate, currency);
+            .formatted(businessDate, currency, denominationIdentifier);
 
     final Number allocationId =
-        given(SavingsTestUtils.requestSpecWithAuth(getFineractPort(), AUTHORIZED_USERNAME, "password"))
+        given(
+                SavingsTestUtils.requestSpecWithAuth(
+                    getFineractPort(), AUTHORIZED_USERNAME, "password"))
             .contentType(ContentType.JSON)
             .body(body)
             .when()
@@ -308,8 +320,7 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
       final String businessDate,
       final String amount,
       final long quantity) {
-    final String source =
-        sourceCashierId == null ? "" : ",\"sourceCashierId\":" + sourceCashierId;
+    final String source = sourceCashierId == null ? "" : ",\"sourceCashierId\":" + sourceCashierId;
     return "{\"idempotencyKey\":\""
         + key
         + "\",\"operationType\":\""
@@ -324,7 +335,9 @@ class CashAllocationsApiHttpIntegrationTest extends SavingsIntegrationTestBase {
         + currency
         + "\",\"amount\":"
         + amount
-        + ",\"denominations\":[{\"denominationId\":\"web1221-unit\",\"quantity\":"
+        + ",\"denominations\":[{\"denominationId\":\""
+        + denominationIdentifier
+        + "\",\"quantity\":"
         + quantity
         + "}]}";
   }
