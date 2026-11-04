@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductPolicyService {
   public static final String READ = "READ_SAVINGS_PRODUCT_POLICY";
   public static final String WRITE = "UPDATE_SAVINGS_PRODUCT_POLICY";
-  private static final Gson GSON = new Gson();
+  private static final Gson GSON = ProductPolicyJson.create(false);
   private final PlatformSecurityContext security;
   private final JdbcTemplate jdbc;
   private final ProductPolicyValidation validation;
@@ -94,6 +94,7 @@ public class ProductPolicyService {
           ((Number) core.get("currency_digits")).intValue(),
           (java.math.BigDecimal) core.get("min_required_opening_balance"),
           (java.math.BigDecimal) core.get("nominal_annual_interest_rate"));
+      ReferenceRateValidation.definition(jdbc, request.policy().referenceRate());
       Long chargeId = request.policy().feeChargeId();
       if (chargeId != null) {
         // Only an active, non-penalty, flat specified-due-date savings charge is a supported
@@ -117,25 +118,31 @@ public class ProductPolicyService {
       long current = revisions.isEmpty() ? 0 : revisions.getFirst();
       if (current != request.expectedRevision()) throw new Conflict();
       String policy = GSON.toJson(request.policy());
+      String reference =
+          request.policy().referenceRate() == null
+              ? null
+              : request.policy().referenceRate().referenceId();
       if (current == 0) {
         jdbc.update(
             "INSERT INTO"
-                + " m_savings_product_policy(savings_product_id,revision,status,policy_json,fee_charge_id,created_by,updated_by,created_at,updated_at)"
-                + " VALUES (?,1,'DRAFT',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                + " m_savings_product_policy(savings_product_id,revision,status,policy_json,fee_charge_id,created_by,updated_by,created_at,updated_at,reference_rate_id)"
+                + " VALUES (?,1,'DRAFT',?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?)",
             productId,
             policy,
             chargeId,
             actorId,
-            actorId);
+            actorId,
+            reference);
       } else {
         int changed =
             jdbc.update(
                 "UPDATE m_savings_product_policy SET"
-                    + " revision=revision+1,policy_json=?,fee_charge_id=?,updated_by=?,updated_at=CURRENT_TIMESTAMP"
+                    + " revision=revision+1,policy_json=?,fee_charge_id=?,updated_by=?,updated_at=CURRENT_TIMESTAMP,reference_rate_id=?"
                     + " WHERE savings_product_id=? AND revision=? AND status='DRAFT'",
                 policy,
                 chargeId,
                 actorId,
+                reference,
                 productId,
                 current);
         if (changed != 1) throw new Conflict();

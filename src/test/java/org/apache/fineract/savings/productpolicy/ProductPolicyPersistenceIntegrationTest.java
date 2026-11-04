@@ -95,7 +95,7 @@ class ProductPolicyPersistenceIntegrationTest {
               + " VALUES(1,true,false,'MXN',2,2,1,false),(2,true,false,'USD',2,2,1,false),(3,true,false,'MXN',1,2,1,false),(4,false,false,'MXN',2,2,1,false),(5,true,false,'MXN',2,1,1,false),(6,true,false,'MXN',2,2,1,true)");
       migrate(ds);
       migrate(ds);
-      assertEquals(5, j.queryForObject("SELECT count(*) FROM m_permission", Integer.class));
+      assertEquals(10, j.queryForObject("SELECT count(*) FROM m_permission", Integer.class));
       assertEquals(
           0, j.queryForObject("SELECT count(*) FROM m_savings_product_policy", Integer.class));
     }
@@ -130,7 +130,10 @@ class ProductPolicyPersistenceIntegrationTest {
       }
     }
     for (String part :
-        List.of("081-product-policy-authorization.xml", "082-product-policy-opening-slots.xml")) {
+        List.of(
+            "081-product-policy-authorization.xml",
+            "082-product-policy-opening-slots.xml",
+            "083-reference-rates.xml")) {
       try (var connection = ds.getConnection()) {
         var db =
             DatabaseFactory.getInstance()

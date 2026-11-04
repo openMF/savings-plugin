@@ -92,4 +92,5 @@
   <include file="parts/080-create-savings-product-policy.xml" relativeToChangelogFile="true"/>
   <include file="parts/081-product-policy-authorization.xml" relativeToChangelogFile="true"/>
   <include file="parts/082-product-policy-opening-slots.xml" relativeToChangelogFile="true"/>
+  <include file="parts/083-reference-rates.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

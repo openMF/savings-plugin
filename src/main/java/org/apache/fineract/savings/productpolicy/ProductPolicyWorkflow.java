@@ -30,11 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductPolicyWorkflow {
   public static final String SUBMIT = "SUBMIT_SAVINGS_PRODUCT_POLICY";
   public static final String CHECK = "CHECK_SAVINGS_PRODUCT_POLICY";
-  static final Gson JSON =
-      new com.google.gson.GsonBuilder()
-          .serializeNulls()
-          .setObjectToNumberStrategy(com.google.gson.ToNumberPolicy.BIG_DECIMAL)
-          .create();
+  static final Gson JSON = ProductPolicyJson.create(true);
   private final PlatformSecurityContext security;
   private final JdbcTemplate jdbc;
   private final ProductPolicyValidation validation;
@@ -104,8 +100,8 @@ public class ProductPolicyWorkflow {
     Long base = latestApproved(product);
     jdbc.update(
         "INSERT INTO"
-            + " m_savings_product_policy_version(savings_product_id,version,status,effective_date,base_version,maker_id,draft_creator_id,draft_editor_id,policy_json,core_json,submitted_at)"
-            + " VALUES (?,?,'PENDING_APPROVAL',?,?,?,?,?,?,?,?)",
+            + " m_savings_product_policy_version(savings_product_id,version,status,effective_date,base_version,maker_id,draft_creator_id,draft_editor_id,policy_json,core_json,submitted_at,reference_rate_id)"
+            + " VALUES (?,?,'PENDING_APPROVAL',?,?,?,?,?,?,?,?,?)",
         product,
         revision,
         request.effectiveDate(),
@@ -115,7 +111,8 @@ public class ProductPolicyWorkflow {
         draft.get("updated_by"),
         draft.get("policy_json"),
         snapshot,
-        org.apache.fineract.infrastructure.core.service.DateUtils.getAuditLocalDateTime());
+        org.apache.fineract.infrastructure.core.service.DateUtils.getAuditLocalDateTime(),
+        policy.referenceRate() == null ? null : policy.referenceRate().referenceId());
     event(
         product,
         revision,
