@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-084-rate-propagation">
+    <createTable tableName="m_savings_rate_batch">
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="request_key" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="rate_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="reference_id" type="VARCHAR(64)"><constraints nullable="true"/></column>
+      <column name="benchmark_version" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="population_cutoff" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="population_business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="cutoff_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="source_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="source_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="change_classification" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="planning_complete" type="BOOLEAN"><constraints nullable="false"/></column>
+      <column name="discovery_checkpoint" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="population_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="authorized_hash" type="VARCHAR(64)"><constraints nullable="true"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="maker_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="submitter_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="checker_id" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="submitted_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="decided_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="last_progress_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="reason" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+    </createTable>
+    <createTable tableName="m_savings_rate_account">
+      <column name="batch_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="operation_key" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="previous_policy_version" type="BIGINT"><constraints nullable="true"/></column>
+      <column name="account_snapshot" type="CLOB"><constraints nullable="false"/></column>
+      <column name="eligibility" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="eligibility_reason" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="outcome" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="attempt_count" type="INT"><constraints nullable="false"/></column>
+      <column name="processed_at" type="TIMESTAMP"><constraints nullable="true"/></column>
+      <column name="error_category" type="VARCHAR(100)"><constraints nullable="true"/></column>
+      <column name="confirmed_operation_id" type="VARCHAR(100)"><constraints nullable="true"/></column>
+    </createTable>
+    <createTable tableName="m_savings_rate_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="batch_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="previous_state" type="VARCHAR(30)"><constraints nullable="true"/></column>
+      <column name="new_state" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="detail" type="VARCHAR(1000)"><constraints nullable="true"/></column>
+      <column name="snapshot_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_savings_rate_attempt">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="batch_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="attempt_number" type="INT"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="outcome" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="error_category" type="VARCHAR(100)"><constraints nullable="false"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_rate_account" columnNames="batch_id,savings_account_id" constraintName="pk_sra_item"/>
+    <addUniqueConstraint tableName="m_savings_rate_batch" columnNames="tenant_id,request_key" constraintName="uq_srb_request"/>
+    <addUniqueConstraint tableName="m_savings_rate_account" columnNames="operation_key" constraintName="uq_sra_operation"/>
+    <addUniqueConstraint tableName="m_savings_rate_attempt" columnNames="batch_id,savings_account_id,attempt_number" constraintName="uq_srat_attempt"/>
+    <addForeignKeyConstraint baseTableName="m_savings_rate_batch" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_srb_source"/>
+    <addForeignKeyConstraint baseTableName="m_savings_rate_batch" baseColumnNames="reference_id,benchmark_version" referencedTableName="m_savings_reference_fixing" referencedColumnNames="reference_id,version" constraintName="fk_srb_benchmark"/>
+    <addForeignKeyConstraint baseTableName="m_savings_rate_account" baseColumnNames="batch_id" referencedTableName="m_savings_rate_batch" referencedColumnNames="id" constraintName="fk_sra_batch"/>
+    <addForeignKeyConstraint baseTableName="m_savings_rate_audit" baseColumnNames="batch_id" referencedTableName="m_savings_rate_batch" referencedColumnNames="id" constraintName="fk_sraud_batch"/>
+    <addForeignKeyConstraint baseTableName="m_savings_rate_attempt" baseColumnNames="batch_id,savings_account_id" referencedTableName="m_savings_rate_account" referencedColumnNames="batch_id,savings_account_id" constraintName="fk_srat_item"/>
+    <createIndex tableName="m_savings_rate_batch" indexName="ix_srb_product_status"><column name="savings_product_id"/><column name="status"/><column name="effective_date"/></createIndex>
+    <createIndex tableName="m_savings_rate_account" indexName="ix_sra_claim"><column name="batch_id"/><column name="outcome"/><column name="savings_account_id"/></createIndex>
+    <createIndex tableName="m_savings_rate_account" indexName="ix_sra_conflict"><column name="savings_account_id"/><column name="batch_id"/></createIndex>
+    <createIndex tableName="m_savings_rate_audit" indexName="ix_sraud_page"><column name="batch_id"/><column name="id"/></createIndex>
+    <createIndex tableName="m_savings_rate_attempt" indexName="ix_srat_page"><column name="batch_id"/><column name="id"/></createIndex>
+    <sql>INSERT INTO m_permission(grouping,code,entity_name,action_name,can_maker_checker) VALUES
+      ('savings_product_policy','READ_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','READ',false),
+      ('savings_product_policy','CREATE_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','CREATE',false),
+      ('savings_product_policy','SUBMIT_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','SUBMIT',false),
+      ('savings_product_policy','CHECK_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','CHECK',false),
+      ('savings_product_policy','ASSESS_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','ASSESS',false),
+      ('savings_product_policy','CANCEL_SAVINGS_RATE_PROPAGATION','SAVINGS_RATE_PROPAGATION','CANCEL',false)</sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-084-rate-propagation-postgresql-guards" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+ALTER TABLE m_savings_rate_batch ADD CONSTRAINT ck_srb_rate_type CHECK (rate_type IN ('FIXED','TIERED','REFERENCE_RATE') AND ((rate_type='REFERENCE_RATE' AND reference_id IS NOT NULL AND benchmark_version IS NOT NULL) OR (rate_type<>'REFERENCE_RATE' AND reference_id IS NULL AND benchmark_version IS NULL)));
+ALTER TABLE m_savings_rate_batch ADD CONSTRAINT ck_srb_state CHECK (status IN ('DRAFT','PENDING_AUTHORIZATION','AUTHORIZED','SCHEDULED','ASSESSING','BLOCKED','REJECTED','CANCELLED'));
+ALTER TABLE m_savings_rate_batch ADD CONSTRAINT ck_srb_progress CHECK (revision>0 AND discovery_checkpoint>=0 AND cutoff_account_id>=discovery_checkpoint);
+ALTER TABLE m_savings_rate_batch ADD CONSTRAINT ck_srb_checker CHECK (checker_id IS NULL OR (checker_id<>maker_id AND checker_id<>submitter_id));
+ALTER TABLE m_savings_rate_batch ADD CONSTRAINT ck_srb_authorized CHECK (status NOT IN ('AUTHORIZED','SCHEDULED','ASSESSING','BLOCKED') OR (checker_id IS NOT NULL AND authorized_hash IS NOT NULL AND planning_complete));
+ALTER TABLE m_savings_rate_account ADD CONSTRAINT ck_sra_eligibility CHECK (eligibility IN ('ELIGIBLE','BLOCKED','EXCLUDED'));
+-- BE-05 has no financial adapter. Even accidental success writes must fail closed.
+ALTER TABLE m_savings_rate_account ADD CONSTRAINT ck_sra_outcome CHECK (outcome IN ('PENDING','SKIPPED','BLOCKED','FAILED_RETRYABLE','FAILED_FINAL','UNKNOWN_OUTCOME'));
+ALTER TABLE m_savings_rate_account ADD CONSTRAINT ck_sra_attempts CHECK (attempt_count>=0 AND confirmed_operation_id IS NULL);
+CREATE FUNCTION savings_rate_append_only() RETURNS trigger AS $$
+BEGIN RAISE EXCEPTION 'Rate propagation evidence is append-only'; END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_sraud_immutable BEFORE UPDATE OR DELETE ON m_savings_rate_audit FOR EACH ROW EXECUTE FUNCTION savings_rate_append_only();
+CREATE TRIGGER tr_srat_immutable BEFORE UPDATE OR DELETE ON m_savings_rate_attempt FOR EACH ROW EXECUTE FUNCTION savings_rate_append_only();
+CREATE FUNCTION savings_rate_batch_guard() RETURNS trigger AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Retain rate propagation batches'; END IF;
+ IF (NEW.id,NEW.tenant_id,NEW.request_key,NEW.savings_product_id,NEW.policy_version,NEW.rate_type,NEW.reference_id,NEW.benchmark_version,NEW.effective_date,NEW.population_cutoff,NEW.population_business_date,NEW.cutoff_account_id,NEW.source_json,NEW.source_hash,NEW.change_classification,NEW.maker_id,NEW.created_at)
+ IS DISTINCT FROM (OLD.id,OLD.tenant_id,OLD.request_key,OLD.savings_product_id,OLD.policy_version,OLD.rate_type,OLD.reference_id,OLD.benchmark_version,OLD.effective_date,OLD.population_cutoff,OLD.population_business_date,OLD.cutoff_account_id,OLD.source_json,OLD.source_hash,OLD.change_classification,OLD.maker_id,OLD.created_at)
+ THEN RAISE EXCEPTION 'Rate propagation plan source is immutable'; END IF;
+ IF OLD.planning_complete AND (NEW.planning_complete,NEW.discovery_checkpoint,NEW.population_hash) IS DISTINCT FROM (OLD.planning_complete,OLD.discovery_checkpoint,OLD.population_hash)
+ THEN RAISE EXCEPTION 'Sealed population is immutable'; END IF;
+ IF OLD.authorized_hash IS NOT NULL AND (NEW.authorized_hash,NEW.checker_id,NEW.decided_at,NEW.submitter_id,NEW.submitted_at) IS DISTINCT FROM (OLD.authorized_hash,OLD.checker_id,OLD.decided_at,OLD.submitter_id,OLD.submitted_at)
+ THEN RAISE EXCEPTION 'Rate propagation authorization is immutable'; END IF;
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_srb_guard BEFORE UPDATE OR DELETE ON m_savings_rate_batch FOR EACH ROW EXECUTE FUNCTION savings_rate_batch_guard();
+CREATE FUNCTION savings_rate_account_guard() RETURNS trigger AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN RAISE EXCEPTION 'Retain rate propagation population'; END IF;
+ IF TG_OP='INSERT' THEN
+   PERFORM id FROM m_savings_rate_batch WHERE id=NEW.batch_id AND status='DRAFT' AND NOT planning_complete FOR UPDATE;
+   IF NOT FOUND THEN RAISE EXCEPTION 'Population can only expand during draft discovery'; END IF;
+ ELSE
+   IF (NEW.batch_id,NEW.savings_account_id,NEW.operation_key,NEW.previous_policy_version,NEW.account_snapshot,NEW.eligibility,NEW.eligibility_reason)
+   IS DISTINCT FROM (OLD.batch_id,OLD.savings_account_id,OLD.operation_key,OLD.previous_policy_version,OLD.account_snapshot,OLD.eligibility,OLD.eligibility_reason)
+   THEN RAISE EXCEPTION 'Rate account snapshot is immutable'; END IF;
+ END IF;
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER tr_sra_guard BEFORE INSERT OR UPDATE OR DELETE ON m_savings_rate_account FOR EACH ROW EXECUTE FUNCTION savings_rate_account_guard();
+    ]]></sql>
+  </changeSet>
+</databaseChangeLog>
