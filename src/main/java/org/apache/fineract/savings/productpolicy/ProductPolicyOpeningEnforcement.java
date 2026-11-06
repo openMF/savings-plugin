@@ -86,6 +86,7 @@ public class ProductPolicyOpeningEnforcement {
         || policy.purpose() == ProductPolicyData.Purpose.PLANNED_MAIN)
       throw ProductPolicyValidation.invalid(
           "purpose", "This purpose requires a dedicated loan or corporate opening workflow.");
+    if (account.isActive()) ProductTransactionPolicyEvaluator.requireActivationSupported();
     jdbc.queryForList(
         "SELECT id FROM m_client WHERE id=? FOR UPDATE", Long.class, account.clientId());
     if (policy.multiplicity() == ProductPolicyData.Multiplicity.SINGLE) {
