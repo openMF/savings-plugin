@@ -322,19 +322,6 @@ class RatePropagationApiHttpIntegrationTest {
                   "\"classification\":\"SIGHT\"", "\"classification\":\"INTEREST_BEARING_SIGHT\"")
               .replace("\"interestMode\":\"NONE\"", "\"interestMode\":\"FIXED\"");
       String policyPath = "/v1/savingsproducts/policy/" + product;
-      call("mifos", "PUT", policyPath, policy, 200);
-      call(
-          "mifos",
-          "POST",
-          policyPath + "/submit",
-          Map.of("expectedRevision", 1, "effectiveDate", date),
-          200);
-      call(
-          checker,
-          "POST",
-          policyPath + "/versions/1/approve",
-          Map.of("reason", "Independent source review"),
-          200);
       long cashPayment =
           post(
               "/v1/paymenttypes",
@@ -361,12 +348,24 @@ class RatePropagationApiHttpIntegrationTest {
                     "yyyy-MM-dd",
                     "locale",
                     "en"));
+        // Create funded historical accounts through native APIs before enrolling the policy.
+        // BE-06 intentionally blocks activation of newly configured financial products.
         long account =
             call(
                     "mifos",
                     "POST",
-                    policyPath + "/applications",
-                    Map.of("clientId", client, "expectedPolicyVersion", 1),
+                    "/v1/savingsaccounts",
+                    Map.of(
+                        "clientId",
+                        client,
+                        "productId",
+                        product,
+                        "submittedOnDate",
+                        date,
+                        "dateFormat",
+                        "yyyy-MM-dd",
+                        "locale",
+                        "en"),
                     200)
                 .jsonPath()
                 .getLong("savingsId");
@@ -400,6 +399,29 @@ class RatePropagationApiHttpIntegrationTest {
             200);
         accounts.add(account);
       }
+      call("mifos", "PUT", policyPath, policy, 200);
+      call(
+          "mifos",
+          "POST",
+          policyPath + "/submit",
+          Map.of("expectedRevision", 1, "effectiveDate", date),
+          200);
+      call(
+          checker,
+          "POST",
+          policyPath + "/versions/1/approve",
+          Map.of("reason", "Independent source review"),
+          200);
+      // Only plugin binding metadata is seeded; balances, journals and transactions use APIs.
+      for (long account : accounts)
+        querySingleValueInDefaultTenant(
+            "INSERT INTO"
+                + " m_savings_account_policy(savings_account_id,savings_product_id,version,purpose,bound_at)"
+                + " VALUES ("
+                + account
+                + ","
+                + product
+                + ",1,'MAIN',CURRENT_TIMESTAMP)");
       String before = financial(product);
       Map<String, Object> plan = Map.of("policyVersion", 1, "effectiveDate", date);
       var preview = call("mifos", "POST", ROOT + "/" + product + "/preview", plan, 200);

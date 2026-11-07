@@ -76,7 +76,9 @@ class ProductPolicyOpeningEnforcementTest {
       assertThrows(
           PlatformApiDataValidationException.class,
           () -> guard.validate(account, "CREATE_SAVINGSACCOUNT"));
-      for (String variant : List.of("TIERED", "GUARANTEED", "PLANNED_MAIN", "TERM", "SUPERSEDED")) {
+      for (String variant :
+          List.of("TIERED", "GUARANTEED", "PLANNED_MAIN", "TERM", "SUPERSEDED", "ACTIVATION")) {
+        when(account.isActive()).thenReturn(variant.equals("ACTIVATION"));
         var body =
             com.google.gson.JsonParser.parseString(ProductPolicyValidationTest.JSON)
                 .getAsJsonObject();

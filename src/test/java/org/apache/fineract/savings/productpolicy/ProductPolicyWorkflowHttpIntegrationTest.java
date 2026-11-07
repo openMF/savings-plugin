@@ -233,7 +233,7 @@ class ProductPolicyWorkflowHttpIntegrationTest {
   }
 
   @Test
-  void nativeOverridesAndNormalApprovalActivationUseTheSameSnapshot() {
+  void nativeOverridesAndNormalApprovalUseTheSameSnapshotButActivationStaysBlocked() {
     long p =
         createProduct(
             "BE02 native " + UUID.randomUUID(), "N" + UUID.randomUUID().toString().substring(0, 3));
@@ -288,15 +288,17 @@ class ProductPolicyWorkflowHttpIntegrationTest {
         200);
     date =
         GSON.toJson(Map.of("activatedOnDate", today, "dateFormat", "yyyy-MM-dd", "locale", "en"));
+    String financialBefore = financialSnapshot();
     call(
         "mifos",
         "default",
         "POST",
         "/v1/savingsaccounts/" + nativeId + "?command=activate",
         date,
-        200);
+        400);
+    assertEquals(financialBefore, financialSnapshot());
     assertEquals(
-        300,
+        200,
         jdbc.queryForObject(
             "SELECT status_enum FROM m_savings_account WHERE id=?", Integer.class, nativeId));
   }
@@ -354,44 +356,38 @@ class ProductPolicyWorkflowHttpIntegrationTest {
     call(admin, "default", "PUT", currentPath, ProductPolicyValidationTest.JSON, 200);
     call(admin, "default", "POST", currentPath + "/submit", submit(1, today), 200);
     call(checker, "default", "POST", currentPath + "/versions/1/approve", "{}", 200);
-    long individual =
-        call(
-                "mifos",
-                "default",
-                "POST",
-                "/v1/clients",
-                GSON.toJson(
-                    Map.of(
-                        "officeId",
-                        1,
-                        "legalFormId",
-                        1,
-                        "firstname",
-                        "BE02",
-                        "lastname",
-                        "AutoApproved",
-                        "active",
-                        true,
-                        "activationDate",
-                        today,
-                        "dateFormat",
-                        "yyyy-MM-dd",
-                        "locale",
-                        "en",
-                        "savingsProductId",
-                        current)),
-                200)
-            .jsonPath()
-            .getLong("clientId");
+    String before = financialSnapshot();
+    call(
+        "mifos",
+        "default",
+        "POST",
+        "/v1/clients",
+        GSON.toJson(
+            Map.of(
+                "officeId",
+                1,
+                "legalFormId",
+                1,
+                "firstname",
+                "BE06",
+                "lastname",
+                "AutoApprovedButNonOperational",
+                "active",
+                true,
+                "activationDate",
+                today,
+                "dateFormat",
+                "yyyy-MM-dd",
+                "locale",
+                "en",
+                "savingsProductId",
+                current)),
+        400);
+    assertEquals(before, financialSnapshot());
     assertEquals(
-        1,
+        0,
         jdbc.queryForObject(
-            "SELECT count(*) FROM m_savings_account a JOIN m_savings_account_policy b ON"
-                + " b.savings_account_id=a.id WHERE a.client_id=? AND a.product_id=? AND"
-                + " a.status_enum=300",
-            Integer.class,
-            individual,
-            current));
+            "SELECT count(*) FROM m_savings_account WHERE product_id=?", Integer.class, current));
   }
 
   @Test

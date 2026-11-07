@@ -171,7 +171,34 @@ public final class ProductPolicyData {
       List<Multiplicity> multiplicities,
       List<Freezing> freezingModes,
       List<InterestMode> interestModes,
-      List<String> pendingFeatures) {}
+      List<String> pendingFeatures,
+      ProductTransactionPolicyData.Capabilities transactionControls) {
+    /** Retains the BE-01/BE-02 constructor for Java consumers; the JSON change is additive. */
+    public Capabilities(
+        boolean draftConfiguration,
+        boolean activation,
+        boolean financialEnforcement,
+        boolean clabeGeneration,
+        List<Classification> classifications,
+        List<Purpose> purposes,
+        List<Multiplicity> multiplicities,
+        List<Freezing> freezingModes,
+        List<InterestMode> interestModes,
+        List<String> pendingFeatures) {
+      this(
+          draftConfiguration,
+          activation,
+          financialEnforcement,
+          clabeGeneration,
+          classifications,
+          purposes,
+          multiplicities,
+          freezingModes,
+          interestModes,
+          pendingFeatures,
+          ProductTransactionPolicyData.capabilities());
+    }
+  }
 
   public static Capabilities capabilities() {
     return new Capabilities(
@@ -194,6 +221,7 @@ public final class ProductPolicyData {
             "GUARANTEE_ALLOCATION_AND_SWEEPS",
             "PAYROLL_AND_POCKETS",
             "CONSOLIDATED_ISR",
-            "PAYMENT_REFERENCE_GENERATION"));
+            "PAYMENT_REFERENCE_GENERATION"),
+        ProductTransactionPolicyData.capabilities());
   }
 }

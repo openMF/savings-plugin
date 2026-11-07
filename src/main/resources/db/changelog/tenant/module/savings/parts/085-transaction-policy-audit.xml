@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-085-transaction-policy-audit">
+    <!-- Evidence deliberately has no FK to rows locked/uncommitted by the rejected native action.
+         These are technical references, not a parallel ledger. Rejection has no native transaction ID. -->
+    <createTable tableName="m_savings_transaction_policy_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="correlation_id" type="VARCHAR(36)"><constraints nullable="false" unique="true"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"/>
+      <column name="operation" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="outcome" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="reason_code" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"/>
+      <column name="native_transaction_id" type="BIGINT"/>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex tableName="m_savings_transaction_policy_audit" indexName="idx_stpa_account"><column name="savings_account_id"/><column name="recorded_at"/></createIndex>
+    <createIndex tableName="m_savings_transaction_policy_audit" indexName="idx_stpa_native"><column name="native_transaction_id"/></createIndex>
+    <sql>ALTER TABLE m_savings_transaction_policy_audit ADD CONSTRAINT ck_stpa_operation CHECK (operation IN ('DEPOSIT','WITHDRAWAL','FORCED_WITHDRAWAL'));</sql>
+    <sql>ALTER TABLE m_savings_transaction_policy_audit ADD CONSTRAINT ck_stpa_outcome CHECK ((outcome IN ('POLICY_DENIED','UNSUPPORTED_ENFORCEMENT') AND native_transaction_id IS NULL) OR (outcome='EVALUATED_ALLOW' AND native_transaction_id IS NOT NULL));</sql>
+  </changeSet>
+</databaseChangeLog>
