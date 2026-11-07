@@ -15,12 +15,11 @@ import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.*;
-import org.apache.fineract.testing.support.SavingsIntegrationTestBase;
 import org.apache.fineract.testing.support.SavingsTestUtils;
 import org.junit.jupiter.api.*;
 
 /** Real native postings/journals/transfer rollback; no direct financial-table seeding. */
-class ProductTransactionNativeHttpIntegrationTest extends SavingsIntegrationTestBase {
+class ProductTransactionNativeHttpIntegrationTest extends ProductTransactionNativeTestSupport {
   static final Gson JSON = new Gson();
   static final List<Map<String, Object>> evidence = Collections.synchronizedList(new ArrayList<>());
   static final String DATE = LocalDate.now(java.time.ZoneOffset.UTC).toString();
@@ -286,7 +285,7 @@ class ProductTransactionNativeHttpIntegrationTest extends SavingsIntegrationTest
     assertEquals(
         "/be06libs/*",
         cp.getStdout().strip(),
-        "Build the pinned runtime described in the BE06 guide.");
+        "BE-06 must execute against its Maven-resolved native runtime.");
     String pluginHash =
         HexFormat.of()
             .formatHex(
