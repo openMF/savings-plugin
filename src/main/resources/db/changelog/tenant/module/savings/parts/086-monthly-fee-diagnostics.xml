@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-086-monthly-fee-diagnostics">
+    <!-- Operational evidence only. No balances, native charges or accounting tables are changed. -->
+    <createTable tableName="m_savings_monthly_fee_run">
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="period" type="VARCHAR(7)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="cutoff_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="after_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_savings_monthly_fee_run" columnNames="tenant_identifier,period" constraintName="uq_smfr_period"/>
+    <addUniqueConstraint tableName="m_savings_monthly_fee_run" columnNames="id,tenant_identifier,period" constraintName="uq_smfr_identity"/>
+    <addForeignKeyConstraint baseTableName="m_savings_monthly_fee_run" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_smfr_actor"/>
+    <createTable tableName="m_savings_monthly_fee_assessment">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="run_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="period" type="VARCHAR(7)"><constraints nullable="false"/></column>
+      <!-- A rejected binding may itself be corrupt: preserve its claimed version as evidence,
+           rather than requiring an invalid product/version FK to pass before recording a block. -->
+      <column name="policy_version" type="BIGINT"/>
+      <column name="minimum_monthly_average_balance" type="DECIMAL(19,6)"/>
+      <column name="fee_charge_id" type="BIGINT"/>
+      <column name="configured_fee_amount" type="DECIMAL(19,6)"/>
+      <column name="outcome" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="reason_code" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="financial_outcome" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="assessed_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <!-- Policy edits and a new worker/run UUID cannot create a second account/month assessment. -->
+    <addUniqueConstraint tableName="m_savings_monthly_fee_assessment" columnNames="tenant_identifier,savings_account_id,period" constraintName="uq_smfa_account_period"/>
+    <addForeignKeyConstraint baseTableName="m_savings_monthly_fee_assessment" baseColumnNames="run_id,tenant_identifier,period" referencedTableName="m_savings_monthly_fee_run" referencedColumnNames="id,tenant_identifier,period" constraintName="fk_smfa_run"/>
+    <addForeignKeyConstraint baseTableName="m_savings_monthly_fee_assessment" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_smfa_account"/>
+    <addForeignKeyConstraint baseTableName="m_savings_monthly_fee_assessment" baseColumnNames="savings_product_id" referencedTableName="m_savings_product" referencedColumnNames="id" constraintName="fk_smfa_product"/>
+    <addForeignKeyConstraint baseTableName="m_savings_monthly_fee_assessment" baseColumnNames="assessed_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_smfa_actor"/>
+    <createIndex tableName="m_savings_monthly_fee_assessment" indexName="idx_smfa_run_account"><column name="run_id"/><column name="tenant_identifier"/><column name="savings_account_id"/></createIndex>
+    <sql>ALTER TABLE m_savings_monthly_fee_run ADD CONSTRAINT ck_smfr_status CHECK (status IN ('READY','IN_PROGRESS','DIAGNOSTIC_COMPLETE','RECONCILIATION_REQUIRED'));</sql>
+    <sql>ALTER TABLE m_savings_monthly_fee_run ADD CONSTRAINT ck_smfr_cursor CHECK (after_account_id&gt;=0 AND cutoff_account_id&gt;=after_account_id);</sql>
+    <sql>ALTER TABLE m_savings_monthly_fee_assessment ADD CONSTRAINT ck_smfa_outcome CHECK (outcome IN ('NOT_ELIGIBLE','NO_FEE_CONFIGURED','BLOCKED','UNKNOWN_OUTCOME'));</sql>
+    <sql>ALTER TABLE m_savings_monthly_fee_assessment ADD CONSTRAINT ck_smfa_financial CHECK ((financial_outcome='NOT_ATTEMPTED' AND outcome&lt;&gt;'UNKNOWN_OUTCOME') OR (financial_outcome='UNKNOWN_OUTCOME' AND outcome='UNKNOWN_OUTCOME'));</sql>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_SAVINGS_MONTHLY_FEE"/><column name="entity_name" value="SAVINGS_MONTHLY_FEE"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="ASSESS_SAVINGS_MONTHLY_FEE"/><column name="entity_name" value="SAVINGS_MONTHLY_FEE"/><column name="action_name" value="ASSESS"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+</databaseChangeLog>
