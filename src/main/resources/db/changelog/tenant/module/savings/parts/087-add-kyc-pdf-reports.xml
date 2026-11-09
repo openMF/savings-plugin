@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
+ If a copy of the MPL was not distributed with this file, You can obtain one at
+ http://mozilla.org/MPL/2.0/.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/savings/parts/087-add-kyc-pdf-reports.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="mifos" id="ss-web1419-natural-person-pdf">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM stretchy_report WHERE report_name='KYCNaturalPerson'</sqlCheck>
+    </preConditions>
+    <insert tableName="stretchy_report">
+      <column name="report_name" value="KYCNaturalPerson"/>
+      <column name="report_type" value="KYC"/>
+      <column name="report_category" value="Client"/>
+      <column name="description" value="Saved client, identity and KYC validation records for an individual. Requires R_clientId; PDF only."/>
+      <column name="core_report" valueBoolean="false"/>
+      <column name="use_report" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+  <changeSet author="mifos" id="ss-web1419-legal-person-pdf">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM stretchy_report WHERE report_name='KYCLegalPerson'</sqlCheck>
+    </preConditions>
+    <insert tableName="stretchy_report">
+      <column name="report_name" value="KYCLegalPerson"/>
+      <column name="report_type" value="KYC"/>
+      <column name="report_category" value="Client"/>
+      <column name="description" value="Saved client, identity and KYC validation records for a legal entity. Requires R_clientId; PDF only."/>
+      <column name="core_report" valueBoolean="false"/>
+      <column name="use_report" valueBoolean="true"/>
+    </insert>
+  </changeSet>
+  <changeSet author="mifos" id="ss-web1419-kyc-report-permissions">
+    <sql>
+      INSERT INTO m_permission(grouping,code,entity_name,action_name,can_maker_checker)
+      SELECT 'report',r.report_name,r.entity_name,'READ',false FROM (
+        SELECT 'READ_KYCNaturalPerson' report_name,'KYCNaturalPerson' entity_name
+        UNION ALL SELECT 'READ_KYCLegalPerson','KYCLegalPerson'
+      ) r WHERE NOT EXISTS(SELECT 1 FROM m_permission p WHERE p.code=r.report_name);
+    </sql>
+  </changeSet>
+</databaseChangeLog>

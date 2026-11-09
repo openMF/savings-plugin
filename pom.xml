@@ -49,6 +49,11 @@
     </dependencyManagement>
 
     <dependencies>      
+      <dependency>
+        <groupId>com.github.librepdf</groupId>
+        <artifactId>openpdf</artifactId>
+        <version>3.0.4</version>
+      </dependency>
       <!-- Native Fineract scheduler adapter; version managed by the existing Spring Boot BOM. -->
       <dependency>
         <groupId>org.springframework.batch</groupId>

@@ -96,4 +96,5 @@
   <include file="parts/084-rate-propagation.xml" relativeToChangelogFile="true"/>
   <include file="parts/085-transaction-policy-audit.xml" relativeToChangelogFile="true"/>
   <include file="parts/086-monthly-fee-diagnostics.xml" relativeToChangelogFile="true"/>
+  <include file="parts/087-add-kyc-pdf-reports.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
