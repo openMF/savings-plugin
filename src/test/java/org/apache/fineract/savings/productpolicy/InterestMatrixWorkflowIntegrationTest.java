@@ -217,7 +217,11 @@ class InterestMatrixWorkflowIntegrationTest {
     when(core.capture(1)).thenReturn(snapshot);
     var guard =
         new ProductPolicyOpeningEnforcement(
-            f.workflow, core, f.jdbc, new ProductPolicyValidation());
+            f.workflow,
+            core,
+            f.jdbc,
+            new ProductPolicyValidation(),
+            mock(MainAccountAuditService.class));
     var account = mock(org.apache.fineract.portfolio.savings.domain.SavingsAccount.class);
     when(account.productId()).thenReturn(1L);
     when(account.getId()).thenReturn(9L);
