@@ -20,7 +20,8 @@ class ProductPolicyOpeningEnforcementTest {
   final ProductPolicyCoreSnapshot core = mock(ProductPolicyCoreSnapshot.class);
   final JdbcTemplate jdbc = mock(JdbcTemplate.class);
   final ProductPolicyOpeningEnforcement guard =
-      new ProductPolicyOpeningEnforcement(workflow, core, jdbc, new ProductPolicyValidation());
+      new ProductPolicyOpeningEnforcement(
+          workflow, core, jdbc, new ProductPolicyValidation(), mock(MainAccountAuditService.class));
 
   @Test
   void boundAccountCannotSwitchToALegacyProductToBypassOpeningValidation() {

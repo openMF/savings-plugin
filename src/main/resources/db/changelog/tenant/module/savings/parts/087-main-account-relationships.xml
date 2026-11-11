@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-087-main-account-relationships">
+    <!-- Current relationships reuse BE-02 account bindings and unique client/purpose slots.
+         No backfill, legacy adoption, native balance update, or guarantee reservation. -->
+    <createTable tableName="m_savings_main_account_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_savings_main_account_audit" columnNames="savings_account_id,action" constraintName="uq_smaa_account_action"/>
+    <addForeignKeyConstraint baseTableName="m_savings_main_account_audit" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_smaa_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_main_account_audit" baseColumnNames="savings_account_id" referencedTableName="m_savings_account_policy" referencedColumnNames="savings_account_id" constraintName="fk_smaa_binding"/>
+    <addForeignKeyConstraint baseTableName="m_savings_main_account_audit" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_smaa_policy"/>
+    <addForeignKeyConstraint baseTableName="m_savings_main_account_audit" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_smaa_actor"/>
+    <createIndex tableName="m_savings_main_account_audit" indexName="idx_smaa_client"><column name="client_id"/><column name="id"/></createIndex>
+    <sql>ALTER TABLE m_savings_main_account_audit ADD CONSTRAINT ck_smaa_action CHECK (action IN ('BIND','RETIRE'));</sql>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="READ_SAVINGS_ACCOUNT_RELATIONSHIP"/>
+      <column name="entity_name" value="SAVINGS_ACCOUNT_RELATIONSHIP"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="BIND_MAIN_SAVINGS_ACCOUNT"/>
+      <column name="entity_name" value="MAIN_SAVINGS_ACCOUNT"/><column name="action_name" value="BIND"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+  </changeSet>
+</databaseChangeLog>

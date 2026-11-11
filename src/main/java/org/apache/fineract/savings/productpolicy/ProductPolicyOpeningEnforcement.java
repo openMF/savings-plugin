@@ -21,10 +21,11 @@ public class ProductPolicyOpeningEnforcement {
   private final ProductPolicyCoreSnapshot core;
   private final JdbcTemplate jdbc;
   private final ProductPolicyValidation validation;
+  private final MainAccountAuditService mainAudit;
 
   @Transactional(propagation = Propagation.MANDATORY)
   public void validate(SavingsAccount account, String permission) {
-    workflow.authorize(permission);
+    long actor = workflow.authorize(permission);
     long product = account.productId();
     // Serialize metadata enrollment with opening, including legacy deposit product types.
     jdbc.queryForList(
@@ -104,6 +105,15 @@ public class ProductPolicyOpeningEnforcement {
         throw ProductPolicyValidation.invalid(
             "multiplicity",
             "An open or pending account already exists for this product or purpose.");
+      if (policy.purpose() == ProductPolicyData.Purpose.MAIN) {
+        for (long retired :
+            jdbc.queryForList(
+                "SELECT s.savings_account_id FROM m_savings_policy_opening_slot s JOIN m_savings_account a"
+                    + " ON a.id=s.savings_account_id WHERE s.client_id=? AND s.purpose='MAIN'"
+                    + " AND a.status_enum NOT IN (100,200,300)",
+                Long.class,
+                account.clientId())) mainAudit.record(account.clientId(), retired, actor, "RETIRE");
+      }
       jdbc.update(
           "DELETE FROM m_savings_policy_opening_slot WHERE client_id=? AND purpose=? AND"
               + " savings_account_id IN (SELECT id FROM m_savings_account WHERE status_enum NOT IN"
@@ -143,5 +153,7 @@ public class ProductPolicyOpeningEnforcement {
           version.version(),
           policy.purpose().name(),
           org.apache.fineract.infrastructure.core.service.DateUtils.getAuditLocalDateTime());
+    if (policy.purpose() == ProductPolicyData.Purpose.MAIN)
+      mainAudit.record(account.clientId(), account.getId(), actor, "BIND");
   }
 }
