@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-089-planned-savings-pockets">
+    <!-- Metadata only. Native accounts, balances, financial transactions and existing guards are untouched. -->
+    <createTable tableName="m_savings_planned_arrangement">
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="employer_client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"/>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(24)"><constraints nullable="false"/></column>
+      <column name="configuration_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_arrangement" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_spa_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_arrangement" baseColumnNames="employer_client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_spa_employer"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_arrangement" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_spa_policy"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_arrangement" baseColumnNames="savings_account_id" referencedTableName="m_savings_account_policy" referencedColumnNames="savings_account_id" constraintName="fk_spa_account"/>
+    <addUniqueConstraint tableName="m_savings_planned_arrangement" columnNames="savings_account_id" constraintName="uq_spa_native_account"/>
+    <createIndex tableName="m_savings_planned_arrangement" indexName="idx_spa_client"><column name="client_id"/><column name="id"/></createIndex>
+    <createIndex tableName="m_savings_planned_arrangement" indexName="idx_spa_employer"><column name="employer_client_id"/><column name="status"/></createIndex>
+    <sql>ALTER TABLE m_savings_planned_arrangement ADD CONSTRAINT ck_spa_metadata CHECK (revision &gt; 0 AND client_id &lt;&gt; employer_client_id AND status IN ('CONFIGURATION_ONLY','CANCELLED'));</sql>
+    <createTable tableName="m_savings_planned_contribution">
+      <column name="arrangement_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="sequence_no" type="INTEGER"><constraints nullable="false"/></column>
+      <column name="due_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="expected_amount" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_planned_contribution" columnNames="arrangement_id,revision,sequence_no" constraintName="pk_spc_schedule"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_contribution" baseColumnNames="arrangement_id" referencedTableName="m_savings_planned_arrangement" referencedColumnNames="id" constraintName="fk_spc_arrangement"/>
+    <addUniqueConstraint tableName="m_savings_planned_contribution" columnNames="arrangement_id,revision,due_date" constraintName="uq_spc_due"/>
+    <sql>ALTER TABLE m_savings_planned_contribution ADD CONSTRAINT ck_spc_projection CHECK (revision &gt; 0 AND sequence_no BETWEEN 1 AND 1000 AND expected_amount &gt; 0);</sql>
+    <createTable tableName="m_savings_pocket_relationship">
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="main_savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="main_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="main_policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="name" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(10)"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_savings_pocket_relationship" baseColumnNames="savings_account_id" referencedTableName="m_savings_account_policy" referencedColumnNames="savings_account_id" constraintName="fk_spr_pocket"/>
+    <addForeignKeyConstraint baseTableName="m_savings_pocket_relationship" baseColumnNames="main_savings_account_id" referencedTableName="m_savings_account_policy" referencedColumnNames="savings_account_id" constraintName="fk_spr_main"/>
+    <addForeignKeyConstraint baseTableName="m_savings_pocket_relationship" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_spr_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_pocket_relationship" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_spr_policy"/>
+    <addForeignKeyConstraint baseTableName="m_savings_pocket_relationship" baseColumnNames="main_product_id,main_policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_spr_main_policy"/>
+    <createIndex tableName="m_savings_pocket_relationship" indexName="idx_spr_client"><column name="client_id"/><column name="savings_account_id"/></createIndex>
+    <createIndex tableName="m_savings_pocket_relationship" indexName="idx_spr_main"><column name="main_savings_account_id"/><column name="status"/></createIndex>
+    <sql>ALTER TABLE m_savings_pocket_relationship ADD CONSTRAINT ck_spr_relationship CHECK (revision &gt; 0 AND savings_account_id &lt;&gt; main_savings_account_id AND status IN ('LINKED','RETIRED'));</sql>
+    <createTable tableName="m_savings_planned_review">
+      <column name="idempotency_key" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="arrangement_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="request_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="response_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_review" baseColumnNames="arrangement_id" referencedTableName="m_savings_planned_arrangement" referencedColumnNames="id" constraintName="fk_sprev_arrangement"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_review" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sprev_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_review" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sprev_actor"/>
+    <createIndex tableName="m_savings_planned_review" indexName="idx_sprev_arrangement"><column name="arrangement_id"/></createIndex>
+    <createTable tableName="m_savings_planned_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="subject_type" type="VARCHAR(12)"><constraints nullable="false"/></column>
+      <column name="subject_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"/>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="outcome" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="details_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_audit" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_spe_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_audit" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_spe_account"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_audit" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_spe_policy"/>
+    <addForeignKeyConstraint baseTableName="m_savings_planned_audit" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_spe_actor"/>
+    <createIndex tableName="m_savings_planned_audit" indexName="idx_spe_subject"><column name="client_id"/><column name="subject_type"/><column name="subject_id"/><column name="id"/></createIndex>
+    <sql>ALTER TABLE m_savings_planned_audit ADD CONSTRAINT ck_spe_outcome CHECK (subject_type IN ('ARRANGEMENT','POCKET') AND outcome IN ('METADATA_ONLY','BLOCKED_PENDING_POLICY'));</sql>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="READ_PLANNED_SAVINGS"/>
+      <column name="entity_name" value="PLANNED_SAVINGS"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="CONFIGURE_PLANNED_SAVINGS"/>
+      <column name="entity_name" value="PLANNED_SAVINGS"/><column name="action_name" value="CONFIGURE"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="MANAGE_SAVINGS_POCKET"/>
+      <column name="entity_name" value="SAVINGS_POCKET"/><column name="action_name" value="MANAGE"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+    <insert tableName="m_permission">
+      <column name="grouping" value="savings"/><column name="code" value="REVIEW_PLANNED_SAVINGS"/>
+      <column name="entity_name" value="PLANNED_SAVINGS"/><column name="action_name" value="REVIEW"/><column name="can_maker_checker" valueBoolean="false"/>
+    </insert>
+  </changeSet>
+</databaseChangeLog>

@@ -98,4 +98,5 @@
   <include file="parts/086-monthly-fee-diagnostics.xml" relativeToChangelogFile="true"/>
   <include file="parts/087-main-account-relationships.xml" relativeToChangelogFile="true"/>
   <include file="parts/088-guarantee-sweep-diagnostics.xml" relativeToChangelogFile="true"/>
+  <include file="parts/089-planned-savings-pockets.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
