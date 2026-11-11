@@ -198,17 +198,19 @@ uninstalling. Run your agent from the repository root:
 
 | Agent | Setup |
 |---|---|
-| Codex | None. Codex loads skills from `.agents/skills/` |
-| Pi Agent | None. Pi loads skills from `.agents/skills/` once you trust the project |
+| Codex | None. Codex loads skills from `.agents/skills/`. Its default sandbox blocks Docker; allow network, for example `codex exec -s workspace-write -c sandbox_workspace_write.network_access=true` |
+| OpenCode | None. OpenCode loads skills from `.agents/skills/` |
+| Pi Agent | None. Pi loads skills from `.agents/skills/` once you trust the project (`/trust`, or `pi --approve` for one run) |
 | Claude Code | `mkdir -p .claude/skills && ln -s ../../.agents/skills/savings-docker-compose .claude/skills/` |
-| Hermes Agent | `mkdir -p ~/.hermes/skills/devops && cp -r .agents/skills/savings-docker-compose ~/.hermes/skills/devops/` |
+| Hermes Agent | `hermes skills trust` in the repository root; Hermes then loads skills from `.agents/skills/` |
 
 Then ask, for example: *"Install the savings plugin with Docker Compose"*, or *"Remove the savings
 plugin Docker setup"*. The agent runs `docker compose` and `verify-install.sh`; approve those when
 it asks.
 
-The skill was tested with Claude Code. The Codex, Pi Agent and Hermes Agent rows use each agent's
-documented skill location and were not run against this skill.
+The skill was tested with Claude Code, Codex (local `gpt-oss:20b`) and OpenCode (local
+`gpt-oss:20b`): each installed the plugin and passed all four checks. The Pi Agent and Hermes Agent
+rows follow each agent's documentation and were not run against this skill.
 
 ### Pre-Built JARs
 
