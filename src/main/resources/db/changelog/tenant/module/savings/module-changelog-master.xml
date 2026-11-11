@@ -97,4 +97,5 @@
   <include file="parts/085-transaction-policy-audit.xml" relativeToChangelogFile="true"/>
   <include file="parts/086-monthly-fee-diagnostics.xml" relativeToChangelogFile="true"/>
   <include file="parts/087-main-account-relationships.xml" relativeToChangelogFile="true"/>
+  <include file="parts/088-guarantee-sweep-diagnostics.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

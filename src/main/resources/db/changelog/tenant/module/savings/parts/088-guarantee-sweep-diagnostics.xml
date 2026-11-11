@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-088-guarantee-sweep-diagnostics">
+    <!-- Fail-closed diagnostic infrastructure. No approved allocation or native financial write.
+         PostgreSQL coordination follows BE-07. No schedule or role grants are installed. -->
+    <createTable tableName="m_savings_guarantee_run">
+      <column name="id" type="VARCHAR(36)"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="period" type="VARCHAR(7)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="office_hierarchy" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="cutoff_loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="after_loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_savings_guarantee_allocation">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="currency_code" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="currency_digits" type="INTEGER"><constraints nullable="false"/></column>
+      <column name="proposed_amount" type="DECIMAL(19,6)"><constraints/></column>
+      <column name="reserved_amount" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="consumed_amount" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="released_amount" type="DECIMAL(19,6)"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_savings_guarantee_execution">
+      <column name="id" type="VARCHAR(36)"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="execution_key" type="VARCHAR(150)"><constraints nullable="false"/></column>
+      <column name="fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints/></column>
+      <column name="operation" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="mode" type="VARCHAR(15)"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints/></column>
+      <column name="requested_amount" type="DECIMAL(19,6)"><constraints/></column>
+      <column name="applied_amount" type="DECIMAL(19,6)"><constraints/></column>
+      <column name="currency_code" type="VARCHAR(3)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="reason" type="VARCHAR(250)"><constraints nullable="false"/></column>
+      <column name="reason_code" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="evaluation_json" type="TEXT"><constraints nullable="false"/></column>
+      <column name="native_savings_transaction_id" type="BIGINT"><constraints/></column>
+      <column name="native_loan_transaction_id" type="BIGINT"><constraints/></column>
+      <column name="native_transfer_id" type="BIGINT"><constraints/></column>
+    </createTable>
+    <createTable tableName="m_savings_guarantee_run_item">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="run_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="execution_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+    </createTable>
+    <createTable tableName="m_savings_guarantee_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="execution_id" type="VARCHAR(36)"><constraints/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="loan_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="savings_account_id" type="BIGINT"><constraints/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="policy_version" type="BIGINT"><constraints/></column>
+      <column name="event" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="reason_code" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="evaluation_json" type="TEXT"><constraints nullable="false"/></column>
+      <column name="reconciliation_json" type="TEXT"/>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_savings_guarantee_run" columnNames="tenant_identifier,period,office_hierarchy" constraintName="uq_sgr_period_scope"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_run" columnNames="id,tenant_identifier" constraintName="uq_sgr_tenant"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_execution" columnNames="tenant_identifier,execution_key" constraintName="uq_sge_key"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_execution" columnNames="id,tenant_identifier,loan_id" constraintName="uq_sge_loan"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_execution" columnNames="id,tenant_identifier" constraintName="uq_sge_tenant"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_run_item" columnNames="tenant_identifier,run_id,loan_id" constraintName="uq_sgri_loan"/>
+    <addUniqueConstraint tableName="m_savings_guarantee_allocation" columnNames="tenant_identifier,loan_id,savings_account_id" constraintName="uq_sga_proposal"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_run" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sgrun_created_by"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_allocation" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sgallocation_client_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_allocation" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_sgallocation_loan_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_allocation" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_sgallocation_savings_account_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_allocation" baseColumnNames="created_by" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sgallocation_created_by"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sgexecution_client_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_sgexecution_loan_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_sgexecution_savings_account_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sgexecution_actor_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_run_item" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_sgrun_item_loan_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_audit" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sgaudit_client_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_audit" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_sgaudit_loan_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_audit" baseColumnNames="savings_account_id" referencedTableName="m_savings_account" referencedColumnNames="id" constraintName="fk_sgaudit_savings_account_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_audit" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sgaudit_actor_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_allocation" baseColumnNames="savings_product_id,policy_version" referencedTableName="m_savings_product_policy_version" referencedColumnNames="savings_product_id,version" constraintName="fk_sga_policy"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_run_item" baseColumnNames="run_id,tenant_identifier" referencedTableName="m_savings_guarantee_run" referencedColumnNames="id,tenant_identifier" constraintName="fk_sgri_run"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_run_item" baseColumnNames="execution_id,tenant_identifier,loan_id" referencedTableName="m_savings_guarantee_execution" referencedColumnNames="id,tenant_identifier,loan_id" constraintName="fk_sgri_execution"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_audit" baseColumnNames="execution_id,tenant_identifier" referencedTableName="m_savings_guarantee_execution" referencedColumnNames="id,tenant_identifier" constraintName="fk_sgau_execution"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="native_savings_transaction_id" referencedTableName="m_savings_account_transaction" referencedColumnNames="id" constraintName="fk_sge_native_savings_transaction_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="native_loan_transaction_id" referencedTableName="m_loan_transaction" referencedColumnNames="id" constraintName="fk_sge_native_loan_transaction_id"/>
+    <addForeignKeyConstraint baseTableName="m_savings_guarantee_execution" baseColumnNames="native_transfer_id" referencedTableName="m_account_transfer_details" referencedColumnNames="id" constraintName="fk_sge_native_transfer_id"/>
+    <sql>ALTER TABLE m_savings_guarantee_run ADD CONSTRAINT ck_sg_0 CHECK (status IN ('PENDING','PROCESSING','BLOCKED_PENDING_POLICY','SKIPPED','FAILED','RECONCILIATION_REQUIRED') AND after_loan_id &gt;= 0 AND cutoff_loan_id &gt;= after_loan_id);</sql>
+    <sql>ALTER TABLE m_savings_guarantee_allocation ADD CONSTRAINT ck_sg_1 CHECK (status='BLOCKED_PENDING_POLICY' AND reserved_amount=0 AND consumed_amount=0 AND released_amount=0 AND currency_digits BETWEEN 0 AND 6 AND (proposed_amount IS NULL OR (proposed_amount &gt; 0 AND proposed_amount=ROUND(proposed_amount,currency_digits))));</sql>
+    <sql>ALTER TABLE m_savings_guarantee_execution ADD CONSTRAINT ck_sg_2 CHECK (status IN ('BLOCKED_PENDING_POLICY','SKIPPED','RECONCILIATION_REQUIRED') AND operation IN ('APPLY','RELEASE') AND mode IN ('MANUAL','DIAGNOSTIC') AND (requested_amount IS NULL OR requested_amount &gt; 0) AND applied_amount IS NULL AND ((status='RECONCILIATION_REQUIRED') OR (native_savings_transaction_id IS NULL AND native_loan_transaction_id IS NULL AND native_transfer_id IS NULL)));</sql>
+    <sql>ALTER TABLE m_savings_guarantee_audit ADD CONSTRAINT ck_sg_3 CHECK (event IN ('ELIGIBILITY_EVALUATED','MANUAL_APPLICATION_BLOCKED','SETTLEMENT_RELEASE_BLOCKED','SCHEDULED_EVALUATION_BLOCKED','RECONCILIATION_EVALUATED'));</sql>
+    <createIndex tableName="m_savings_guarantee_audit" indexName="idx_sgau_client"><column name="tenant_identifier"/><column name="client_id"/><column name="loan_id"/><column name="id"/></createIndex>
+    <createIndex tableName="m_savings_guarantee_execution" indexName="idx_sge_client"><column name="tenant_identifier"/><column name="client_id"/><column name="loan_id"/></createIndex>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="READ_GUARANTEE_SWEEP"/><column name="entity_name" value="GUARANTEE_SWEEP"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="APPLY_GUARANTEE_SWEEP"/><column name="entity_name" value="GUARANTEE_SWEEP"/><column name="action_name" value="APPLY"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="RELEASE_GUARANTEE_SWEEP"/><column name="entity_name" value="GUARANTEE_SWEEP"/><column name="action_name" value="RELEASE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="ASSESS_GUARANTEE_SWEEP"/><column name="entity_name" value="GUARANTEE_SWEEP"/><column name="action_name" value="ASSESS"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="RECONCILE_GUARANTEE_SWEEP"/><column name="entity_name" value="GUARANTEE_SWEEP"/><column name="action_name" value="RECONCILE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+</databaseChangeLog>
