@@ -1,0 +1,93 @@
+# Local demo: Apache Fineract (develop image) with this plugin, on PostgreSQL.
+# docker compose up -d   then   https://localhost:8443/fineract-provider (self-signed certificate)
+# Not for production: fixed demo database password, self-signed TLS, default Fineract login.
+name: savings
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fineract_tenants
+    # Fineract also needs the default tenant's database; it doesn't create it.
+    configs:
+      - source: create-tenant-db
+        target: /docker-entrypoint-initdb.d/create-tenant-db.sql
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP: during first-run initialisation PostgreSQL listens on its Unix socket only.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 5s
+      retries: 20
+
+  # Builds the plugin JAR from this checkout and puts it in the shared "plugins" volume.
+  # The source is mounted read-only and copied, so nothing in the checkout changes.
+  plugin-build:
+    image: maven:3.9.15-eclipse-temurin-25
+    volumes:
+      - .:/src:ro
+      - plugins:/plugins
+      - maven-repo:/root/.m2
+    command:
+      - sh
+      - -ec
+      - |
+        rm -rf /tmp/build && mkdir /tmp/build
+        tar -C /src --exclude=./target --exclude=./.git -cf - . | tar -C /tmp/build -xf -
+        cd /tmp/build
+        # Each dependency is looked up in the pom's 5 extra repositories before Maven Central, about
+        # 1 s per miss. Resolving in parallel cuts a first build from over an hour.
+        mvn -B -q package -Dmaven.test.skip=true -Dspotless.check.skip=true \
+          -Daether.dependencyCollector.impl=bf -Daether.dependencyCollector.bf.threads=16 \
+          -Daether.connector.basic.threads=16
+        jar=$$(ls target/savings-plugin-*.jar | grep -vE -- '-(sources|javadoc|tests)\.jar$$') ||
+          { echo "error: no plugin JAR in target/" >&2; exit 1; }
+        # Copy, then rename on the same volume: an interrupted build keeps the previous JAR.
+        cp "$$jar" /plugins/.savings-plugin.jar.new
+        mv -f /plugins/.savings-plugin.jar.new /plugins/savings-plugin.jar
+        ls -l /plugins
+
+  fineract:
+    image: apache/fineract:develop
+    depends_on:
+      db:
+        condition: service_healthy
+      plugin-build:
+        condition: service_completed_successfully
+    environment:
+      FINERACT_HIKARI_JDBC_URL: jdbc:postgresql://db:5432/fineract_tenants
+      FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME: org.postgresql.Driver
+      FINERACT_HIKARI_USERNAME: postgres
+      FINERACT_HIKARI_PASSWORD: postgres
+      FINERACT_DEFAULT_TENANTDB_HOSTNAME: db
+      FINERACT_DEFAULT_TENANTDB_PORT: "5432"
+      FINERACT_DEFAULT_TENANTDB_UID: postgres
+      FINERACT_DEFAULT_TENANTDB_PWD: postgres
+      FINERACT_DEFAULT_TENANTDB_CONN_PARAMS: ""
+      FINERACT_SERVER_SSL_ENABLED: "true"
+      FINERACT_SERVER_PORT: "8443"
+      JAVA_TOOL_OPTIONS: -Xmx2G
+      TZ: UTC
+    # The image's classpath starts with /app/plugins/*.
+    volumes:
+      - plugins:/app/plugins:ro
+    ports:
+      - "127.0.0.1:8443:8443"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--no-check-certificate",
+             "https://localhost:8443/fineract-provider/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      start_period: 10m
+      retries: 4
+
+configs:
+  create-tenant-db:
+    content: CREATE DATABASE fineract_default;
+
+volumes:
+  db-data:
+  plugins:
+  maven-repo:
