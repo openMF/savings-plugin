@@ -2,6 +2,9 @@
 
 This file provides context and guidance for AI coding assistants working with the Mifos Self Service Plugin repository.
 
+To install, verify, troubleshoot or remove the plugin with Docker Compose, load the
+`savings-docker-compose` skill in `.agents/skills/savings-docker-compose/SKILL.md` and follow it.
+
 ## Repository Overview
 
 The **Mifos Self Service Plugin** is a Spring Boot plugin that extends Apache Fineract to provide self-service banking capabilities to end users. It enables customers to manage their own accounts, view transactions, and perform banking operations without requiring staff intervention.
