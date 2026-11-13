@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <!-- Diagnostic metadata only. No native balances, transactions or journal mappings are changed. -->
+  <changeSet author="fineract" id="ss-090-consolidated-isr">
+    <createTable tableName="m_savings_isr_rule">
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+    </createTable>
+    <sql>ALTER TABLE m_savings_isr_rule ADD CONSTRAINT ck_sir_revision CHECK (revision &gt;= 0);</sql>
+    <createTable tableName="m_savings_isr_rule_version">
+      <column name="rule_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="previous_version" type="BIGINT"></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="effective_from" type="DATE"><constraints nullable="false"/></column>
+      <column name="effective_through" type="DATE"><constraints nullable="false"/></column>
+      <column name="author_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="change_reason" type="VARCHAR(1000)"><constraints nullable="false"/></column>
+      <column name="definition_json" type="TEXT"><constraints nullable="false"/></column>
+      <column name="snapshot_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_isr_rule_version" columnNames="rule_id,version" constraintName="pk_sirv"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_rule_version" baseColumnNames="rule_id" referencedTableName="m_savings_isr_rule" referencedColumnNames="id" constraintName="fk_sirv_rule"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_rule_version" baseColumnNames="rule_id,previous_version" referencedTableName="m_savings_isr_rule_version" referencedColumnNames="rule_id,version" constraintName="fk_sirv_previous"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_rule_version" baseColumnNames="author_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sirv_author"/>
+    <sql>ALTER TABLE m_savings_isr_rule_version ADD CONSTRAINT ck_sirv_dates CHECK (version &gt; 0 AND effective_from &lt;= effective_through AND ((version=1 AND previous_version IS NULL) OR (version &gt; 1 AND previous_version IS NOT NULL AND previous_version=version-1)));</sql>
+    <createTable tableName="m_savings_isr_request">
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="idempotency_key" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="kind" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="scope_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="request_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="response_json" type="TEXT"></column>
+    </createTable>
+    <addPrimaryKey tableName="m_savings_isr_request" columnNames="tenant_identifier,idempotency_key" constraintName="pk_sireq"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_request" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sireq_actor"/>
+    <sql>ALTER TABLE m_savings_isr_request ADD CONSTRAINT ck_sireq_kind CHECK (kind IN ('ASSESSMENT','RULE_PROPOSAL','RECONCILIATION'));</sql>
+    <createTable tableName="m_savings_isr_calculation">
+      <column name="sequence_no" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="period_from" type="DATE"><constraints nullable="false"/></column>
+      <column name="period_through" type="DATE"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="supersedes_id" type="VARCHAR(36)"></column>
+      <column name="correction_reason" type="VARCHAR(1000)"></column>
+      <column name="source_fingerprint" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="result_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_savings_isr_calculation" columnNames="id" constraintName="uq_sic_id"/>
+    <addUniqueConstraint tableName="m_savings_isr_calculation" columnNames="tenant_identifier,supersedes_id" constraintName="uq_sic_successor"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_calculation" baseColumnNames="supersedes_id" referencedTableName="m_savings_isr_calculation" referencedColumnNames="id" constraintName="fk_sic_previous"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_calculation" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sic_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_calculation" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sic_actor"/>
+    <createIndex tableName="m_savings_isr_calculation" indexName="idx_sic_client"><column name="tenant_identifier"/><column name="client_id"/><column name="sequence_no"/></createIndex>
+    <sql>ALTER TABLE m_savings_isr_calculation ADD CONSTRAINT ck_sic_period CHECK (period_from &lt;= period_through AND period_through &lt;= business_date AND (supersedes_id IS NULL OR (supersedes_id &lt;&gt; id AND correction_reason IS NOT NULL)));</sql>
+    <createTable tableName="m_savings_isr_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="tenant_identifier" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="client_id" type="BIGINT"></column>
+      <column name="subject_id" type="VARCHAR(36)"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="recorded_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="details_json" type="TEXT"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_audit" baseColumnNames="client_id" referencedTableName="m_client" referencedColumnNames="id" constraintName="fk_sia_client"/>
+    <addForeignKeyConstraint baseTableName="m_savings_isr_audit" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_sia_actor"/>
+    <createIndex tableName="m_savings_isr_audit" indexName="idx_sia_subject"><column name="tenant_identifier"/><column name="client_id"/><column name="subject_id"/><column name="id"/></createIndex>
+    <sql>ALTER TABLE m_savings_isr_audit ADD CONSTRAINT ck_sia_action CHECK (action IN ('RULE_PROPOSED','ASSESSMENT_SAVED','RECONCILIATION_CHECKED'));</sql>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="READ_CONSOLIDATED_ISR_ELIGIBILITY"/><column name="entity_name" value="CONSOLIDATED_ISR_ELIGIBILITY"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="READ_CONSOLIDATED_ISR"/><column name="entity_name" value="CONSOLIDATED_ISR"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="PREVIEW_CONSOLIDATED_ISR"/><column name="entity_name" value="CONSOLIDATED_ISR"/><column name="action_name" value="PREVIEW"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="MANAGE_CONSOLIDATED_ISR_RULE"/><column name="entity_name" value="CONSOLIDATED_ISR_RULE"/><column name="action_name" value="MANAGE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="READ_CONSOLIDATED_ISR_AUDIT"/><column name="entity_name" value="CONSOLIDATED_ISR_AUDIT"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="savings"/><column name="code" value="RECONCILE_CONSOLIDATED_ISR"/><column name="entity_name" value="CONSOLIDATED_ISR"/><column name="action_name" value="RECONCILE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+</databaseChangeLog>
