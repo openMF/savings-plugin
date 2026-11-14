@@ -100,4 +100,5 @@
   <include file="parts/088-guarantee-sweep-diagnostics.xml" relativeToChangelogFile="true"/>
   <include file="parts/089-planned-savings-pockets.xml" relativeToChangelogFile="true"/>
   <include file="parts/090-consolidated-isr.xml" relativeToChangelogFile="true"/>
+  <include file="parts/091-anpa-writeoff-assessments.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
