@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <!-- Evidence only. No native financial table or mapping is altered. -->
+  <changeSet author="fineract" id="ss-091-anpa-assessments">
+    <createTable tableName="m_anpa_assessment">
+      <column name="sequence_no" type="BIGINT" autoIncrement="true"><constraints nullable="false" primaryKey="true"/></column>
+      <column name="id" type="VARCHAR(36)" ><constraints nullable="false" /></column>
+      <column name="tenant_identifier" type="VARCHAR(100)" ><constraints nullable="false" /></column>
+      <column name="loan_id" type="BIGINT" ><constraints nullable="false" /></column>
+      <column name="product_id" type="BIGINT" ><constraints nullable="false" /></column>
+      <column name="office_id" type="BIGINT" ><constraints nullable="false" /></column>
+      <column name="actor_id" type="BIGINT" ><constraints nullable="false" /></column>
+      <column name="business_date" type="DATE" ><constraints nullable="false" /></column>
+      <column name="as_of_date" type="DATE" ><constraints nullable="false" /></column>
+      <column name="recorded_at" type="TIMESTAMP" ><constraints nullable="false" /></column>
+      <column name="idempotency_key" type="VARCHAR(36)" ><constraints nullable="false" /></column>
+      <column name="request_hash" type="VARCHAR(64)" ><constraints nullable="false" /></column>
+      <column name="supersedes_id" type="VARCHAR(36)" ><constraints nullable="true"/></column>
+      <column name="correction_reason" type="VARCHAR(1000)" ><constraints nullable="true"/></column>
+      <column name="source_fingerprint" type="VARCHAR(64)" ><constraints nullable="false" /></column>
+      <column name="mapping_fingerprint" type="VARCHAR(64)" ><constraints nullable="false" /></column>
+      <column name="result_json" type="TEXT" ><constraints nullable="false" /></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_anpa_assessment" columnNames="id" constraintName="uq_anpa_id"/>
+    <addUniqueConstraint tableName="m_anpa_assessment" columnNames="tenant_identifier,idempotency_key" constraintName="uq_anpa_request"/>
+    <addUniqueConstraint tableName="m_anpa_assessment" columnNames="tenant_identifier,supersedes_id" constraintName="uq_anpa_successor"/>
+    <addForeignKeyConstraint baseTableName="m_anpa_assessment" baseColumnNames="supersedes_id" referencedTableName="m_anpa_assessment" referencedColumnNames="id" constraintName="fk_anpa_previous"/>
+    <addForeignKeyConstraint baseTableName="m_anpa_assessment" baseColumnNames="loan_id" referencedTableName="m_loan" referencedColumnNames="id" constraintName="fk_anpa_loan"/>
+    <addForeignKeyConstraint baseTableName="m_anpa_assessment" baseColumnNames="actor_id" referencedTableName="m_appuser" referencedColumnNames="id" constraintName="fk_anpa_actor"/>
+    <createIndex tableName="m_anpa_assessment" indexName="idx_anpa_loan_history"><column name="tenant_identifier"/><column name="loan_id"/><column name="sequence_no"/></createIndex>
+    <sql>ALTER TABLE m_anpa_assessment ADD CONSTRAINT ck_anpa_dates CHECK (as_of_date &lt;= business_date AND (supersedes_id IS NULL OR (supersedes_id &lt;&gt; id AND correction_reason IS NOT NULL)));</sql>
+    <insert tableName="m_permission"><column name="grouping" value="loan"/><column name="code" value="READ_ANPA_ACCOUNTING"/><column name="entity_name" value="ANPA_ACCOUNTING"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="loan"/><column name="code" value="PREVIEW_ANPA_WRITEOFF"/><column name="entity_name" value="ANPA_WRITEOFF"/><column name="action_name" value="PREVIEW"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="loan"/><column name="code" value="CREATE_ANPA_ASSESSMENT"/><column name="entity_name" value="ANPA_ASSESSMENT"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="loan"/><column name="code" value="READ_ANPA_AUDIT"/><column name="entity_name" value="ANPA_AUDIT"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+</databaseChangeLog>
