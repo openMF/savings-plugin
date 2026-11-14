@@ -6,11 +6,11 @@
  */
 package org.apache.fineract.office.service;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.sql.Time;
 import java.math.BigDecimal;
+import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -57,6 +57,7 @@ public class OfficeExtensionWritePlatformServiceImpl
   private static final BigDecimal LAT_MAX = new BigDecimal("90");
   private static final BigDecimal LNG_MIN = new BigDecimal("-180");
   private static final BigDecimal LNG_MAX = new BigDecimal("180");
+  private static final int ADDRESS_COORDINATE_SCALE = 13;
   private static final int WEEKDAY_COUNT = 7;
 
   private final JdbcTemplate jdbcTemplate;
@@ -318,6 +319,73 @@ public class OfficeExtensionWritePlatformServiceImpl
     }
   }
 
+  private void validateAddressCoordinates(final BigDecimal latitude, final BigDecimal longitude) {
+    final List<ApiParameterError> errors = new ArrayList<>();
+    if ((latitude == null) != (longitude == null)) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.address.coordinates.incomplete",
+              "Latitude and longitude must both be supplied or both be null",
+              latitude == null ? "latitude" : "longitude"));
+    }
+    validateAddressCoordinate(errors, "latitude", latitude, LAT_MIN, LAT_MAX);
+    validateAddressCoordinate(errors, "longitude", longitude, LNG_MIN, LNG_MAX);
+    if (!errors.isEmpty()) {
+      throw new PlatformApiDataValidationException(errors);
+    }
+  }
+
+  private BigDecimal extractAddressCoordinate(final String parameter, final JsonElement element) {
+    final JsonElement value = element.getAsJsonObject().get(parameter);
+    final ApiParameterError error =
+        ApiParameterError.parameterError(
+            "validation.msg.office.address." + parameter + ".invalid",
+            parameter + " must be a finite decimal number",
+            parameter);
+    if (value != null
+        && !value.isJsonNull()
+        && (!value.isJsonPrimitive()
+            || (!value.getAsJsonPrimitive().isNumber()
+                && !value.getAsJsonPrimitive().isString()))) {
+      throw new PlatformApiDataValidationException(List.of(error));
+    }
+    try {
+      return this.fromJsonHelper.extractBigDecimalWithLocaleNamed(parameter, element);
+    } catch (NumberFormatException e) {
+      // The native locale parser can produce NaN before converting to BigDecimal.
+      throw new PlatformApiDataValidationException(List.of(error), e);
+    }
+  }
+
+  private void validateAddressCoordinate(
+      final List<ApiParameterError> errors,
+      final String parameter,
+      final BigDecimal value,
+      final BigDecimal min,
+      final BigDecimal max) {
+    if (value == null) {
+      return;
+    }
+    if (value.compareTo(min) < 0 || value.compareTo(max) > 0) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.address." + parameter + ".out.of.range",
+              parameter + " must be between " + min + " and " + max,
+              parameter,
+              value));
+    }
+    // Insignificant trailing zeros need no rounding; never coerce an unsupported value to the
+    // scale.
+    if (value.stripTrailingZeros().scale() > ADDRESS_COORDINATE_SCALE) {
+      errors.add(
+          ApiParameterError.parameterError(
+              "validation.msg.office.address." + parameter + ".precision",
+              parameter + " supports at most " + ADDRESS_COORDINATE_SCALE + " fractional digits",
+              parameter,
+              value));
+    }
+  }
+
   private List<OfficeWorkingHoursDayCommand> parseAndValidateWorkingHours(
       final JsonElement element) {
     final List<ApiParameterError> errors = new ArrayList<>();
@@ -377,16 +445,16 @@ public class OfficeExtensionWritePlatformServiceImpl
                   "days[" + i + "].weekday",
                   weekdayValue));
         } else {
-          days.put(weekday, new OfficeWorkingHoursDayCommand(weekday, enabled, openingTime, closingTime));
+          days.put(
+              weekday,
+              new OfficeWorkingHoursDayCommand(weekday, enabled, openingTime, closingTime));
         }
       }
 
       if (Boolean.TRUE.equals(enabled)) {
         validator.parameter("days[" + i + "].openingTime").value(openingTime).notNull();
         validator.parameter("days[" + i + "].closingTime").value(closingTime).notNull();
-        if (openingTime != null
-            && closingTime != null
-            && !openingTime.isBefore(closingTime)) {
+        if (openingTime != null && closingTime != null && !openingTime.isBefore(closingTime)) {
           errors.add(
               ApiParameterError.parameterError(
                   "validation.msg.office.working.hours.opening.before.closing",
@@ -496,10 +564,9 @@ public class OfficeExtensionWritePlatformServiceImpl
     final String city = this.fromJsonHelper.extractStringNamed("city", element);
     final String countyDistrict = this.fromJsonHelper.extractStringNamed("countyDistrict", element);
     final String postalCode = this.fromJsonHelper.extractStringNamed("postalCode", element);
-    final BigDecimal latitude =
-        this.fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element);
-    final BigDecimal longitude =
-        this.fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element);
+    final BigDecimal latitude = extractAddressCoordinate("latitude", element);
+    final BigDecimal longitude = extractAddressCoordinate("longitude", element);
+    validateAddressCoordinates(latitude, longitude);
     final Long stateProvinceId = this.fromJsonHelper.extractLongNamed("stateProvinceId", element);
     final Long countryId = this.fromJsonHelper.extractLongNamed("countryId", element);
 
@@ -575,8 +642,9 @@ public class OfficeExtensionWritePlatformServiceImpl
     try {
       existingMapping =
           this.jdbcTemplate.queryForMap(
-              "SELECT address_id, address_type_id, is_active FROM m_office_address"
-                  + " WHERE id = ? AND office_id = ?",
+              "SELECT oa.address_id, oa.address_type_id, oa.is_active, a.latitude, a.longitude"
+                  + " FROM m_office_address oa JOIN m_address a ON a.id = oa.address_id"
+                  + " WHERE oa.id = ? AND oa.office_id = ?",
               serviceId,
               officeId);
     } catch (EmptyResultDataAccessException e) {
@@ -590,6 +658,20 @@ public class OfficeExtensionWritePlatformServiceImpl
 
     final JsonElement element = this.fromJsonHelper.parse(jsonBody);
     final Map<String, Object> changes = new HashMap<>();
+    final boolean hasLatitude = this.fromJsonHelper.parameterExists("latitude", element);
+    final boolean hasLongitude = this.fromJsonHelper.parameterExists("longitude", element);
+    final BigDecimal latitude =
+        hasLatitude
+            ? extractAddressCoordinate("latitude", element)
+            : (BigDecimal) existingMapping.get("latitude");
+    final BigDecimal longitude =
+        hasLongitude
+            ? extractAddressCoordinate("longitude", element)
+            : (BigDecimal) existingMapping.get("longitude");
+    if (hasLatitude || hasLongitude) {
+      // PATCH-style updates may change one axis, but the resulting saved pair must remain valid.
+      validateAddressCoordinates(latitude, longitude);
+    }
 
     // --- update address fields in m_address if any are provided ---
     final StringBuilder addressSql = new StringBuilder("UPDATE m_address SET ");
@@ -660,22 +742,18 @@ public class OfficeExtensionWritePlatformServiceImpl
       changes.put("postalCode", val);
       first = false;
     }
-    if (this.fromJsonHelper.parameterExists("latitude", element)) {
+    if (hasLatitude) {
       if (!first) addressSql.append(", ");
-      final BigDecimal val =
-          this.fromJsonHelper.extractBigDecimalWithLocaleNamed("latitude", element);
       addressSql.append("latitude = :latitude");
-      addressParams.addValue("latitude", val);
-      changes.put("latitude", val);
+      addressParams.addValue("latitude", latitude);
+      changes.put("latitude", latitude);
       first = false;
     }
-    if (this.fromJsonHelper.parameterExists("longitude", element)) {
+    if (hasLongitude) {
       if (!first) addressSql.append(", ");
-      final BigDecimal val =
-          this.fromJsonHelper.extractBigDecimalWithLocaleNamed("longitude", element);
       addressSql.append("longitude = :longitude");
-      addressParams.addValue("longitude", val);
-      changes.put("longitude", val);
+      addressParams.addValue("longitude", longitude);
+      changes.put("longitude", longitude);
       first = false;
     }
     if (this.fromJsonHelper.parameterExists("stateProvinceId", element)) {
