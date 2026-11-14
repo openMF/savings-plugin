@@ -10,7 +10,7 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
   <!-- m_address is shared with Fineract client addresses. Never narrow an existing column. -->
-  <changeSet author="fineract" id="ss-091-coordinate-schema-contract" runAlways="true">
+  <changeSet author="fineract" id="ss-092-coordinate-schema-contract" runAlways="true">
     <preConditions onFail="HALT" onError="HALT"
                    onFailMessage="WEB-1418: both m_address coordinates must be fixed DECIMAL columns that can be widened without losing integer or fractional digits, or already support at least 3 integer and 13 fractional digits. MySQL/MariaDB columns needing widening must retain the core NULL DEFAULT 0 contract. Review incompatible schemas before upgrading; no columns were intentionally skipped.">
       <columnExists tableName="m_address" columnName="latitude"/>
@@ -45,7 +45,7 @@
     <sql>SELECT 1;</sql>
   </changeSet>
 
-  <changeSet author="fineract" id="ss-091-latitude-precision">
+  <changeSet author="fineract" id="ss-092-latitude-precision">
     <!-- Only an already-sufficient column can be marked ran; the preceding guard halts otherwise. -->
     <preConditions onFail="MARK_RAN" onError="HALT">
       <not>
@@ -74,7 +74,7 @@
     <modifySql dbms="mysql,mariadb"><append value=" NULL DEFAULT 0"/></modifySql>
   </changeSet>
 
-  <changeSet author="fineract" id="ss-091-longitude-precision">
+  <changeSet author="fineract" id="ss-092-longitude-precision">
     <preConditions onFail="MARK_RAN" onError="HALT">
       <not>
         <or>
@@ -102,7 +102,7 @@
   </changeSet>
 
   <!-- Detect schema/history drift too: an applied changeset must never hide insufficient storage. -->
-  <changeSet author="fineract" id="ss-091-coordinate-storage-ready" runAlways="true">
+  <changeSet author="fineract" id="ss-092-coordinate-storage-ready" runAlways="true">
     <preConditions onFail="HALT" onError="HALT"
                    onFailMessage="WEB-1418: m_address coordinate storage still lacks 3 integer and 13 fractional digits. Check schema/migration history before allowing coordinate writes.">
       <or>

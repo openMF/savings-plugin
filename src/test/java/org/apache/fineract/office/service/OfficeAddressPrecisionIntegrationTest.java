@@ -59,7 +59,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class OfficeAddressPrecisionIntegrationTest {
 
   private static final String ROOT = "db/changelog/tenant/module/savings/";
-  private static final String CHANGELOG = ROOT + "parts/091-office-coordinate-precision.xml";
+  private static final String CHANGELOG = ROOT + "parts/092-office-coordinate-precision.xml";
   private static final String REFERENCE_LATITUDE = "19.3673440111718";
   private static final String REFERENCE_LONGITUDE = "-99.05897965";
   private static final DefaultToApiJsonSerializer<Object> SERIALIZER =
@@ -135,7 +135,7 @@ class OfficeAddressPrecisionIntegrationTest {
     assertEquals(
         4,
         jdbc.queryForObject(
-            "SELECT COUNT(*) FROM databasechangelog WHERE id LIKE 'ss-091-%'", Integer.class));
+            "SELECT COUNT(*) FROM databasechangelog WHERE id LIKE 'ss-092-%'", Integer.class));
     // Widening must preserve the nullable, zero-default native contract too.
     jdbc.update("INSERT INTO m_address(id,street) VALUES (30,'Default coordinates')");
     assertEquals(
@@ -283,7 +283,7 @@ class OfficeAddressPrecisionIntegrationTest {
     assertEquals(
         2,
         jdbc.queryForObject(
-            "SELECT COUNT(*) FROM databasechangelog WHERE id LIKE 'ss-091-%' AND exectype='MARK_RAN'",
+            "SELECT COUNT(*) FROM databasechangelog WHERE id LIKE 'ss-092-%' AND exectype='MARK_RAN'",
             Integer.class));
   }
 
@@ -377,7 +377,7 @@ class OfficeAddressPrecisionIntegrationTest {
     assertEquals(
         4,
         changelog.getChangeSets().stream()
-            .filter(change -> change.getId().startsWith("ss-091-"))
+            .filter(change -> CHANGELOG.equals(change.getFilePath()))
             .count());
   }
 
