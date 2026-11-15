@@ -35,10 +35,35 @@ public class AnpaAccountingService {
     access.authorize(AnpaAccountingAccess.READ);
     return new Template(
         "0.0.1628-bc1c598",
-        new Capabilities(true, false, true, false, true, true, true, false, false),
+        new Capabilities(
+            true,
+            false,
+            true,
+            false,
+            true,
+            true,
+            true,
+            false,
+            false,
+            new CorrectionCapabilities(
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                true,
+                false,
+                false,
+                List.of(
+                    Reason.ACCOUNTING_POLICY_MISSING,
+                    Reason.NPA_HISTORY_UNAVAILABLE,
+                    Reason.NATIVE_WRITE_OFF_INTEGRATION_UNVERIFIED,
+                    Reason.NATIVE_ADJUSTMENT_INTEGRATION_UNVERIFIED))),
         Arrays.asList(Category.values()),
         Arrays.asList(Reason.values()),
-        "Current flag only; native NPA transition history and NPA receivable segregation unavailable.");
+        "Current flag only; native NPA transition history and NPA receivable segregation"
+            + " unavailable.");
   }
 
   public Eligibility eligibility(long loanId) {

@@ -87,6 +87,7 @@ public class AnpaReceivableClassificationService {
       }
       int placeholder =
           switch (category) {
+            case PRINCIPAL -> AccrualAccountsForLoan.LOAN_PORTFOLIO.getValue();
             case INTEREST -> AccrualAccountsForLoan.INTEREST_RECEIVABLE.getValue();
             case FEE_COMMISSION -> AccrualAccountsForLoan.FEES_RECEIVABLE.getValue();
             case PENALTY -> AccrualAccountsForLoan.PENALTIES_RECEIVABLE.getValue();

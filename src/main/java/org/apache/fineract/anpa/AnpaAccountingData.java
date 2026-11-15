@@ -16,6 +16,7 @@ public final class AnpaAccountingData {
   private AnpaAccountingData() {}
 
   public enum Category {
+    PRINCIPAL,
     INTEREST,
     FEE_COMMISSION,
     ITBMS,
@@ -32,6 +33,7 @@ public final class AnpaAccountingData {
 
   public enum MappingStatus {
     NATIVE_UNSEGREGATED,
+    VERIFIED_SOURCE_EVIDENCE,
     MISSING,
     AMBIGUOUS,
     INVALID_ACCOUNT,
@@ -69,7 +71,20 @@ public final class AnpaAccountingData {
     ORIGIN_ALLOCATION_UNAVAILABLE,
     TAX_TREATMENT_UNAPPROVED,
     RECONCILIATION_DIFFERENCE,
-    HISTORICAL_MAPPING_UNAVAILABLE
+    HISTORICAL_MAPPING_UNAVAILABLE,
+    ACCOUNTING_POLICY_MISSING,
+    ACCOUNTING_POLICY_AMBIGUOUS,
+    ACCOUNTING_POLICY_UNAPPROVED,
+    ACCOUNTING_POLICY_INVALID,
+    OUTSTANDING_AMOUNT_UNKNOWN,
+    RECLASSIFICATION_EVIDENCE_UNVERIFIED,
+    NATIVE_ADJUSTMENT_INTEGRATION_UNVERIFIED,
+    ORIGINAL_ASSESSMENT_UNAVAILABLE,
+    STALE_SOURCE_EVIDENCE,
+    REVERSED_WRITE_OFF,
+    REVERSAL_JOURNAL_LINEAGE_UNAVAILABLE,
+    RECOVERY_AFTER_WRITE_OFF,
+    ACCOUNTING_PERIOD_TREATMENT_UNAPPROVED
   }
 
   public enum State {
@@ -88,7 +103,8 @@ public final class AnpaAccountingData {
       boolean historicalAssessments,
       boolean accountingReconciliation,
       boolean nativeWriteOffInterceptionVerified,
-      boolean financialWriteOffCorrection) {}
+      boolean financialWriteOffCorrection,
+      CorrectionCapabilities correctionControls) {}
 
   public record Template(
       String nativeVersion,
@@ -285,4 +301,154 @@ public final class AnpaAccountingData {
       LocalDate asOf,
       Instant recordedAt,
       String sourceFingerprint) {}
+
+  /** Approval is a policy decision, never evidence of native financial integration. */
+  public record PolicyRule(
+      Category category,
+      Classification historicalOrigin,
+      Classification currentClassification,
+      long sourceAccountId,
+      Long nativeMappingId,
+      long destinationAccountId,
+      Boolean expenseEligible,
+      Boolean reclassifiedExpenseEligible,
+      Long taxComponentId) {}
+
+  public record PolicyDefinition(
+      int version,
+      int accountingRule,
+      String currency,
+      LocalDate effectiveFrom,
+      LocalDate effectiveThrough,
+      String approvalReference,
+      List<PolicyRule> rules) {}
+
+  public record PolicyApproval(
+      String policyId,
+      long makerId,
+      String mappingFingerprint,
+      String accountFingerprint,
+      String approvalReference) {}
+
+  public record PolicyResolution(
+      String policyId,
+      PolicyDefinition definition,
+      boolean explicitlyApproved,
+      boolean mappingsValidated,
+      boolean financiallyExecutable,
+      List<Reason> blockers) {}
+
+  public record ExpenseCategory(
+      Category category,
+      BigDecimal outstanding,
+      BigDecimal regularOutstanding,
+      BigDecimal npaOutstanding,
+      BigDecimal reclassifiedNpa,
+      BigDecimal eligible,
+      BigDecimal excluded,
+      List<Reason> blockers) {}
+
+  public record ExpenseAttribution(
+      List<ExpenseCategory> categories,
+      BigDecimal principalExpense,
+      BigDecimal eligibleReceivables,
+      BigDecimal excludedReceivables,
+      BigDecimal totalExpense,
+      boolean financiallyExecutable,
+      List<Reason> blockers) {}
+
+  public record CorrectionCapabilities(
+      boolean npaAccountingPolicyVerified,
+      boolean npaHistoricalAttribution,
+      boolean nativeReclassification,
+      boolean correctedWriteOffExecution,
+      boolean nativeJournalReconciliation,
+      boolean legacyLoanReconciliation,
+      boolean adjustmentProposalSupport,
+      boolean financialAdjustmentExecution,
+      boolean reversalIntegration,
+      List<Reason> blockers) {}
+
+  public record JournalComparison(
+      Category category,
+      Long accountId,
+      List<Long> journalIds,
+      BigDecimal transactionPortion,
+      BigDecimal expected,
+      BigDecimal actual,
+      BigDecimal difference,
+      String state,
+      List<Reason> blockers) {}
+
+  public record WriteOffReconciliation(
+      long transactionId,
+      LocalDate writeOffDate,
+      boolean reversed,
+      List<Long> journalIds,
+      List<Long> reversalJournalIds,
+      List<Long> recoveryTransactionIds,
+      BigDecimal nativeWriteOffAmount,
+      BigDecimal actualExpenseDebit,
+      BigDecimal expectedExpenseDebit,
+      BigDecimal expenseDifference,
+      List<JournalComparison> categories,
+      String state,
+      List<Reason> blockers) {}
+
+  public record ReclassificationEvidence(
+      String state, List<Journal> candidates, List<Reason> blockers) {}
+
+  public record AccountingPeriod(
+      LocalDate latestClosedThrough,
+      boolean calculationDateOpen,
+      boolean adjustmentPeriodTreatmentApproved) {}
+
+  public record CorrectionReview(
+      long loanId,
+      LocalDate calculationDate,
+      Instant calculatedAt,
+      String originalAssessmentId,
+      PolicyResolution policy,
+      ExpenseAttribution attribution,
+      List<WriteOffReconciliation> writeOffs,
+      ReclassificationEvidence reclassification,
+      CorrectionCapabilities capabilities,
+      String sourceFingerprint,
+      String mappingFingerprint,
+      Evidence evidence,
+      AccountingPeriod accountingPeriod,
+      List<Reason> blockers) {}
+
+  public enum AdjustmentKind {
+    JOURNAL_ADJUSTMENT,
+    NPA_RECLASSIFICATION,
+    NPA_RECLASSIFICATION_REVERSAL,
+    NATIVE_WRITE_OFF_REVERSAL
+  }
+
+  public record AdjustmentProposal(
+      String state,
+      AdjustmentKind operation,
+      String reason,
+      String reconciliationId,
+      String supersedesId,
+      boolean financiallyExecutable,
+      CorrectionReview review,
+      List<Reason> blockers) {}
+
+  /** An append-only plugin control event; result is typed JSON, not a financial command. */
+  public record ControlRecord(
+      long sequence,
+      String id,
+      String kind,
+      long loanId,
+      long productId,
+      long officeId,
+      long actorId,
+      LocalDate businessDate,
+      Instant recordedAt,
+      String parentId,
+      String sourceFingerprint,
+      com.google.gson.JsonElement request,
+      com.google.gson.JsonElement result) {}
 }

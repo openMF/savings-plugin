@@ -23,6 +23,10 @@ public class AnpaAccountingAccess {
   public static final String PREVIEW = "PREVIEW_ANPA_WRITEOFF";
   public static final String CREATE = "CREATE_ANPA_ASSESSMENT";
   public static final String AUDIT = "READ_ANPA_AUDIT";
+  public static final String RECONCILE = "READ_ANPA_RECONCILIATION";
+  public static final String MANAGE_POLICY = "MANAGE_ANPA_ACCOUNTING_POLICY";
+  public static final String APPROVE_POLICY = "APPROVE_ANPA_ACCOUNTING_POLICY";
+  public static final String PROPOSE = "CREATE_ANPA_ADJUSTMENT_PROPOSAL";
   private final PlatformSecurityContext security;
 
   long authorize(String permission) {
