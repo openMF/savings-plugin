@@ -31,6 +31,8 @@ import org.springframework.stereotype.Component;
 public class AnpaAccountingApiResource {
   private final AnpaAccountingService service;
   private final AnpaAssessmentAuditService assessments;
+  private final AnpaAccountingPolicyService policies;
+  private final AnpaCorrectionService corrections;
 
   @GET
   @Path("/template")
@@ -82,6 +84,97 @@ public class AnpaAccountingApiResource {
   public Response assessment(
       @PathParam("loanId") long id, @PathParam("assessmentId") String assessmentId) {
     return invoke(() -> assessments.get(id, assessmentId));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/accounting-policy")
+  public Response policy(@PathParam("loanId") long id) {
+    return invoke(() -> policies.get(id));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/accounting-policies")
+  public Response policies(
+      @PathParam("loanId") long id,
+      @QueryParam("after") @DefaultValue("0") long after,
+      @QueryParam("limit") @DefaultValue("100") int limit) {
+    return invoke(() -> policies.list(id, after, limit));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/accounting-policies/{policyId}")
+  public Response policyEvent(
+      @PathParam("loanId") long id, @PathParam("policyId") String policyId) {
+    return invoke(() -> policies.event(id, policyId));
+  }
+
+  @POST
+  @Path("/loans/{loanId}/accounting-policies")
+  public Response draftPolicy(@PathParam("loanId") long id, String json) {
+    return invoke(() -> policies.draft(id, json));
+  }
+
+  @POST
+  @Path("/loans/{loanId}/accounting-policies/{policyId}/approvals")
+  public Response approvePolicy(
+      @PathParam("loanId") long id, @PathParam("policyId") String policyId, String json) {
+    return invoke(() -> policies.approve(id, policyId, json));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/reclassification-history")
+  public Response reclassification(@PathParam("loanId") long id) {
+    return invoke(() -> corrections.reclassification(id));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/writeoff-reconciliation")
+  public Response reconciliation(
+      @PathParam("loanId") long id, @QueryParam("assessmentId") String assessmentId) {
+    return invoke(() -> corrections.get(id, assessmentId));
+  }
+
+  @POST
+  @Path("/loans/{loanId}/reconciliation-assessments")
+  public Response assessReconciliation(@PathParam("loanId") long id, String json) {
+    return invoke(() -> corrections.assess(id, json));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/reconciliation-assessments")
+  public Response reconciliationAssessments(
+      @PathParam("loanId") long id,
+      @QueryParam("after") @DefaultValue("0") long after,
+      @QueryParam("limit") @DefaultValue("100") int limit) {
+    return invoke(() -> corrections.list(id, "RECONCILIATION", after, limit));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/reconciliation-assessments/{recordId}")
+  public Response reconciliationAssessment(
+      @PathParam("loanId") long id, @PathParam("recordId") String recordId) {
+    return invoke(() -> corrections.record(id, recordId, "RECONCILIATION"));
+  }
+
+  @POST
+  @Path("/loans/{loanId}/adjustment-proposals")
+  public Response propose(@PathParam("loanId") long id, String json) {
+    return invoke(() -> corrections.propose(id, json));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/adjustments")
+  public Response adjustments(
+      @PathParam("loanId") long id,
+      @QueryParam("after") @DefaultValue("0") long after,
+      @QueryParam("limit") @DefaultValue("100") int limit) {
+    return invoke(() -> corrections.list(id, "ADJUSTMENT_PROPOSAL", after, limit));
+  }
+
+  @GET
+  @Path("/loans/{loanId}/adjustments/{recordId}")
+  public Response adjustment(@PathParam("loanId") long id, @PathParam("recordId") String recordId) {
+    return invoke(() -> corrections.record(id, recordId, "ADJUSTMENT_PROPOSAL"));
   }
 
   private static Response invoke(Supplier<?> call) {

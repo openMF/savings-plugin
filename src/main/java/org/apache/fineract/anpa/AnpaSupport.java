@@ -93,6 +93,51 @@ final class AnpaSupport {
     }
   }
 
+  static JsonObject object(String json, Set<String> fields) {
+    try {
+      if (json == null || json.length() > 32768) throw new IllegalArgumentException();
+      var o = JsonParser.parseString(json).getAsJsonObject();
+      if (!fields.containsAll(o.keySet())) throw new IllegalArgumentException();
+      return o;
+    } catch (RuntimeException ex) {
+      throw invalid("request", "Invalid request or unsupported fields.");
+    }
+  }
+
+  static String key(JsonObject request) {
+    return uuid(text(request, "idempotencyKey"));
+  }
+
+  static String text(JsonObject request, String field) {
+    var v = request.get(field);
+    if (v == null || !v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString())
+      throw invalid(field, "Text value required.");
+    String value = v.getAsString();
+    if (value.isBlank() || value.length() > 1000 || value.chars().anyMatch(Character::isISOControl))
+      throw invalid(field, "Nonblank text of at most 1000 characters required.");
+    return value;
+  }
+
+  static String controlHash(Object value) {
+    return hash(canonical(JSON.toJsonTree(value)));
+  }
+
+  private static JsonElement canonical(JsonElement value) {
+    if (value.isJsonObject()) {
+      var sorted = new JsonObject();
+      value.getAsJsonObject().keySet().stream()
+          .sorted()
+          .forEach(key -> sorted.add(key, canonical(value.getAsJsonObject().get(key))));
+      return sorted;
+    }
+    if (value.isJsonArray()) {
+      var array = new JsonArray();
+      value.getAsJsonArray().forEach(v -> array.add(canonical(v)));
+      return array;
+    }
+    return value;
+  }
+
   static String hash(Object value) {
     try {
       return HexFormat.of()

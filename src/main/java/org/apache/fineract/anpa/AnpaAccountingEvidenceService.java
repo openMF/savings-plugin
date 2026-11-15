@@ -31,18 +31,18 @@ public class AnpaAccountingEvidenceService {
     var rows =
         jdbc.query(
             """
-        SELECT l.id,l.client_id,l.group_id,l.product_id,o.id office_id,l.loan_status_id,
-          l.is_npa,l.is_charged_off,p.accounting_type,l.currency_code,l.currency_digits,
-          l.submittedon_date,l.disbursedon_date,l.writtenoffon_date,
-          l.principal_outstanding_derived,l.interest_outstanding_derived,
-          l.fee_charges_outstanding_derived,l.penalty_charges_outstanding_derived,l.total_outstanding_derived
-        FROM m_loan l JOIN m_product_loan p ON p.id=l.product_id
-          LEFT JOIN m_client c ON c.id=l.client_id LEFT JOIN m_group g ON g.id=l.group_id
-          JOIN m_office o ON o.id=COALESCE(c.office_id,g.office_id)
-          LEFT JOIN m_office gof ON gof.id=g.office_id
-        WHERE l.id=? AND o.hierarchy LIKE ?
-          AND (l.group_id IS NULL OR gof.hierarchy LIKE ?)
-        """,
+            SELECT l.id,l.client_id,l.group_id,l.product_id,o.id office_id,l.loan_status_id,
+              l.is_npa,l.is_charged_off,p.accounting_type,l.currency_code,l.currency_digits,
+              l.submittedon_date,l.disbursedon_date,l.writtenoffon_date,
+              l.principal_outstanding_derived,l.interest_outstanding_derived,
+              l.fee_charges_outstanding_derived,l.penalty_charges_outstanding_derived,l.total_outstanding_derived
+            FROM m_loan l JOIN m_product_loan p ON p.id=l.product_id
+              LEFT JOIN m_client c ON c.id=l.client_id LEFT JOIN m_group g ON g.id=l.group_id
+              JOIN m_office o ON o.id=COALESCE(c.office_id,g.office_id)
+              LEFT JOIN m_office gof ON gof.id=g.office_id
+            WHERE l.id=? AND o.hierarchy LIKE ?
+              AND (l.group_id IS NULL OR gof.hierarchy LIKE ?)
+            """,
             (r, n) ->
                 new Loan(
                     r.getLong("id"),
@@ -73,14 +73,25 @@ public class AnpaAccountingEvidenceService {
     return rows.getFirst();
   }
 
+  AccountingPeriod accountingPeriod(Loan loan) {
+    var dates =
+        jdbc.query(
+            "SELECT MAX(closing_date) FROM acc_gl_closure WHERE office_id=? AND is_deleted=false",
+            (r, n) -> day(r, 1),
+            loan.officeId());
+    var closed = dates.isEmpty() ? null : dates.getFirst();
+    return new AccountingPeriod(
+        closed, closed == null || loan.businessDate().isAfter(closed), false);
+  }
+
   Evidence collect(Loan loan, LocalDate asOf) {
     var mappings =
         jdbc.query(
             """
-        SELECT p.*,g.classification_enum,g.account_usage,g.disabled FROM acc_product_mapping p
-          LEFT JOIN acc_gl_account g ON g.id=p.gl_account_id
-        WHERE p.product_id=? AND p.product_type=1 ORDER BY p.id LIMIT ?
-        """,
+            SELECT p.*,g.classification_enum,g.account_usage,g.disabled FROM acc_product_mapping p
+              LEFT JOIN acc_gl_account g ON g.id=p.gl_account_id
+            WHERE p.product_id=? AND p.product_type=1 ORDER BY p.id LIMIT ?
+            """,
             (r, n) ->
                 new Mapping(
                     r.getLong("id"),
@@ -100,11 +111,11 @@ public class AnpaAccountingEvidenceService {
     var transactions =
         jdbc.query(
             """
-        SELECT id,transaction_type_enum,transaction_date,submitted_on_date,is_reversed,amount,
-          principal_portion_derived,interest_portion_derived,fee_charges_portion_derived,penalty_charges_portion_derived,
-          reversed_on_date,created_on_utc,last_modified_on_utc
-        FROM m_loan_transaction WHERE loan_id=? AND transaction_date<=? ORDER BY id LIMIT ?
-        """,
+            SELECT id,transaction_type_enum,transaction_date,submitted_on_date,is_reversed,amount,
+              principal_portion_derived,interest_portion_derived,fee_charges_portion_derived,penalty_charges_portion_derived,
+              reversed_on_date,created_on_utc,last_modified_on_utc
+            FROM m_loan_transaction WHERE loan_id=? AND transaction_date<=? ORDER BY id LIMIT ?
+            """,
             (r, n) ->
                 new Transaction(
                     r.getLong(1),
@@ -128,13 +139,13 @@ public class AnpaAccountingEvidenceService {
     var journals =
         jdbc.query(
             """
-        SELECT j.id,j.loan_transaction_id,j.transaction_id,j.account_id,j.entry_date,j.type_enum,j.amount,
-          j.currency_code,j.reversed,j.reversal_id,j.manual_entry,j.submitted_on_date,j.created_on_utc,j.last_modified_on_utc
-        FROM acc_gl_journal_entry j WHERE j.entry_date<=? AND
-          ((j.entity_id=? AND j.entity_type_enum=1) OR EXISTS
-            (SELECT 1 FROM m_loan_transaction t WHERE t.id=j.loan_transaction_id AND t.loan_id=?))
-        ORDER BY j.id LIMIT ?
-        """,
+            SELECT j.id,j.loan_transaction_id,j.transaction_id,j.account_id,j.entry_date,j.type_enum,j.amount,
+              j.currency_code,j.reversed,j.reversal_id,j.manual_entry,j.submitted_on_date,j.created_on_utc,j.last_modified_on_utc
+            FROM acc_gl_journal_entry j WHERE j.entry_date<=? AND
+              ((j.entity_id=? AND j.entity_type_enum=1) OR EXISTS
+                (SELECT 1 FROM m_loan_transaction t WHERE t.id=j.loan_transaction_id AND t.loan_id=?))
+            ORDER BY j.id LIMIT ?
+            """,
             (r, n) ->
                 new Journal(
                     r.getLong(1),
@@ -158,10 +169,10 @@ public class AnpaAccountingEvidenceService {
     var relations =
         jdbc.query(
             """
-        SELECT r.id,r.from_loan_transaction_id,r.to_loan_transaction_id,r.to_loan_charge_id,r.relation_type_enum
-        FROM m_loan_transaction_relation r JOIN m_loan_transaction t ON t.id=r.from_loan_transaction_id
-        WHERE t.loan_id=? ORDER BY r.id LIMIT ?
-        """,
+            SELECT r.id,r.from_loan_transaction_id,r.to_loan_transaction_id,r.to_loan_charge_id,r.relation_type_enum
+            FROM m_loan_transaction_relation r JOIN m_loan_transaction t ON t.id=r.from_loan_transaction_id
+            WHERE t.loan_id=? ORDER BY r.id LIMIT ?
+            """,
             (r, n) ->
                 new Relation(
                     r.getLong(1),
@@ -174,10 +185,10 @@ public class AnpaAccountingEvidenceService {
     var charges =
         jdbc.query(
             """
-        SELECT c.id,c.charge_id,c.is_penalty,c.is_active,c.waived,c.amount,c.amount_paid_derived,
-          c.amount_waived_derived,c.amount_writtenoff_derived,c.amount_outstanding_derived,c.tax_amount,d.currency_code
-        FROM m_loan_charge c JOIN m_charge d ON d.id=c.charge_id WHERE c.loan_id=? ORDER BY c.id LIMIT ?
-        """,
+            SELECT c.id,c.charge_id,c.is_penalty,c.is_active,c.waived,c.amount,c.amount_paid_derived,
+              c.amount_waived_derived,c.amount_writtenoff_derived,c.amount_outstanding_derived,c.tax_amount,d.currency_code
+            FROM m_loan_charge c JOIN m_charge d ON d.id=c.charge_id WHERE c.loan_id=? ORDER BY c.id LIMIT ?
+            """,
             (r, n) ->
                 new Charge(
                     r.getLong(1),
@@ -197,10 +208,10 @@ public class AnpaAccountingEvidenceService {
     var paid =
         jdbc.query(
             """
-        SELECT p.id,p.loan_transaction_id,p.loan_charge_id,p.amount FROM m_loan_charge_paid_by p
-          JOIN m_loan_transaction t ON t.id=p.loan_transaction_id
-        WHERE t.loan_id=? AND t.transaction_date<=? ORDER BY p.id LIMIT ?
-        """,
+            SELECT p.id,p.loan_transaction_id,p.loan_charge_id,p.amount FROM m_loan_charge_paid_by p
+              JOIN m_loan_transaction t ON t.id=p.loan_transaction_id
+            WHERE t.loan_id=? AND t.transaction_date<=? ORDER BY p.id LIMIT ?
+            """,
             (r, n) ->
                 new ChargePayment(r.getLong(1), r.getLong(2), r.getLong(3), r.getBigDecimal(4)),
             loan.loanId(),
@@ -209,10 +220,10 @@ public class AnpaAccountingEvidenceService {
     var taxes =
         jdbc.query(
             """
-        SELECT d.id,d.loan_charge_id,d.tax_component_id,d.amount,t.debit_account_id,t.credit_account_id
-        FROM m_loan_charge_tax_details d JOIN m_loan_charge c ON c.id=d.loan_charge_id
-          JOIN m_tax_component t ON t.id=d.tax_component_id WHERE c.loan_id=? ORDER BY d.id LIMIT ?
-        """,
+            SELECT d.id,d.loan_charge_id,d.tax_component_id,d.amount,t.debit_account_id,t.credit_account_id
+            FROM m_loan_charge_tax_details d JOIN m_loan_charge c ON c.id=d.loan_charge_id
+              JOIN m_tax_component t ON t.id=d.tax_component_id WHERE c.loan_id=? ORDER BY d.id LIMIT ?
+            """,
             (r, n) ->
                 new Tax(
                     r.getLong(1),

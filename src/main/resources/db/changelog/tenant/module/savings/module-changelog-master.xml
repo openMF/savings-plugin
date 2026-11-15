@@ -102,4 +102,5 @@
   <include file="parts/090-consolidated-isr.xml" relativeToChangelogFile="true"/>
   <include file="parts/091-anpa-writeoff-assessments.xml" relativeToChangelogFile="true"/>
   <include file="parts/092-office-coordinate-precision.xml" relativeToChangelogFile="true"/>
+  <include file="parts/093-anpa-accounting-corrections.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

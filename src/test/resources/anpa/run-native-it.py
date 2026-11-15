@@ -116,7 +116,7 @@ def main():
         process=launch()
         wait_ready(process)
         # A targeted run does not attempt the bundle-wide coverage gate. Run ./mvnw test separately.
-        maven(["-Dtest=AnpaAccountingTest,AnpaValidationTest,AnpaAccessTest", "-Djacoco.skip=true",
+        maven(["-Dtest=AnpaAccountingTest,AnpaValidationTest,AnpaAccessTest,AnpaCorrectionTest,AnpaPolicyTest", "-Djacoco.skip=true",
                "-Dit.test=AnpaNativeIntegrationTest", "-Danpa.it.baseUrl=" + base,
                f"-Danpa.it.jdbcUrl=jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DATABASES[1]}",
                f"-Danpa.it.secondaryJdbcUrl=jdbc:postgresql://{DB_HOST}:{DB_PORT}/{DATABASES[2]}",
