@@ -689,7 +689,8 @@
               <configuration>
                   <java>
                       <googleJavaFormat>
-                          <version>1.17.0</version>
+                          <!-- google-java-format 1.30+ is required on the project's Java 25. -->
+                          <version>1.30.0</version>
                           <style>GOOGLE</style>
                       </googleJavaFormat>
                       <importOrder />
