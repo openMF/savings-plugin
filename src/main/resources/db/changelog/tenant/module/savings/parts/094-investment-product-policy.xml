@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-094-investment-product-policy">
+    <createTable tableName="m_investment_product_policy">
+      <column name="product_id" type="BIGINT"><constraints primaryKey="true" nullable="false" referencedTableName="m_savings_product" referencedColumnNames="id" foreignKeyName="fk_ipp_product"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="investment_type" type="VARCHAR(30)"><constraints nullable="false"/></column>
+      <column name="policy_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="native_snapshot_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="created_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_ipp_creator"/></column>
+      <column name="updated_by" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_ipp_editor"/></column>
+      <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="updated_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+    </createTable>
+    <sql>ALTER TABLE m_investment_product_policy ADD CONSTRAINT ck_ipp_revision CHECK (revision &gt; 0);</sql>
+    <sql>ALTER TABLE m_investment_product_policy ADD CONSTRAINT ck_ipp_draft CHECK (status = 'DRAFT');</sql>
+    <sql>ALTER TABLE m_investment_product_policy ADD CONSTRAINT ck_ipp_type CHECK (investment_type IN ('PROMISSORY_NOTE','CEDE'));</sql>
+    <createTable tableName="m_investment_product_policy_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="product_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_investment_product_policy" referencedColumnNames="product_id" foreignKeyName="fk_ippa_policy"/></column>
+      <column name="previous_revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="operation" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_ippa_actor"/></column>
+      <column name="recorded_at_utc" type="TIMESTAMP"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"/>
+      <column name="changed_fields_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="previous_json" type="CLOB"/>
+      <column name="new_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="native_snapshot_json" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint tableName="m_investment_product_policy_audit" columnNames="product_id,revision" constraintName="uq_ippa_revision"/>
+    <sql>ALTER TABLE m_investment_product_policy_audit ADD CONSTRAINT ck_ippa_revision CHECK (previous_revision &gt;= 0 AND revision = previous_revision + 1);</sql>
+    <sql>ALTER TABLE m_investment_product_policy_audit ADD CONSTRAINT ck_ippa_operation CHECK ((operation='CREATE_DRAFT' AND previous_revision=0 AND previous_json IS NULL) OR (operation='UPDATE_DRAFT' AND previous_revision&gt;0 AND previous_json IS NOT NULL));</sql>
+    <createIndex tableName="m_investment_product_policy" indexName="idx_ipp_classification"><column name="investment_type"/></createIndex>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_INVESTMENT_PRODUCT_POLICY"/><column name="entity_name" value="INVESTMENT_PRODUCT_POLICY"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="UPDATE_INVESTMENT_PRODUCT_POLICY"/><column name="entity_name" value="INVESTMENT_PRODUCT_POLICY"/><column name="action_name" value="UPDATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+  <!-- Draft edits never activate financial policy. No approval command is bypassed. -->
+  <changeSet author="fineract" id="ss-094-investment-audit-immutable-pg" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+CREATE FUNCTION investment_policy_audit_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Investment policy audit history is append-only';
+END;
+$$ LANGUAGE plpgsql;
+    ]]></sql>
+    <sql>CREATE TRIGGER trg_ippa_immutable BEFORE UPDATE OR DELETE ON m_investment_product_policy_audit FOR EACH ROW EXECUTE FUNCTION investment_policy_audit_immutable();</sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-094-investment-audit-immutable-mysql" dbms="mysql,mariadb">
+    <sql splitStatements="false">CREATE TRIGGER trg_ippa_no_update BEFORE UPDATE ON m_investment_product_policy_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment policy audit history is append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_ippa_no_delete BEFORE DELETE ON m_investment_product_policy_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment policy audit history is append-only'</sql>
+  </changeSet>
+</databaseChangeLog>
