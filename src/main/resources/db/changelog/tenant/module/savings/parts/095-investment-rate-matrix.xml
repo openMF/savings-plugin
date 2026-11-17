@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-095-investment-rates">
+    <createTable tableName="m_investment_rate_revision">
+      <column name="product_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_investment_product_policy" referencedColumnNames="product_id" foreignKeyName="fk_irr_policy"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="configuration_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="policy_revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="policy_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="native_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="maker_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_irr_maker"/></column>
+      <column name="created_at_utc" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="timezone_id" type="VARCHAR(100)"><constraints nullable="true"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_investment_rate_revision" columnNames="product_id,revision" constraintName="pk_irr"/>
+    <sql>ALTER TABLE m_investment_rate_revision ADD CONSTRAINT ck_irr_revision CHECK (revision &gt; 0 AND policy_revision &gt; 0);</sql>
+    <createTable tableName="m_investment_rate_publication">
+      <column name="product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="version" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="effective_micros" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="effective_date" type="DATE"><constraints nullable="false"/></column>
+      <column name="timezone_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+      <column name="checker_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_irp_checker"/></column>
+      <column name="approved_at_utc" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="previous_version" type="BIGINT"><constraints nullable="true"/></column>
+    </createTable>
+    <addPrimaryKey tableName="m_investment_rate_publication" columnNames="product_id,version" constraintName="pk_irp"/>
+    <addForeignKeyConstraint baseTableName="m_investment_rate_publication" baseColumnNames="product_id,version" referencedTableName="m_investment_rate_revision" referencedColumnNames="product_id,revision" constraintName="fk_irp_revision"/>
+    <addForeignKeyConstraint baseTableName="m_investment_rate_publication" baseColumnNames="product_id,previous_version" referencedTableName="m_investment_rate_publication" referencedColumnNames="product_id,version" constraintName="fk_irp_previous"/>
+    <addUniqueConstraint tableName="m_investment_rate_publication" columnNames="product_id,effective_micros" constraintName="uq_irp_boundary"/>
+    <sql>ALTER TABLE m_investment_rate_publication ADD CONSTRAINT ck_irp_state CHECK (status='APPROVED' AND version &gt; 0 AND (previous_version IS NULL OR previous_version &lt; version));</sql>
+    <createTable tableName="m_investment_rate_audit">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="product_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="action" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_ira_actor"/></column>
+      <column name="recorded_at_utc" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="event_json" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_investment_rate_audit" baseColumnNames="product_id,revision" referencedTableName="m_investment_rate_revision" referencedColumnNames="product_id,revision" constraintName="fk_ira_revision"/>
+    <addUniqueConstraint tableName="m_investment_rate_audit" columnNames="product_id,revision,action" constraintName="uq_ira_action"/>
+    <sql>ALTER TABLE m_investment_rate_audit ADD CONSTRAINT ck_ira_action CHECK ((action='CREATE_DRAFT' AND revision=1) OR (action='UPDATE_DRAFT' AND revision&gt;1) OR (action='PUBLISH' AND revision&gt;0));</sql>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_INVESTMENT_RATE"/><column name="entity_name" value="INVESTMENT_RATE"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="MANAGE_INVESTMENT_RATE"/><column name="entity_name" value="INVESTMENT_RATE"/><column name="action_name" value="MANAGE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="APPROVE_INVESTMENT_RATE"/><column name="entity_name" value="INVESTMENT_RATE"/><column name="action_name" value="APPROVE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+  </changeSet>
+  <!-- All revisions, approvals and audit events are append-only, including draft snapshots. -->
+  <changeSet author="fineract" id="ss-095-investment-rates-immutable-pg" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+CREATE FUNCTION investment_rate_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Investment rate snapshots and history are append-only';
+END;
+$$ LANGUAGE plpgsql;
+    ]]></sql>
+    <sql>CREATE TRIGGER trg_irr_immutable BEFORE UPDATE OR DELETE ON m_investment_rate_revision FOR EACH ROW EXECUTE FUNCTION investment_rate_immutable();</sql>
+    <sql>CREATE TRIGGER trg_irp_immutable BEFORE UPDATE OR DELETE ON m_investment_rate_publication FOR EACH ROW EXECUTE FUNCTION investment_rate_immutable();</sql>
+    <sql>CREATE TRIGGER trg_ira_immutable BEFORE UPDATE OR DELETE ON m_investment_rate_audit FOR EACH ROW EXECUTE FUNCTION investment_rate_immutable();</sql>
+  </changeSet>
+  <changeSet author="fineract" id="ss-095-investment-rates-immutable-mysql" dbms="mysql,mariadb">
+    <sql splitStatements="false">CREATE TRIGGER trg_irr_no_update BEFORE UPDATE ON m_investment_rate_revision FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_irr_no_delete BEFORE DELETE ON m_investment_rate_revision FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_irp_no_update BEFORE UPDATE ON m_investment_rate_publication FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_irp_no_delete BEFORE DELETE ON m_investment_rate_publication FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_ira_no_update BEFORE UPDATE ON m_investment_rate_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_ira_no_delete BEFORE DELETE ON m_investment_rate_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment rate snapshots and history are append-only'</sql>
+  </changeSet>
+</databaseChangeLog>

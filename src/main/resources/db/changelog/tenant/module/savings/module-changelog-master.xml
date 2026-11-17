@@ -104,4 +104,5 @@
   <include file="parts/092-office-coordinate-precision.xml" relativeToChangelogFile="true"/>
   <include file="parts/093-anpa-accounting-corrections.xml" relativeToChangelogFile="true"/>
   <include file="parts/094-investment-product-policy.xml" relativeToChangelogFile="true"/>
+  <include file="parts/095-investment-rate-matrix.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
