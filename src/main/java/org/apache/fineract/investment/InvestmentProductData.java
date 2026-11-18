@@ -121,7 +121,11 @@ public final class InvestmentProductData {
       boolean investmentOpeningSupported,
       boolean financialExecutionSupported,
       boolean automaticRenewalExecutionSupported,
-      boolean earlyCancellationExecutionSupported) {}
+      boolean earlyCancellationExecutionSupported,
+      boolean rateConfigurationSupported,
+      boolean rateSchedulingSupported,
+      boolean rateHistorySupported,
+      boolean rateLookupSupported) {}
 
   public record Template(
       Capabilities capabilities,
@@ -176,6 +180,7 @@ public final class InvestmentProductData {
 
   public static Capabilities capabilities() {
     return new Capabilities(
-        true, true, true, true, true, false, false, false, false, false, false, false);
+        true, true, true, true, true, false, false, true, false, false, false, false, true, true,
+        true, true);
   }
 }
