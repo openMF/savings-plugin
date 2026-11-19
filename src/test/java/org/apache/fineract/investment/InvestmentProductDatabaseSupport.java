@@ -72,7 +72,7 @@ abstract class InvestmentProductDatabaseSupport {
     for (var ds : sources.values()) {
       var j = new JdbcTemplate(ds);
       j.execute(
-          "CREATE TABLE m_savings_product(id bigint PRIMARY KEY,deposit_type_enum integer NOT NULL,name varchar(100),currency_code varchar(3),currency_digits integer,currency_multiplesof integer,accounting_type integer,is_dormancy_tracking_active boolean,interest_posting_period_enum integer,interest_compounding_period_enum integer,withhold_tax boolean,tax_group_id bigint)");
+          "CREATE TABLE m_savings_product(id bigint PRIMARY KEY,deposit_type_enum integer NOT NULL,name varchar(100),currency_code varchar(3),currency_digits integer,currency_multiplesof integer,accounting_type integer,is_dormancy_tracking_active boolean,interest_posting_period_enum integer,interest_compounding_period_enum integer,withhold_tax boolean,tax_group_id bigint,interest_calculation_type_enum integer DEFAULT 1,interest_calculation_days_in_year_type_enum integer DEFAULT 365,min_balance_for_interest_calculation numeric(19,6))");
       j.execute(
           "CREATE TABLE m_deposit_product_term_and_preclosure(id bigint PRIMARY KEY,savings_product_id bigint UNIQUE REFERENCES m_savings_product(id),min_deposit_term integer,max_deposit_term integer,min_deposit_term_type_enum integer,max_deposit_term_type_enum integer,in_multiples_of_deposit_term integer,in_multiples_of_deposit_term_type_enum integer,min_deposit_amount numeric(19,6),max_deposit_amount numeric(19,6),deposit_amount numeric(19,6),pre_closure_penal_applicable boolean,pre_closure_penal_interest numeric(19,6),pre_closure_penal_interest_on_enum integer)");
       j.execute(
@@ -147,7 +147,7 @@ abstract class InvestmentProductDatabaseSupport {
       var j = new JdbcTemplate(ds);
       for (long id : new long[] {product, other, ordinary, recurring}) {
         j.update(
-            "INSERT INTO m_savings_product VALUES (?,?,?,'MXN',2,1,2,false,4,1,false,null)",
+            "INSERT INTO m_savings_product(id,deposit_type_enum,name,currency_code,currency_digits,currency_multiplesof,accounting_type,is_dormancy_tracking_active,interest_posting_period_enum,interest_compounding_period_enum,withhold_tax,tax_group_id) VALUES (?,?,?,'MXN',2,1,2,false,4,1,false,null)",
             id,
             id == ordinary ? 100 : id == recurring ? 300 : 200,
             "Synthetic " + id);

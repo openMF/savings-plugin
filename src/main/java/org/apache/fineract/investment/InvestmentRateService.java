@@ -373,7 +373,9 @@ public class InvestmentRateService {
     return ids.isEmpty() ? null : published(product, ids.getFirst(), time.now());
   }
 
-  private Configuration applicable(long product, Instant at) {
+  // Package-private for the separately authorized simulation service. Same authoritative
+  // publication query as administrative selection; drafts are never projection pricing.
+  Configuration applicable(long product, Instant at) {
     var ids =
         jdbc.queryForList(
             "SELECT version FROM m_investment_rate_publication WHERE product_id=? AND effective_micros<=? ORDER BY effective_micros DESC LIMIT 1",

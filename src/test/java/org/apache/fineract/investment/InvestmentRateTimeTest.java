@@ -12,6 +12,7 @@ import static org.mockito.Mockito.*;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
@@ -94,12 +95,19 @@ class InvestmentRateTimeTest {
                 "Pacific/Apia",
                 Instant.parse("2011-12-29T12:00:00Z"))
             .contains("SCHEDULE_MIDNIGHT_AMBIGUOUS_OR_NONEXISTENT"));
-    tenant("America/Havana", "2026-10-31");
+    // Use a historical overlap: future DST rules can change between JDK tzdb updates.
+    tenant("America/Havana", "2020-10-31");
+    assertEquals(
+        2,
+        ZoneId.of("America/Havana")
+            .getRules()
+            .getValidOffsets(LocalDate.of(2020, 11, 1).atStartOfDay())
+            .size());
     assertTrue(
         time.blockers(
-                new EffectiveValidity(ValidityMode.SCHEDULED, "2026-11-01"),
+                new EffectiveValidity(ValidityMode.SCHEDULED, "2020-11-01"),
                 "America/Havana",
-                Instant.parse("2026-10-31T12:00:00Z"))
+                Instant.parse("2020-10-31T12:00:00Z"))
             .contains("SCHEDULE_MIDNIGHT_AMBIGUOUS_OR_NONEXISTENT"));
     tenant("UTC", "2026-11-16");
     assertTrue(
