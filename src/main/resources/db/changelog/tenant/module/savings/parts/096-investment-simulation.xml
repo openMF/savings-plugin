@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+  <changeSet author="fineract" id="ss-096-investment-simulation">
+    <createTable tableName="m_investment_simulation">
+      <column name="id" type="VARCHAR(36)"><constraints nullable="false" primaryKey="true" primaryKeyName="pk_isim"/></column>
+      <column name="request_key" type="VARCHAR(100)"/>
+      <column name="product_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_investment_product_policy" referencedColumnNames="product_id" foreignKeyName="fk_isim_product"/></column>
+      <column name="actor_id" type="BIGINT"><constraints nullable="false" referencedTableName="m_appuser" referencedColumnNames="id" foreignKeyName="fk_isim_actor"/></column>
+      <column name="created_at_utc" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="created_micros" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="business_date" type="DATE"/>
+      <column name="status" type="VARCHAR(32)"><constraints nullable="false"/></column>
+      <column name="rate_version" type="BIGINT"/>
+      <column name="policy_revision" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="calculation_version" type="VARCHAR(120)"><constraints nullable="false"/></column>
+      <column name="request_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="request_snapshot_json" type="CLOB"><constraints nullable="false"/></column>
+      <column name="result_hash" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="result_snapshot_json" type="CLOB"><constraints nullable="false"/></column>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="m_investment_simulation" baseColumnNames="product_id,rate_version" referencedTableName="m_investment_rate_publication" referencedColumnNames="product_id,version" constraintName="fk_isim_rate"/>
+    <addUniqueConstraint tableName="m_investment_simulation" columnNames="actor_id,request_key" constraintName="uq_isim_actor_key"/>
+    <createIndex tableName="m_investment_simulation" indexName="ix_isim_actor_time"><column name="actor_id"/><column name="created_micros"/><column name="id"/></createIndex>
+    <createIndex tableName="m_investment_simulation" indexName="ix_isim_product_time"><column name="product_id"/><column name="created_micros"/></createIndex>
+    <sql>ALTER TABLE m_investment_simulation ADD CONSTRAINT ck_isim_status CHECK (status IN ('COMPLETE_GROSS_PROJECTION','PARTIAL_PROJECTION','CALCULATION_BLOCKED','NO_APPLICABLE_RATE') AND policy_revision &gt; 0);</sql>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_INVESTMENT_SIMULATION"/><column name="entity_name" value="INVESTMENT_SIMULATION"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="CREATE_INVESTMENT_SIMULATION"/><column name="entity_name" value="INVESTMENT_SIMULATION"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <insert tableName="m_permission"><column name="grouping" value="portfolio"/><column name="code" value="READ_INVESTMENT_SIMULATION_AUDIT"/><column name="entity_name" value="INVESTMENT_SIMULATION_AUDIT"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    <rollback>
+      <sql>DELETE FROM m_role_permission WHERE permission_id IN (SELECT id FROM m_permission WHERE code IN ('READ_INVESTMENT_SIMULATION','CREATE_INVESTMENT_SIMULATION','READ_INVESTMENT_SIMULATION_AUDIT'));</sql>
+      <delete tableName="m_permission"><where>code IN ('READ_INVESTMENT_SIMULATION','CREATE_INVESTMENT_SIMULATION','READ_INVESTMENT_SIMULATION_AUDIT')</where></delete>
+      <dropTable tableName="m_investment_simulation"/>
+    </rollback>
+  </changeSet>
+  <changeSet author="fineract" id="ss-096-investment-simulation-immutable-pg" dbms="postgresql">
+    <sql splitStatements="false"><![CDATA[
+CREATE FUNCTION investment_simulation_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'Investment simulation evidence is append-only';
+END;
+$$ LANGUAGE plpgsql;
+    ]]></sql>
+    <sql>CREATE TRIGGER trg_isim_immutable BEFORE UPDATE OR DELETE ON m_investment_simulation FOR EACH ROW EXECUTE FUNCTION investment_simulation_immutable();</sql>
+    <rollback>
+      <sql>DROP TRIGGER trg_isim_immutable ON m_investment_simulation;</sql>
+      <sql>DROP FUNCTION investment_simulation_immutable();</sql>
+    </rollback>
+  </changeSet>
+  <changeSet author="fineract" id="ss-096-investment-simulation-immutable-mysql" dbms="mysql,mariadb">
+    <sql splitStatements="false">CREATE TRIGGER trg_isim_no_update BEFORE UPDATE ON m_investment_simulation FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment simulation evidence is append-only'</sql>
+    <sql splitStatements="false">CREATE TRIGGER trg_isim_no_delete BEFORE DELETE ON m_investment_simulation FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Investment simulation evidence is append-only'</sql>
+    <rollback><sql>DROP TRIGGER trg_isim_no_update;</sql><sql>DROP TRIGGER trg_isim_no_delete;</sql></rollback>
+  </changeSet>
+</databaseChangeLog>
