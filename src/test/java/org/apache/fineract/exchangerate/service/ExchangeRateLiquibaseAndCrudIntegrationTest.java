@@ -14,6 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.querydsl.sql.Configuration;
+import com.querydsl.sql.SQLQueryFactory;
+import com.querydsl.sql.SQLTemplates;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -70,6 +73,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
 
   private JdbcTemplate jdbcTemplate;
   private NamedParameterJdbcTemplate namedJdbcTemplate;
+  private SQLQueryFactory sqlQueryFactory;
   private PlatformSecurityContext context;
   private ExchangeRateReadPlatformServiceImpl readService;
   private ExchangeRateWritePlatformServiceImpl writeService;
@@ -81,6 +85,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
             POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
     this.jdbcTemplate = new JdbcTemplate(dataSource);
     this.namedJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+    this.sqlQueryFactory = new SQLQueryFactory(new Configuration(SQLTemplates.DEFAULT), dataSource);
     this.context = mock(PlatformSecurityContext.class);
 
     final AppUser user = mock(AppUser.class);
@@ -92,7 +97,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
 
     final ExchangeRateDataValidator validator =
         new ExchangeRateDataValidator(
-            new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate));
+            new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate, this.sqlQueryFactory));
     this.readService =
         new ExchangeRateReadPlatformServiceImpl(
             this.jdbcTemplate,
@@ -291,7 +296,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
             providerProperties(true),
             List.of(provider),
             new ExchangeRateDataValidator(
-                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate)));
+                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate, this.sqlQueryFactory)));
 
     final ExchangeRateSynchronizationResult firstResult =
         synchronizationService.synchronize("{\"baseCurrency\":\"USD\"}");
@@ -376,7 +381,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
             providerProperties(true),
             List.of(provider),
             new ExchangeRateDataValidator(
-                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate)));
+                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate, this.sqlQueryFactory)));
     synchronizationService.synchronize("{\"baseCurrency\":\"USD\"}");
     synchronizationService.synchronize("{\"baseCurrency\":\"USD\"}");
 
@@ -442,7 +447,7 @@ class ExchangeRateLiquibaseAndCrudIntegrationTest {
             providerProperties(true),
             List.of(provider),
             new ExchangeRateDataValidator(
-                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate)));
+                new FromJsonHelper(), new CurrencyReadPlatformServiceImpl(this.jdbcTemplate, this.sqlQueryFactory)));
 
     assertEquals(
         3, synchronizationService.synchronize("{\"baseCurrency\":\"USD\"}").getImportedCount());
