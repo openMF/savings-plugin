@@ -9,15 +9,17 @@ import static org.apache.fineract.investment.InvestmentSimulationData.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import org.apache.fineract.infrastructure.core.domain.LocalDateInterval;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.savings.SavingsCompoundingInterestPeriodType;
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
 import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
-import org.apache.fineract.portfolio.savings.domain.SavingsHelper;
 import org.apache.fineract.portfolio.savings.domain.interest.CompoundInterestValues;
 import org.apache.fineract.portfolio.savings.domain.interest.PostingPeriod;
 import org.springframework.stereotype.Component;
@@ -107,15 +109,18 @@ public class InvestmentSimulationCalculator {
     var zero = Money.zero(currency).getAmount();
     var fraction =
         rate.annualRatePercent().divide(BigDecimal.valueOf(100), MoneyHelper.getMathContext());
-    // This method is pure; the helper's account-transfer read dependency is never used.
+    // Fineract 0.0.1706-5309ee1 removed SavingsHelper.determineInterestPostingPeriods (its
+    // constructor still requires an AccountTransfersReadPlatformService). The posting-window
+    // computation is pure date arithmetic, so it is reimplemented here in-memory as a port of
+    // upstream 0.0.1628-bc1c598. Semantics are unchanged: no posting-as-on dates (empty list),
+    // calendar posting periods, financial-year start month from NativeSettings, and the posting
+    // window [start, upTo] with upTo = maturity - 1 day.
     var intervals =
-        new SavingsHelper(null)
-            .determineInterestPostingPeriods(
-                start,
-                upTo,
-                SavingsPostingInterestPeriodType.fromInt(settings.postingPeriod()),
-                settings.financialYearBeginningMonth(),
-                List.of());
+        determineInterestPostingPeriods(
+            start,
+            upTo,
+            SavingsPostingInterestPeriodType.fromInt(settings.postingPeriod()),
+            settings.financialYearBeginningMonth());
     if (intervals.size() > MAX_SCHEDULE_PERIODS)
       throw new IllegalArgumentException("Schedule limit exceeded");
     var periods = new ArrayList<Period>();
@@ -236,6 +241,168 @@ public class InvestmentSimulationCalculator {
         List.copyOf(periods),
         List.copyOf(payments),
         List.of());
+  }
+
+  /**
+   * Pure in-memory port of Fineract 0.0.1628-bc1c598's
+   * {@code SavingsHelper.determineInterestPostingPeriods}, removed upstream in
+   * 0.0.1706-5309ee1. Keeps today's semantics: no posting-as-on dates, calendar posting periods,
+   * financial-year start month from NativeSettings, and posting window {@code [start, upTo]}.
+   */
+  private static List<LocalDateInterval> determineInterestPostingPeriods(
+      LocalDate startInterestCalculationLocalDate,
+      LocalDate interestPostingUpToDate,
+      SavingsPostingInterestPeriodType postingPeriodType,
+      Integer financialYearBeginningMonth) {
+    var postingPeriods = new ArrayList<LocalDateInterval>();
+    if (startInterestCalculationLocalDate == null
+        || interestPostingUpToDate == null
+        || postingPeriodType == null) {
+      return postingPeriods;
+    }
+    var periodStartDate = startInterestCalculationLocalDate;
+    var periodEndDate = periodStartDate;
+    var actualPeriodStartDate = periodStartDate;
+    final int anniversaryDayOfMonth = startInterestCalculationLocalDate.getDayOfMonth();
+    while (!periodStartDate.isAfter(interestPostingUpToDate)
+        && !periodEndDate.isAfter(interestPostingUpToDate)) {
+      var interestPostingLocalDate =
+          determineInterestPostingPeriodEndDateFrom(
+              periodStartDate,
+              postingPeriodType,
+              interestPostingUpToDate,
+              financialYearBeginningMonth,
+              anniversaryDayOfMonth);
+      periodEndDate = interestPostingLocalDate.minusDays(1);
+      postingPeriods.add(LocalDateInterval.create(periodStartDate, periodEndDate));
+      if (actualPeriodStartDate.equals(periodEndDate)) {
+        periodEndDate = actualPeriodStartDate.plusDays(1);
+        periodStartDate = actualPeriodStartDate.plusDays(1);
+      } else {
+        periodEndDate = interestPostingLocalDate;
+        periodStartDate = interestPostingLocalDate;
+      }
+    }
+    return postingPeriods;
+  }
+
+  private static LocalDate determineInterestPostingPeriodEndDateFrom(
+      LocalDate periodStartDate,
+      SavingsPostingInterestPeriodType interestPostingPeriodType,
+      LocalDate interestPostingUpToDate,
+      Integer financialYearBeginningMonth,
+      int anniversaryDayOfMonth) {
+    // interest posting always occurs on the next day after the period end date.
+    var periodEndDate = interestPostingUpToDate.plusDays(1);
+    final var monthOfYear = periodStartDate.getMonthValue();
+    var fybm = financialYearBeginningMonth;
+    fybm--;
+    if (fybm == 0) {
+      fybm = 12;
+    }
+    var quarterlyDates = new ArrayList<LocalDate>();
+    quarterlyDates.add(periodStartDate.withMonth(fybm).with(TemporalAdjusters.lastDayOfMonth()));
+    quarterlyDates.add(
+        periodStartDate
+            .withMonth(fybm)
+            .plusMonths(3)
+            .withYear(periodStartDate.getYear())
+            .with(TemporalAdjusters.lastDayOfMonth()));
+    quarterlyDates.add(
+        periodStartDate
+            .withMonth(fybm)
+            .plusMonths(6)
+            .withYear(periodStartDate.getYear())
+            .with(TemporalAdjusters.lastDayOfMonth()));
+    quarterlyDates.add(
+        periodStartDate
+            .withMonth(fybm)
+            .plusMonths(9)
+            .withYear(periodStartDate.getYear())
+            .with(TemporalAdjusters.lastDayOfMonth()));
+    quarterlyDates.sort(Comparator.naturalOrder());
+    var biannualDates = new ArrayList<LocalDate>();
+    biannualDates.add(periodStartDate.withMonth(fybm).with(TemporalAdjusters.lastDayOfMonth()));
+    biannualDates.add(
+        periodStartDate
+            .withMonth(fybm)
+            .plusMonths(6)
+            .withYear(periodStartDate.getYear())
+            .with(TemporalAdjusters.lastDayOfMonth()));
+    biannualDates.sort(Comparator.naturalOrder());
+    boolean quarterlySet = false;
+    boolean biannualSet = false;
+    switch (interestPostingPeriodType) {
+      case INVALID:
+        break;
+      case DAILY:
+        // interest posting always occurs on the next day after the period end date.
+        periodEndDate = periodStartDate.plusDays(1);
+        break;
+      case MONTHLY:
+        // interest posting occurs on the first day of the next month and on the next day
+        // after the period end date.
+        periodEndDate = periodStartDate.with(TemporalAdjusters.lastDayOfMonth()).plusDays(1);
+        break;
+      case QUATERLY:
+        for (var quarterlyDate : quarterlyDates) {
+          if (quarterlyDate.isAfter(periodStartDate)) {
+            periodEndDate = quarterlyDate.plusDays(1);
+            quarterlySet = true;
+            break;
+          }
+        }
+        if (!quarterlySet) {
+          periodEndDate =
+              quarterlyDates.get(0)
+                  .plusYears(1)
+                  .with(TemporalAdjusters.lastDayOfMonth())
+                  .plusDays(1);
+        }
+        break;
+      case BIANNUAL:
+        for (var biannualDate : biannualDates) {
+          if (biannualDate.isAfter(periodStartDate)) {
+            periodEndDate = biannualDate.plusDays(1);
+            biannualSet = true;
+            break;
+          }
+        }
+        if (!biannualSet) {
+          periodEndDate =
+              biannualDates.get(0)
+                  .plusYears(1)
+                  .with(TemporalAdjusters.lastDayOfMonth())
+                  .plusDays(1);
+        }
+        break;
+      case ANNUAL:
+        if (fybm < monthOfYear) {
+          periodEndDate = periodStartDate.withMonth(fybm).plusYears(1);
+        } else {
+          periodEndDate = periodStartDate.withMonth(fybm);
+        }
+        // interest posting always occurs on the next day after the period end date.
+        periodEndDate = periodEndDate.with(TemporalAdjusters.lastDayOfMonth()).plusDays(1);
+        break;
+      case ANNIVERSARY_MONTHLY:
+        periodEndDate = adjustToAnniversaryDay(periodStartDate.plusMonths(1), anniversaryDayOfMonth);
+        break;
+      case ANNIVERSARY_QUARTERLY:
+        periodEndDate = adjustToAnniversaryDay(periodStartDate.plusMonths(3), anniversaryDayOfMonth);
+        break;
+      case ANNIVERSARY_BIANNUAL:
+        periodEndDate = adjustToAnniversaryDay(periodStartDate.plusMonths(6), anniversaryDayOfMonth);
+        break;
+      case ANNIVERSARY_ANNUAL:
+        periodEndDate = adjustToAnniversaryDay(periodStartDate.plusMonths(12), anniversaryDayOfMonth);
+        break;
+    }
+    return periodEndDate;
+  }
+
+  private static LocalDate adjustToAnniversaryDay(LocalDate date, int anniversaryDay) {
+    return date.withDayOfMonth(Math.min(anniversaryDay, date.lengthOfMonth()));
   }
 
   static final class RoundingChanged extends RuntimeException {}
