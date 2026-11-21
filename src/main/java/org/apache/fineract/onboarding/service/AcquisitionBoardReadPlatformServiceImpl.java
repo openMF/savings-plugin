@@ -19,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Calendar;
+import java.util.TimeZone;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -417,7 +419,8 @@ public class AcquisitionBoardReadPlatformServiceImpl
 
   private static String offsetDateTime(final ResultSet rs, final String column)
       throws SQLException {
-    final Timestamp timestamp = rs.getTimestamp(column);
+    final Calendar utc = Calendar.getInstance(TimeZone.getTimeZone(ZoneOffset.UTC));
+    final Timestamp timestamp = rs.getTimestamp(column, utc);
     return timestamp == null
         ? null
         : OffsetDateTime.ofInstant(timestamp.toInstant(), ZoneOffset.UTC).toString();

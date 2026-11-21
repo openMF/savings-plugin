@@ -2,9 +2,11 @@ package org.apache.fineract.baseteller.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.baseteller.data.TransactionReversalData.Check;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -143,6 +145,35 @@ public class SavingsDepositReversalHandler implements TransactionReversalHandler
             source.transactionId())))
       throw TransactionReversalPlatformService.invalid(
           "native.not.reversed", "Native savings undo did not reverse the original.");
+    // Release checks from custody so end-of-day closing no longer lists them as available.
+    for (var check : source.checks()) {
+      Map<String, Object> deposit =
+          jdbc.queryForMap(
+              "SELECT d.id deposit_id, d.client_id client_id, cd.check_type check_type"
+                  + " FROM m_base_teller_deposit_check_detail cd"
+                  + " JOIN m_base_teller_deposit d ON d.id = cd.deposit_id"
+                  + " WHERE cd.id = ?",
+              check.id());
+      jdbc.update(
+          "INSERT INTO m_base_teller_returned_check"
+              + " (deposit_id,deposit_check_detail_id,client_id,savings_account_id,check_type,"
+              + " check_bank,check_number,amount,currency_code,office_id,teller_id,cashier_id,"
+              + " returned_on_date,return_reason,status)"
+              + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,'RETURNED')",
+          deposit.get("deposit_id"),
+          check.id(),
+          deposit.get("client_id"),
+          source.accountId(),
+          deposit.get("check_type"),
+          check.bank(),
+          check.checkNumber(),
+          check.amount(),
+          source.currency(),
+          source.officeId(),
+          null,
+          source.cashierId(),
+          DateUtils.getBusinessLocalDate());
+    }
     return "SAVINGS_TRANSACTION:" + source.transactionId();
   }
 }

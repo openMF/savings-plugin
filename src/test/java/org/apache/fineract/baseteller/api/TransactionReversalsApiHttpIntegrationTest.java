@@ -108,6 +108,11 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
             querySingleValueInDefaultTenant(
                 "SELECT role_id FROM m_appuser_role JOIN m_appuser u ON u.id=appuser_id WHERE"
                     + " u.username='mifos' ORDER BY role_id LIMIT 1"));
+    ok(
+        "mifos",
+        "PUT",
+        "/v1/roles/" + role + "/permissions",
+        "{\"permissions\":{\"CREATE_CASHIER_CLOSING\":true,\"CREATE_BASE_TELLER_CASH_EXCHANGE\":true,\"CREATE_BASE_TELLER_END_OF_DAY_CLOSING\":true,\"READ_BASE_TELLER_END_OF_DAY_CLOSING\":true,\"READ_GLOBAL_SETTLEMENT\":true}}");
     actorId =
         resource(
             ok(

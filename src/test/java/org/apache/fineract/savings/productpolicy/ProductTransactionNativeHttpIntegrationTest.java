@@ -303,7 +303,7 @@ class ProductTransactionNativeHttpIntegrationTest extends ProductTransactionNati
                 .getCodeSource()
                 .getLocation()
                 .toURI());
-    assertTrue(provider.getFileName().toString().contains("0.0.1628-bc1c598"));
+    assertTrue(provider.getFileName().toString().contains("0.0.1704-246e08a"));
     String providerHash =
         HexFormat.of()
             .formatHex(
