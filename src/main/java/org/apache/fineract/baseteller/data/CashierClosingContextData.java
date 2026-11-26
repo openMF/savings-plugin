@@ -19,4 +19,6 @@ public record CashierClosingContextData(
     BigDecimal previousSettlements,
     BigDecimal expectedAmount,
     List<CashierCheckData> eligibleChecks,
-    CashManagementStatus status) {}
+    CashManagementStatus status,
+    CashierClosingStatus registerStatus,
+    Long closingId) {}

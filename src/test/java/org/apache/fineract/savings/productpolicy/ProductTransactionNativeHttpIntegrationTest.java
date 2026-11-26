@@ -303,7 +303,13 @@ class ProductTransactionNativeHttpIntegrationTest extends ProductTransactionNati
                 .getCodeSource()
                 .getLocation()
                 .toURI());
-    assertTrue(provider.getFileName().toString().contains("0.0.1628-bc1c598"));
+    String nativeVersion = System.getProperty("fineract.test.runtime.version");
+    assertNotNull(nativeVersion, "Failsafe must supply the Maven-declared native runtime version.");
+    assertFalse(nativeVersion.isBlank());
+    assertEquals(
+        "fineract-provider-" + nativeVersion + "-plain.jar",
+        provider.getFileName().toString(),
+        "The native provider must match the version and classifier declared in pom.xml.");
     String providerHash =
         HexFormat.of()
             .formatHex(
@@ -318,7 +324,7 @@ class ProductTransactionNativeHttpIntegrationTest extends ProductTransactionNati
             "runtimeClasspath",
             cp.getStdout().strip(),
             "dependency",
-            "0.0.1628-bc1c598",
+            nativeVersion,
             "providerSha256",
             providerHash,
             "pluginSha256",

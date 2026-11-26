@@ -26,6 +26,7 @@ import org.apache.fineract.baseteller.data.CashierCheckData;
 import org.apache.fineract.baseteller.data.CashierClosingContextData;
 import org.apache.fineract.baseteller.data.CashierClosingReceiptData;
 import org.apache.fineract.baseteller.data.CashierClosingRequest;
+import org.apache.fineract.baseteller.data.CashierClosingStatus;
 import org.apache.fineract.baseteller.data.GlobalCashCountData;
 import org.apache.fineract.baseteller.validation.CashManagementValidator;
 import org.apache.fineract.commands.domain.CommandWrapper;
@@ -87,25 +88,35 @@ public class CashManagementPlatformServiceImpl
   @Override
   @Transactional
   public CashierClosingReceiptData close(final CashierClosingRequest request) {
+    // Match EOD: a waiter must see the committed receipt after acquiring the custody mutex.
+    // Set this before the first query without changing connection/session-wide defaults.
+    jdbcTemplate.execute("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
     final AppUser authorizer = context.authenticatedUser();
     authorizer.validateHasPermissionTo("CREATE_CASHIER_CLOSING");
     authorizer.validateHasPermissionTo("AUTHORIZE_CASHIER_CLOSING");
     final int decimalPlaces =
         currencyDecimalPlaces(request == null ? null : request.currencyCode());
     validator.validateClosing(request, decimalPlaces);
-    validateBusinessDate(request.businessDate());
     final String fingerprint = fingerprint(request);
-    final Existing existing = existingReconciliation(request.idempotencyKey());
+    Existing existing = existingReconciliation(request.idempotencyKey());
     if (existing != null) {
       validateFingerprint(existing, fingerprint);
       return closing(existing.id(), authorizer);
     }
 
-    final CashierData cashier = cashier(request.cashierId(), request.businessDate(), authorizer);
+    validateBusinessDate(request.businessDate());
+    CashierData cashier = cashier(request.cashierId(), request.businessDate(), authorizer);
     jdbcTemplate.queryForObject(
         "SELECT id FROM m_cash_exchange_mutex WHERE id=1 FOR UPDATE", Long.class);
     jdbcTemplate.queryForObject(
         "SELECT id FROM m_cashiers WHERE id = ? FOR UPDATE", Long.class, request.cashierId());
+    // Another request may have completed while this request waited for the custody lock.
+    existing = existingReconciliation(request.idempotencyKey());
+    if (existing != null) {
+      validateFingerprint(existing, fingerprint);
+      return closing(existing.id(), authorizer);
+    }
+    cashier = cashier(request.cashierId(), request.businessDate(), authorizer);
     if (authorizer.getStaffId() != null && authorizer.getStaffId().equals(cashier.getStaffId())) {
       throw invalid(
           "closing.self.authorization.forbidden",
@@ -114,9 +125,7 @@ public class CashManagementPlatformServiceImpl
     final CashierClosingContextData position =
         context(
             request.cashierId(), request.currencyCode(), request.businessDate(), authorizer, true);
-    if (position.status() == CashManagementStatus.COMPLETED) {
-      throw invalid("closing.already.completed", "Cashier closing is already completed.");
-    }
+    validateClosingOpening(request, cashier, false);
     final BigDecimal cashTotal =
         validator.validateDenominations(request.denominations(), decimalPlaces);
     final List<CashierCheckData> checks =
@@ -149,11 +158,15 @@ public class CashManagementPlatformServiceImpl
         actual,
         actor,
         authorizer,
-        cashTotal);
+        cashTotal,
+        false);
   }
 
-  /** Reconcile physical custody while settling only authoritative system cash. */
-  CashierClosingReceiptData postClosing(
+  /**
+   * EOD reconciles all tenant currencies after a register-level opening, including unused
+   * currencies.
+   */
+  CashierClosingReceiptData postEndOfDayClosing(
       CashierClosingRequest request,
       CashierClosingContextData position,
       CashierData cashier,
@@ -164,6 +177,36 @@ public class CashManagementPlatformServiceImpl
       AppUser actor,
       AppUser authorizer,
       BigDecimal settledCash) {
+    return postClosing(
+        request,
+        position,
+        cashier,
+        checks,
+        cashTotal,
+        checkTotal,
+        actual,
+        actor,
+        authorizer,
+        settledCash,
+        true);
+  }
+
+  private CashierClosingReceiptData postClosing(
+      CashierClosingRequest request,
+      CashierClosingContextData position,
+      CashierData cashier,
+      List<CashierCheckData> checks,
+      BigDecimal cashTotal,
+      BigDecimal checkTotal,
+      BigDecimal actual,
+      AppUser actor,
+      AppUser authorizer,
+      BigDecimal settledCash,
+      boolean registerWide) {
+    // All callers hold the custody mutex and cashier lock (EOD holds stronger table locks).
+    // Never trust a caller-constructed position to establish opening eligibility.
+    validateClosingOpening(
+        request, cashier(request.cashierId(), request.businessDate(), actor), registerWide);
     final String fingerprint = fingerprint(request);
     final BigDecimal difference = actual.subtract(position.expectedAmount());
     final CashDifferenceType differenceType = differenceType(difference);
@@ -516,9 +559,8 @@ public class CashManagementPlatformServiceImpl
             + " cashier_id=:cashierId AND txn_date=:date AND LOWER(currency_code)=:currency GROUP"
             + " BY txn_type",
         params,
-        rs -> {
-          while (rs.next()) totals.put(rs.getInt("txn_type"), rs.getBigDecimal("total"));
-        });
+        (org.springframework.jdbc.core.RowCallbackHandler)
+            rs -> totals.put(rs.getInt("txn_type"), rs.getBigDecimal("total")));
     final BigDecimal opening = totals.getOrDefault(ALLOCATION, BigDecimal.ZERO);
     final BigDecimal unlinkedSavings =
         namedJdbcTemplate.queryForObject(
@@ -554,13 +596,14 @@ public class CashManagementPlatformServiceImpl
             .subtract(outflows)
             .subtract(settlements)
             .add(sumChecks(eligibleChecks));
-    final boolean closed =
-        namedJdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM m_cashier_reconciliation WHERE cashier_id=:cashierId AND"
-                    + " business_date=:date AND LOWER(currency_code)=:currency",
-                params,
-                Integer.class)
-            > 0;
+    final List<Long> completed =
+        namedJdbcTemplate.queryForList(
+            "SELECT id FROM m_cashier_reconciliation WHERE cashier_id=:cashierId AND"
+                + " business_date=:date AND LOWER(currency_code)=:currency AND status='COMPLETED'",
+            params,
+            Long.class);
+    final boolean closed = !completed.isEmpty();
+    final boolean opened = hasOpening(cashier, date, currencyCode, false);
     return new CashierClosingContextData(
         date,
         cashier.getOfficeId(),
@@ -576,7 +619,62 @@ public class CashManagementPlatformServiceImpl
         settlements,
         expected,
         eligibleChecks,
-        closed ? CashManagementStatus.COMPLETED : CashManagementStatus.OPEN);
+        closed ? CashManagementStatus.COMPLETED : CashManagementStatus.OPEN,
+        closed
+            ? CashierClosingStatus.COMPLETED
+            : opened ? CashierClosingStatus.OPEN : CashierClosingStatus.NOT_OPENED,
+        closed ? completed.get(0) : null);
+  }
+
+  /** Validate the opening record, independently of balances and reconciliation absence. */
+  void validateClosingOpening(
+      CashierClosingRequest request, CashierData cashier, boolean registerWide) {
+    validateBusinessDate(request.businessDate());
+    if (Boolean.TRUE.equals(
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*)>0 FROM m_cashier_reconciliation WHERE cashier_id=?"
+                + " AND business_date=? AND LOWER(currency_code)=LOWER(?)",
+            Boolean.class,
+            request.cashierId(),
+            request.businessDate(),
+            request.currencyCode()))) {
+      throw invalid("closing.already.completed", "Cashier closing is already completed.");
+    }
+    if (!hasOpening(
+        cashier, request.businessDate(), registerWide ? null : request.currencyCode(), true)) {
+      throw invalid(
+          "closing.not.opened",
+          "The cash register cannot be closed because it has not been opened for the selected business date.");
+    }
+  }
+
+  /**
+   * Opening/provisioning is per destination drawer, business date and currency, with no
+   * carry-forward. Tenant isolation is supplied by Fineract's tenant-bound JdbcTemplate. Allocation
+   * reversals are not supported; only completed records backed by their native allocation qualify.
+   */
+  private boolean hasOpening(CashierData cashier, LocalDate date, String currency, boolean lock) {
+    final Map<String, Object> params = new HashMap<>();
+    params.put("cashierId", cashier.getId());
+    params.put("officeId", cashier.getOfficeId());
+    params.put("tellerId", cashier.getTellerId());
+    params.put("date", date);
+    String sql =
+        "SELECT a.id FROM m_cash_allocation a"
+            + " JOIN m_cashiers c ON c.id=a.destination_cashier_id"
+            + " JOIN m_tellers t ON t.id=c.teller_id AND t.office_id=a.office_id"
+            + " JOIN m_cashier_transactions ct ON ct.id=a.destination_cashier_transaction_id"
+            + " AND ct.cashier_id=c.id AND ct.txn_type=101 AND ct.txn_date=a.business_date"
+            + " AND LOWER(ct.currency_code)=LOWER(a.currency_code)"
+            + " WHERE a.destination_cashier_id=:cashierId AND a.office_id=:officeId"
+            + " AND t.id=:tellerId AND a.business_date=:date AND a.status='COMPLETED'"
+            + " AND a.operation_type IN ('HEAD_CASHIER_ALLOCATION','OPERATIONAL_TELLER_ALLOCATION')";
+    if (currency != null) {
+      params.put("currency", currency.toLowerCase(Locale.ROOT));
+      sql += " AND LOWER(a.currency_code)=:currency";
+    }
+    if (lock) sql += " FOR SHARE OF a,ct";
+    return !namedJdbcTemplate.queryForList(sql, params, Long.class).isEmpty();
   }
 
   private CashierData cashier(final Long id, final LocalDate date, final AppUser user) {

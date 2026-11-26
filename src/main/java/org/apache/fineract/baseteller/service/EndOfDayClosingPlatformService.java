@@ -189,7 +189,9 @@ public class EndOfDayClosingPlatformService {
               cutoffs,
               b.expectedTotal(),
               deposits,
-              CashManagementStatus.OPEN);
+              CashManagementStatus.OPEN,
+              null,
+              null);
       // Use the same authoritative summary that native settlement validation uses.
       // Physical count and discrepancy are audit metadata, never the settlement amount.
       BigDecimal settledCash =
@@ -207,7 +209,7 @@ public class EndOfDayClosingPlatformService {
               b.decimalPlaces());
       // WEB-1232 owns both reconciliation persistence and the single native settlement.
       CashierClosingReceiptData receipt =
-          closing.postClosing(
+          closing.postEndOfDayClosing(
               nativeRequest,
               position,
               tellerService.findCashier(cashier.cashierId()),

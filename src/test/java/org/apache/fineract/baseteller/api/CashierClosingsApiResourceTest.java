@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import org.apache.fineract.baseteller.data.CashManagementStatus;
 import org.apache.fineract.baseteller.data.CashDifferenceType;
+import org.apache.fineract.baseteller.data.CashManagementStatus;
 import org.apache.fineract.baseteller.data.CashierClosingContextData;
 import org.apache.fineract.baseteller.data.CashierClosingReceiptData;
 import org.apache.fineract.baseteller.service.CashManagementReadPlatformService;
@@ -40,7 +40,9 @@ class CashierClosingsApiResourceTest {
             BigDecimal.ZERO,
             new BigDecimal("11"),
             List.of(),
-            CashManagementStatus.OPEN);
+            CashManagementStatus.OPEN,
+            org.apache.fineract.baseteller.data.CashierClosingStatus.OPEN,
+            null);
     when(fixture.readService.closingContext(3L, "USD", LocalDate.of(2026, 9, 22)))
         .thenReturn(value);
 
@@ -91,8 +93,10 @@ class CashierClosingsApiResourceTest {
   private static Fixture fixture() {
     final PlatformSecurityContext context = mock(PlatformSecurityContext.class);
     final AppUser user = mock(AppUser.class);
-    final CashManagementReadPlatformService readService = mock(CashManagementReadPlatformService.class);
-    final CashManagementWritePlatformService writeService = mock(CashManagementWritePlatformService.class);
+    final CashManagementReadPlatformService readService =
+        mock(CashManagementReadPlatformService.class);
+    final CashManagementWritePlatformService writeService =
+        mock(CashManagementWritePlatformService.class);
     when(context.authenticatedUser()).thenReturn(user);
     return new Fixture(
         user,
