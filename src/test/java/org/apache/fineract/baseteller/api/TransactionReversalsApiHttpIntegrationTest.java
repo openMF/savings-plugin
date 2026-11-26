@@ -24,7 +24,15 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
   private static final String ROOT = "/v2/base-teller/transaction-reversals";
   private static final String ACTOR = "web1259-cashier";
   private static String currency, date, note, small, privateHistory;
-  private static long cashier, actorId, serviceId, cashType, checkType, client, account, bank;
+  private static long officeId,
+      cashier,
+      actorId,
+      serviceId,
+      cashType,
+      checkType,
+      client,
+      account,
+      bank;
 
   private static Response call(String username, String method, String path, String body) {
     var request =
@@ -73,36 +81,54 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
         ok("mifos", "GET", "/v2/base-teller/cash-allocations/context?officeId=1", null)
             .jsonPath()
             .getString("businessDate");
+    // This suite owns its office/drawer so other suites cannot close its custody.
+    officeId =
+        resource(
+            ok(
+                "mifos",
+                "POST",
+                "/v1/offices",
+                "{\"name\":\"WEB1259 Reversal Office\",\"parentId\":1,\"openingDate\":\""
+                    + date
+                    + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}"));
     long staff =
         resource(
             ok(
                 "mifos",
                 "POST",
                 "/v1/staff",
-                "{\"officeId\":1,\"firstname\":\"WEB1259\",\"lastname\":\"Cashier\",\"isLoanOfficer\":false}"));
+                "{\"officeId\":"
+                    + officeId
+                    + ",\"firstname\":\"WEB1259\",\"lastname\":\"Cashier\",\"isLoanOfficer\":false}"));
     long teller =
         resource(
             ok(
                 "mifos",
                 "POST",
                 "/v1/tellers",
-                "{\"officeId\":1,\"name\":\"WEB1259 Window\",\"description\":\"Reversal"
+                "{\"officeId\":"
+                    + officeId
+                    + ",\"name\":\"WEB1259 Window\",\"description\":\"Reversal"
                     + " test\",\"status\":300,\"startDate\":\""
                     + java.time.LocalDate.parse(date).minusDays(1)
                     + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}"));
+    ok(
+        "mifos",
+        "POST",
+        "/v1/tellers/" + teller + "/cashiers",
+        "{\"staffId\":"
+            + staff
+            + ",\"description\":\"Reversal cashier\",\"isFullDay\":true,\"startDate\":\""
+            + java.time.LocalDate.parse(date).minusDays(1)
+            + "\",\"endDate\":\""
+            + java.time.LocalDate.parse(date).plusDays(1)
+            + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}");
+    // Do not assume the command resourceId identifies the cashier assignment.
+    // Resolve the actual assignment by its uniquely created staff and teller, never by teller id.
     cashier =
-        resource(
-            ok(
-                "mifos",
-                "POST",
-                "/v1/tellers/" + teller + "/cashiers",
-                "{\"staffId\":"
-                    + staff
-                    + ",\"description\":\"Reversal cashier\",\"isFullDay\":true,\"startDate\":\""
-                    + java.time.LocalDate.parse(date).minusDays(1)
-                    + "\",\"endDate\":\""
-                    + java.time.LocalDate.parse(date).plusDays(1)
-                    + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}"));
+        Long.parseLong(
+            querySingleValueInDefaultTenant(
+                "SELECT id FROM m_cashiers WHERE staff_id=" + staff + " AND teller_id=" + teller));
     long role =
         Long.parseLong(
             querySingleValueInDefaultTenant(
@@ -116,7 +142,9 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
                 "/v1/users",
                 "{\"username\":\""
                     + ACTOR
-                    + "\",\"firstname\":\"WEB1259\",\"lastname\":\"Cashier\",\"email\":\"web1259@example.test\",\"officeId\":1,\"staffId\":"
+                    + "\",\"firstname\":\"WEB1259\",\"lastname\":\"Cashier\",\"email\":\"web1259@example.test\",\"officeId\":"
+                    + officeId
+                    + ",\"staffId\":"
                     + staff
                     + ",\"roles\":["
                     + role
@@ -170,7 +198,9 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
                 "mifos",
                 "POST",
                 "/v1/clients",
-                "{\"officeId\":1,\"legalFormId\":1,\"firstname\":\"WEB1259\",\"lastname\":\"Depositor\",\"active\":true,\"activationDate\":\""
+                "{\"officeId\":"
+                    + officeId
+                    + ",\"legalFormId\":1,\"firstname\":\"WEB1259\",\"lastname\":\"Depositor\",\"active\":true,\"activationDate\":\""
                     + date
                     + "\",\"dateFormat\":\"yyyy-MM-dd\",\"locale\":\"en\"}"));
     long savingsControl = gl("WEB1259-SAVINGS", 2),
@@ -226,6 +256,90 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
         "POST",
         "/v1/savingsaccounts/" + account + "?command=activate",
         dates.replace("approvedOnDate", "activatedOnDate"));
+    openAndExhaustDrawer();
+  }
+
+  private static void configureFinancialActivityAccounts() {
+    var activities =
+        List.of(
+            org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
+                .CASH_AT_MAINVAULT,
+            org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
+                .CASH_AT_TELLER,
+            org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
+                .OPENING_BALANCES_TRANSFER_CONTRA);
+    for (var activity : activities) {
+      if (querySingleValueInDefaultTenant(
+              "SELECT id FROM acc_gl_financial_activity_account WHERE financial_activity_type="
+                  + activity.getValue())
+          .isBlank()) {
+        int type =
+            activity
+                    == org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
+                        .OPENING_BALANCES_TRANSFER_CONTRA
+                ? 3
+                : 1;
+        ok(
+            "mifos",
+            "POST",
+            "/v1/financialactivityaccounts",
+            "{\"financialActivityId\":"
+                + activity.getValue()
+                + ",\"glAccountId\":"
+                + gl("WEB1259-OPEN-" + activity.name(), type)
+                + "}");
+      }
+    }
+  }
+
+  private static void openAndExhaustDrawer() {
+    configureFinancialActivityAccounts();
+    for (String operation : List.of("SAFE_VAULT_OPENING", "HEAD_CASHIER_ALLOCATION")) {
+      JsonObject request = new JsonObject();
+      request.addProperty("idempotencyKey", "web1259-" + operation);
+      request.addProperty("operationType", operation);
+      request.addProperty("officeId", officeId);
+      request.addProperty("businessDate", date);
+      request.addProperty("currencyCode", currency);
+      request.addProperty("amount", 100);
+      if (operation.equals("HEAD_CASHIER_ALLOCATION"))
+        request.addProperty("destinationCashierId", cashier);
+      JsonObject denomination = new JsonObject();
+      denomination.addProperty("denominationId", note);
+      denomination.addProperty("quantity", 1);
+      JsonArray lines = new JsonArray();
+      lines.add(denomination);
+      request.add("denominations", lines);
+      ok("mifos", "POST", "/v2/base-teller/cash-allocations", request.toString());
+    }
+    // Exhaust the legitimately opened drawer through the real deposit workflow. This keeps
+    // reversal scenarios' original zero starting custody without pretending the drawer is unopened.
+    ok(
+        "mifos",
+        "POST",
+        "/v2/base-teller/cash-operations",
+        "{\"idempotencyKey\":\"web1259-exhaust-opening\",\"transactionType\":\"BANK_DEPOSIT\",\"cashierId\":"
+            + cashier
+            + ",\"businessDate\":\""
+            + date
+            + "\",\"currencyCode\":\""
+            + currency
+            + "\",\"denominations\":[{\"denominationId\":\""
+            + note
+            + "\",\"value\":100,\"quantity\":1}],\"checkIds\":[]}");
+    Response context =
+        ok(
+            "mifos",
+            "GET",
+            "/v2/base-teller/closings/context?cashierId="
+                + cashier
+                + "&currencyCode="
+                + currency
+                + "&businessDate="
+                + date,
+            null);
+    assertEquals("OPEN", context.jsonPath().getString("registerStatus"));
+    assertEquals(0, new BigDecimal(context.jsonPath().getString("expectedAmount")).signum());
   }
 
   private static long service(String key) {
@@ -909,28 +1023,7 @@ class TransactionReversalsApiHttpIntegrationTest extends SavingsIntegrationTestB
   @Test
   @Order(11)
   void completedClosingFreezesReversalWithoutReopeningCustody() {
-    var activities =
-        List.of(
-            org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
-                .CASH_AT_MAINVAULT,
-            org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity
-                .CASH_AT_TELLER);
-    for (var activity : activities) {
-      String existing =
-          querySingleValueInDefaultTenant(
-              "SELECT id FROM acc_gl_financial_activity_account WHERE financial_activity_type="
-                  + activity.getValue());
-      if (existing.isBlank())
-        ok(
-            "mifos",
-            "POST",
-            "/v1/financialactivityaccounts",
-            "{\"financialActivityId\":"
-                + activity.getValue()
-                + ",\"glAccountId\":"
-                + gl("WEB1259-CLOSE-" + activity.name(), 1)
-                + "}");
-    }
+    configureFinancialActivityAccounts();
     String number = authorization(privateHistory);
     ok(
         "mifos",

@@ -107,6 +107,9 @@ public class CashAllocationPlatformServiceImpl
       return receipt(existing.id(), user);
     }
 
+    // Use the same lock order as closing and EOD so opening cannot race reconciliation.
+    jdbcTemplate.queryForObject(
+        "SELECT id FROM m_cash_exchange_mutex WHERE id=1 FOR UPDATE", Long.class);
     final PreparedAllocation prepared = prepare(request, user, true, true);
     existing = existing(request.idempotencyKey());
     if (existing != null) {
@@ -145,18 +148,30 @@ public class CashAllocationPlatformServiceImpl
     } else if (request.operationType() == CashAllocationType.HEAD_CASHIER_ALLOCATION) {
       final CommandProcessingResult allocation =
           allocateToCashier(
-              prepared.destination(), prepared.total(), prepared.currency(), prepared.date(), reference,
+              prepared.destination(),
+              prepared.total(),
+              prepared.currency(),
+              prepared.date(),
+              reference,
               request.idempotencyKey() + ":destination");
       destinationTransactionId = requiredCashierTransactionId(allocation);
     } else {
       final CommandProcessingResult settlement =
           settleFromCashier(
-              prepared.source(), prepared.total(), prepared.currency(), prepared.date(), reference,
+              prepared.source(),
+              prepared.total(),
+              prepared.currency(),
+              prepared.date(),
+              reference,
               request.idempotencyKey() + ":source");
       sourceTransactionId = requiredCashierTransactionId(settlement);
       final CommandProcessingResult allocation =
           allocateToCashier(
-              prepared.destination(), prepared.total(), prepared.currency(), prepared.date(), reference,
+              prepared.destination(),
+              prepared.total(),
+              prepared.currency(),
+              prepared.date(),
+              reference,
               request.idempotencyKey() + ":destination");
       destinationTransactionId = requiredCashierTransactionId(allocation);
     }
@@ -212,29 +227,36 @@ public class CashAllocationPlatformServiceImpl
       source = cashier(request.sourceCashierId(), office.id(), request.businessDate(), lock);
     }
     if (request.destinationCashierId() != null) {
-      destination = cashier(request.destinationCashierId(), office.id(), request.businessDate(), lock);
+      destination =
+          cashier(request.destinationCashierId(), office.id(), request.businessDate(), lock);
     }
     if (request.operationType() == CashAllocationType.OPERATIONAL_TELLER_ALLOCATION
-        && !isFundedHeadCashier(source.id(), office.id(), request.businessDate(), currency.code())) {
+        && !isFundedHeadCashier(
+            source.id(), office.id(), request.businessDate(), currency.code())) {
       throw invalid(
           "source.not.head.cashier",
           "The source cashier has no completed head-cashier opening allocation for this business date and currency.");
     }
     if (source != null) rejectClosed(source.id(), request.businessDate(), currency.code());
-    if (destination != null) rejectClosed(destination.id(), request.businessDate(), currency.code());
+    if (destination != null)
+      rejectClosed(destination.id(), request.businessDate(), currency.code());
 
-    final BigDecimal vaultBefore = vaultBalance(office.id(), request.businessDate(), currency.code());
+    final BigDecimal vaultBefore =
+        vaultBalance(office.id(), request.businessDate(), currency.code());
     final BigDecimal sourceBefore =
         request.operationType() == CashAllocationType.HEAD_CASHIER_ALLOCATION
             ? vaultBefore
-            : source == null ? null : cashierBalance(source.id(), request.businessDate(), currency.code());
+            : source == null
+                ? null
+                : cashierBalance(source.id(), request.businessDate(), currency.code());
     final BigDecimal destinationBefore =
         request.operationType() == CashAllocationType.SAFE_VAULT_OPENING
             ? vaultBefore
             : cashierBalance(destination.id(), request.businessDate(), currency.code());
     if (request.operationType() != CashAllocationType.SAFE_VAULT_OPENING
         && sourceBefore.compareTo(total) < 0) {
-      throw invalid("source.insufficient", "The allocation exceeds the authoritative source cash balance.");
+      throw invalid(
+          "source.insufficient", "The allocation exceeds the authoritative source cash balance.");
     }
     final BigDecimal sourceAfter = sourceBefore == null ? null : sourceBefore.subtract(total);
     final BigDecimal destinationAfter = destinationBefore.add(total);
@@ -322,8 +344,7 @@ public class CashAllocationPlatformServiceImpl
 
   private List<CashAllocationCurrencyData> currencies(final String requestedCurrency) {
     final Map<String, CurrencySnapshot> configured = new LinkedHashMap<>();
-    String sql =
-        "SELECT code,decimal_places,name,display_symbol FROM m_organisation_currency";
+    String sql = "SELECT code,decimal_places,name,display_symbol FROM m_organisation_currency";
     final List<Object> arguments = new ArrayList<>();
     if (StringUtils.isNotBlank(requestedCurrency)) {
       sql += " WHERE LOWER(code)=LOWER(?)";
@@ -400,8 +421,7 @@ public class CashAllocationPlatformServiceImpl
                     cashier.tellerName(),
                     cashier.staffId(),
                     cashier.cashierName(),
-                    currency != null
-                        && isFundedHeadCashier(cashier.id(), officeId, date, currency),
+                    currency != null && isFundedHeadCashier(cashier.id(), officeId, date, currency),
                     currency == null ? ZERO : cashierBalance(cashier.id(), date, currency)))
         .toList();
   }
@@ -455,7 +475,8 @@ public class CashAllocationPlatformServiceImpl
     return result == null ? ZERO : result;
   }
 
-  private BigDecimal vaultBalance(final Long officeId, final LocalDate date, final String currency) {
+  private BigDecimal vaultBalance(
+      final Long officeId, final LocalDate date, final String currency) {
     final BigDecimal result =
         jdbcTemplate.queryForObject(
             "SELECT COALESCE(SUM(CASE WHEN operation_type='SAFE_VAULT_OPENING' THEN amount"
