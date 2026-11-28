@@ -18,6 +18,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
+import org.apache.fineract.creditapplication.data.CreditOriginationScoreComponent;
+import org.apache.fineract.creditapplication.data.CreditOriginationScoreComponentEventCommand;
 import org.apache.fineract.creditapplication.data.CreditOriginationStageCode;
 import org.apache.fineract.creditapplication.data.CreditOriginationStageEventCommand;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
@@ -76,6 +78,29 @@ class CreditOriginationStageEventServiceImplTest {
     verify(jdbcTemplate, never())
         .update(
             anyString(), any(org.springframework.jdbc.core.namedparam.SqlParameterSource.class));
+  }
+
+  @Test
+  void componentEvidenceRejectsUnsupportedStatusBeforeRelationshipLookup() {
+    final CreditOriginationScoreComponentEventCommand invalid =
+        new CreditOriginationScoreComponentEventCommand(
+            1L,
+            2L,
+            CreditOriginationScoreComponent.SAT,
+            "BLOCKED",
+            OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+            null,
+            "SAT_INTEGRATION",
+            "sat-1",
+            "sat-event-1",
+            null);
+
+    assertThrows(
+        GeneralPlatformDomainRuleException.class, () -> service.recordScoreComponentEvent(invalid));
+    assertThrows(
+        GeneralPlatformDomainRuleException.class, () -> service.recordScoreComponentEvent(null));
+
+    verify(jdbcTemplate, never()).queryForObject(anyString(), anyMap(), eq(Long.class));
   }
 
   private CreditOriginationStageEventCommand command(final String status) {

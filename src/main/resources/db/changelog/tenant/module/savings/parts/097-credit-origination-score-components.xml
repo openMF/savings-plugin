@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright since 2026 Mifos Initiative
+
+ This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy
+ of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!--
+     WEB-1412: parametric-score component evidence (SAT, Credit Bureau, Syntage, RUG, RPC) reuses
+     the existing stage-event stream. Stage-level rows keep component_code NULL, so every existing
+     row and reader keeps its meaning.
+    -->
+    <changeSet author="fineract" id="ss-097-1">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_credit_origination_stage_event"/>
+                <not><columnExists tableName="m_credit_origination_stage_event" columnName="component_code"/></not>
+            </and>
+        </preConditions>
+        <addColumn tableName="m_credit_origination_stage_event">
+            <column name="component_code" type="VARCHAR(30)"/>
+        </addColumn>
+        <sql>ALTER TABLE m_credit_origination_stage_event ADD CONSTRAINT ck_credit_stage_event_component CHECK (component_code IS NULL OR (stage_code = 'PARAMETRIC_SCORE' AND component_code IN ('SAT', 'CREDIT_BUREAU', 'SYNTAGE', 'RUG', 'RPC')))</sql>
+        <rollback>
+            <sql>ALTER TABLE m_credit_origination_stage_event DROP CONSTRAINT ck_credit_stage_event_component</sql>
+            <dropColumn tableName="m_credit_origination_stage_event" columnName="component_code"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

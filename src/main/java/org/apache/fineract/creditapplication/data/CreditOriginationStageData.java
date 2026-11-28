@@ -7,10 +7,19 @@
 package org.apache.fineract.creditapplication.data;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
+/**
+ * One board phase. pendingRequirements and scoreComponents are null when the backend has no
+ * authoritative requirement model for the phase (currently every phase except PARAMETRIC_SCORE).
+ */
 public record CreditOriginationStageData(
     String code,
     String displayName,
     String status,
     OffsetDateTime completedOn,
-    CreditOriginationStageDetailsData details) {}
+    CreditOriginationStageDetailsData details,
+    OffsetDateTime enteredOn,
+    OffsetDateTime lastUpdatedOn,
+    List<String> pendingRequirements,
+    List<CreditOriginationScoreComponentData> scoreComponents) {}

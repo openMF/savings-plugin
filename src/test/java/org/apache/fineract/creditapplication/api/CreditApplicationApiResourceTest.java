@@ -54,7 +54,8 @@ class CreditApplicationApiResourceTest {
     final CreditOriginationBoardReadPlatformService boardService =
         mock(CreditOriginationBoardReadPlatformService.class);
     final CreditOriginationBoardData board =
-        new CreditOriginationBoardData(7L, 8L, 7L, null, "ONBOARDING", List.of());
+        new CreditOriginationBoardData(
+            7L, 8L, 7L, null, "ONBOARDING", List.of(), 1L, 2L, null, null, null);
     when(context.authenticatedUser()).thenReturn(user);
     when(boardService.retrieve(7L)).thenReturn(board);
     final CreditApplicationApiResource resource =
