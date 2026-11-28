@@ -8,11 +8,19 @@ package org.apache.fineract.creditapplication.data;
 
 import java.util.List;
 
-/** Read model for the nine-phase credit-origination board. */
+/**
+ * Read model for the nine-phase credit-origination board. The responsible staff member is the
+ * Fineract loan officer assigned to the application, when one is assigned.
+ */
 public record CreditOriginationBoardData(
     Long creditApplicationId,
     Long clientId,
     Long loanId,
     Long prospectId,
     String currentStage,
-    List<CreditOriginationStageData> stages) {}
+    List<CreditOriginationStageData> stages,
+    Long officeId,
+    Long productId,
+    Long responsibleStaffId,
+    String responsibleStaffName,
+    CreditOriginationAgingData currentStageAging) {}

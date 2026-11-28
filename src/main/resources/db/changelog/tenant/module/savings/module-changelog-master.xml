@@ -106,4 +106,5 @@
   <include file="parts/094-investment-product-policy.xml" relativeToChangelogFile="true"/>
   <include file="parts/095-investment-rate-matrix.xml" relativeToChangelogFile="true"/>
   <include file="parts/096-investment-simulation.xml" relativeToChangelogFile="true"/>
+  <include file="parts/097-credit-origination-score-components.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
