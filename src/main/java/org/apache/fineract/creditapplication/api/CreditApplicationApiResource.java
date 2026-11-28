@@ -18,8 +18,11 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.creditapplication.data.CreditApplicationData;
 import org.apache.fineract.creditapplication.data.CreditApplicationSearchRequest;
 import org.apache.fineract.creditapplication.data.CreditOriginationBoardData;
+import org.apache.fineract.creditapplication.data.CreditOriginationDashboardData;
+import org.apache.fineract.creditapplication.data.CreditOriginationDashboardRequest;
 import org.apache.fineract.creditapplication.service.CreditApplicationReadPlatformService;
 import org.apache.fineract.creditapplication.service.CreditOriginationBoardReadPlatformService;
+import org.apache.fineract.creditapplication.service.CreditOriginationDashboardReadPlatformService;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.springframework.stereotype.Component;
@@ -38,6 +41,8 @@ public class CreditApplicationApiResource {
   private final PlatformSecurityContext context;
   private final CreditApplicationReadPlatformService readPlatformService;
   private final CreditOriginationBoardReadPlatformService originationBoardReadPlatformService;
+  private final CreditOriginationDashboardReadPlatformService
+      originationDashboardReadPlatformService;
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -65,5 +70,20 @@ public class CreditApplicationApiResource {
       @PathParam("creditApplicationId") final Long creditApplicationId) {
     context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
     return originationBoardReadPlatformService.retrieve(creditApplicationId);
+  }
+
+  @GET
+  @Path("/origination-dashboard")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Retrieve the credit origination dashboard",
+      description =
+          "Read-only, office-scoped KPIs, nine-phase distribution and a paginated list of"
+              + " applications stalled for more than seven calendar days in their current phase."
+              + " Aggregates only include applications visible in the user's office hierarchy.")
+  public CreditOriginationDashboardData retrieveOriginationDashboard(
+      @BeanParam final CreditOriginationDashboardRequest request) {
+    context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
+    return originationDashboardReadPlatformService.retrieve(request);
   }
 }
