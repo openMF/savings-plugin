@@ -7,9 +7,11 @@
 package org.apache.fineract.creditapplication.api;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 import io.restassured.http.ContentType;
 import org.apache.fineract.testing.support.SavingsIntegrationTestBase;
@@ -167,5 +169,57 @@ class CreditApplicationApiHttpIntegrationTest extends SavingsIntegrationTestBase
         .get(CREDIT_APPLICATIONS_PATH)
         .then()
         .statusCode(403);
+    given(
+            SavingsTestUtils.requestSpecWithAuth(
+                getFineractPort(), UNAUTHORIZED_USERNAME, "password"))
+        .when()
+        .get(CREDIT_APPLICATIONS_PATH + "/origination-dashboard")
+        .then()
+        .statusCode(403);
+  }
+
+  @Test
+  void originationBoardAndDashboardRunAgainstTheMigratedFineractSchema() {
+    given(SavingsTestUtils.requestSpecWithAuth(getFineractPort(), "mifos", "password"))
+        .when()
+        .get(CREDIT_APPLICATIONS_PATH + "/" + LOAN_ID + "/origination-board")
+        .then()
+        .statusCode(200)
+        .body("stages.size()", equalTo(9))
+        .body("currentStage", equalTo("COMPLIANCE"))
+        .body("productId", equalTo((int) PRODUCT_ID))
+        .body(
+            "stages[2].scoreComponents.code",
+            contains("SAT", "CREDIT_BUREAU", "SYNTAGE", "RUG", "RPC"))
+        .body("stages[2].pendingRequirements", contains("SAT", "CREDIT_BUREAU", "SYNTAGE"))
+        .body("currentStageAging.status", equalTo("UNKNOWN"))
+        .body("currentStageAging.thresholdDays", equalTo(7));
+
+    given(SavingsTestUtils.requestSpecWithAuth(getFineractPort(), "mifos", "password"))
+        .queryParam("productId", PRODUCT_ID)
+        .queryParam("limit", 10)
+        .when()
+        .get(CREDIT_APPLICATIONS_PATH + "/origination-dashboard")
+        .then()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .body("productId", equalTo((int) PRODUCT_ID))
+        .body("agingUnit", equalTo("CALENDAR_DAYS"))
+        .body("summary.activeApplications", equalTo(1))
+        .body("summary.activeProspects", equalTo(1))
+        .body("summary.unknownAgingApplications", equalTo(1))
+        .body("summary.progressRate", nullValue())
+        .body("summary.progressRateAvailability", equalTo("UNDEFINED"))
+        .body("stages.size()", equalTo(9))
+        .body("stages[1].applicationCount", equalTo(1))
+        .body("stalledApplications.totalFilteredRecords", equalTo(0));
+
+    given(SavingsTestUtils.requestSpecWithAuth(getFineractPort(), "mifos", "password"))
+        .queryParam("limit", 0)
+        .when()
+        .get(CREDIT_APPLICATIONS_PATH + "/origination-dashboard")
+        .then()
+        .statusCode(400)
+        .body("errors[0].parameterName", equalTo("limit"));
   }
 }
